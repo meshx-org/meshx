@@ -1,14 +1,13 @@
 package main
 
 import (
-	
 	"github.com/bytecodealliance/wasmtime-go"
 	"go.uber.org/zap"
 )
 
 func check(e error) {
 	if e != nil {
-			panic(e)
+		panic(e)
 	}
 }
 

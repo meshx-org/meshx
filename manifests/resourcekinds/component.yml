@@ -1,0 +1,15 @@
+apiVersion: components.meshx.co/v1
+kind: ResourceKind
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: resoucekinds.meshx.co
+spec:
+  scope: Workspaced # or Spaced
+  group: meshx.co # group name to use for REST API: /apis/<group>/<version>
+  names:
+    plural: components # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    singular: component  # singular name to be used as an alias on the CLI and for display
+    kind: Component # kind is normally the CamelCased singular type. Your resource manifests use this.
+    shortNames: # shortNames allow shorter string to match your resource on the CLI
+    - comp
+  schema:

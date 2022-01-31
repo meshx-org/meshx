@@ -8,26 +8,28 @@ stages:
 - stage: Build
   displayName: Build and push stage
   jobs:
-  - job: Build
+  - job: BuildJob
     displayName: Build
-    pool:
-      vmImage: $(vmImageName)
     steps:
+    
     - task: GoTool@0
       inputs:
-        version: '1.14.1'
+        version: '1.17'
+    
     - task: Go@0
       inputs:
         command: 'get'
         arguments: '-v -d'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
+        workingDirectory: server
+    
     - task: Go@0
       inputs:
         command: 'build'
         arguments: '-v -o api'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
-    - task: Go@0
+        workingDirectory: server
+
+    - task: PublishPipelineArtifact@1
+      displayName: "Publish Pipeline Artifact"
       inputs:
-        command: 'test'
-        arguments: '-v ./...'
-        workingDirectory: '$(System.DefaultWorkingDirectory)'
+        targetPath: server/main
+        artifact: "server-bin"

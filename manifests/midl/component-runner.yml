@@ -1,0 +1,33 @@
+apiVersion: core.meshx.co/v1
+kind: MIDL
+metadata:
+  space: root
+  name: component-runner.midl
+spec:
+  library: meshx.co
+  
+  tables:
+    StartInfo:
+      fields:
+        
+        encoded_resource:
+          doc: 
+          type: array(ubyte)
+   
+  interfaces:
+    Component:
+      calls: 
+        stop:
+          params:
+          results:
+
+    # Note: The component manager is the only intended direct client of this
+    # interface.
+    ComponentRunner:
+      calls:
+        start:
+          params:
+          results:
+            component:
+              type: Component
+            

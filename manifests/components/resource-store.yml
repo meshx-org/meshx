@@ -1,0 +1,47 @@
+apiVersion: core.meshx.co/v1
+kind: Component
+metadata:
+  space: root
+  name: resource-store-component
+spec:
+
+  program: 
+    runner: system
+    name: registered-name 
+
+  # program: 
+  #   runner: webview
+  #   index: www/index.html
+
+  # or 
+
+  # program: 
+  #   runner: wasm
+  #   binary: bin/test.wasm
+
+  # program: 
+  #   runner: flow
+  #   ref: test-flow
+
+  # program: 
+  #   runner: v8
+  #   binary: bin/test.js
+
+  capability:
+    - runner: web
+      path: '/svc/fuchsia.component.runner.ComponentRunner'
+
+  # Exposing a runner capability gives the component's parent access to that capability:
+  expose:
+    - runner: web
+      from: self
+
+  # Offering a runner capability gives a child component access to that capability:
+  offer:
+    - runner: web
+      from: self
+      to:
+        - '#child-a'
+
+status:
+  state: running

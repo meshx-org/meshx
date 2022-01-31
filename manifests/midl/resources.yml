@@ -1,0 +1,75 @@
+apiVersion: core.meshx.co/v1
+kind: MIDL
+metadata:
+  name: core-resources-schema
+spec:
+  midl:
+    # rootTable: Greeting
+    # import: root/test-space/directory-idl
+    namespace: meshx.co
+    
+    tables:
+      TypeMeta:
+        fields:
+          apiVersion:
+            type: string
+            attributes:
+              - required
+          kind:
+            type: string
+            attributes:
+              - required
+              - deprecated
+      
+      ObjectMeta:
+        fields:
+          name:
+            type: string
+            attributes:
+              - required
+          space:
+            type: string
+            attributes:
+              - required
+
+      GreetingResource:
+        compose: TypeMeta
+        doc: This is a table
+        fields:
+          message:
+            type: string
+            attributes:
+              required: true
+
+    interface:
+      Directory:
+        doc: A directory interface
+        attributes:
+        calls:
+          
+          create:
+            doc: Creates a file.
+            attributes:
+            params:
+              name:
+                type: string
+            results:
+              file:
+                type: File
+
+          open:
+            doc: Opens a file.
+            attributes:
+            params:
+              name:
+                type: string
+            results:
+              file:
+                type: File
+
+          remove:
+            doc: Remove a file.
+            attributes:
+            params:
+              name:
+                type: Text
