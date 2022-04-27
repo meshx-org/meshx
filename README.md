@@ -1,9 +1,9 @@
 <!-- Header -->
-<p align="center"><img src="docs/github-header.png" alt="MeshX Workspace"></p>
+<p align="center"><img src="docs/images/meshx-workspace-header.png" alt="MeshX Workspace"></p>
 
 <!-- Badges -->
 <p align="center">
-    <a href="https://github.com/meshx-org/meshx/actions/workflows/tests.yaml"><img src="https://github.com/meshx-org/meshx/actions/workflows/tests.yaml/badge.svg?branch=main" alt="Test Status"></a>
+    <a href="https://github.com/meshx-org/meshx/actions/workflows/ci.yaml"><img src="https://github.com/meshx-org/meshx/actions/workflows/ci.yaml/badge.svg?branch=main" alt="CI Status"></a>
     <a href="https://packagist.org/packages/laravel/cashier"><img src="https://img.shields.io/github/license/meshx-org/meshx?color=blue" alt="License"></a>
     <img alt="Discord" src="https://img.shields.io/discord/674675845423562762?label=Discord&logo=discord&style=social">
     <a href="#"><img src="https://img.shields.io/twitter/follow/meshxhq?style=social" alt="Twitter"></a>
