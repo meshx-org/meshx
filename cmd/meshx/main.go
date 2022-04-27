@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/meshx-org/meshx/pkg/go/fiber"
+	"github.com/meshx-org/meshx/pkg/fiber"
 )
 
 func initProcess(args ...interface{}) {
@@ -36,16 +36,11 @@ pop data(function name) -> native -> pop data (wasm module) -> wasm -> pop data 
 
 func main() {
 	natives := map[string]fiber.NativeFn{
-		"proc/init": initProcess,
+		"proc/init":   initProcess,
 		"proc/second": secondProcess,
 		"proc/wasm": func(args ...interface{}) {
 			fmt.Println("wasm_instance")
 
-			fiber.GKernel.SysProcessPopSegment()
-
-			go func() {
-				fiber.GKernel.SysProcessPopSegment()
-			}()
 		},
 	}
 

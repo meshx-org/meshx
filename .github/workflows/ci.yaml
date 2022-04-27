@@ -1,0 +1,26 @@
+name: Continous Integration
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Begin CI...
+        uses: actions/checkout@v3
+    
+      - name: Install
+        run: echo "TODO Install"
+
+      - name: Lint
+        run: echo "TODO Lint"
+
+      - name: Test
+        run: echo "TODO Unit tests"

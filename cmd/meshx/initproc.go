@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/meshx-org/meshx/pkg/go/fiber"
+	"github.com/meshx-org/meshx/pkg/fiber"
 )
 
 type InitProcess struct {

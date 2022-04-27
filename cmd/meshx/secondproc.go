@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/meshx-org/meshx/pkg/go/fiber"
+	"github.com/meshx-org/meshx/pkg/fiber"
 )
 
 type SecondProc struct {
