@@ -1,24 +1,62 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"os"
+	"time"
 
-	"github.com/meshx-org/meshx/pkg/fiber"
-	"go.uber.org/zap"
+	"github.com/meshx-org/meshx/pkg/go/fiber"
 )
 
-func main() {
-	logger, _ := zap.NewDevelopment()
-	zap.ReplaceGlobals(logger)
+func initProcess(args ...interface{}) {
+	proc := InitProcess{counter: 0}
 
-	kernel, err := fiber.NewKernel()
+	ctx := context.Background()
+	ctx, _ = context.WithCancel(ctx)
+	ctx, _ = context.WithTimeout(ctx, time.Microsecond*100)
+
+	proc.Start(ctx, args[0].(*fiber.Handle))
+}
+
+func secondProcess(args ...interface{}) {
+	proc := SecondProc{}
+
+	ctx := context.Background()
+	ctx, _ = context.WithCancel(ctx)
+	ctx, _ = context.WithTimeout(ctx, time.Microsecond*100)
+
+	proc.Start(ctx, args[0].(*fiber.Handle))
+
+}
+
+/*
+pop data(function name) -> native -> pop data (wasm module) -> wasm -> pop data -> quickjs
+*/
+
+func main() {
+	natives := map[string]fiber.NativeFn{
+		"proc/init": initProcess,
+		"proc/second": secondProcess,
+		"proc/wasm": func(args ...interface{}) {
+			fmt.Println("wasm_instance")
+
+			fiber.GKernel.SysProcessPopSegment()
+
+			go func() {
+				fiber.GKernel.SysProcessPopSegment()
+			}()
+		},
+	}
+
+	kernel, err := fiber.NewKernel(natives)
 	fiber.GKernel = &kernel
 
 	if err != nil {
 		os.Exit(1)
 	}
 
-	err = kernel.BootProcess(InitProcess{counter: 0})
+	err = kernel.RootProcess()
 
 	if err != nil {
 		os.Exit(1)

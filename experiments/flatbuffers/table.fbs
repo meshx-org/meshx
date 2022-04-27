@@ -1,0 +1,9 @@
+namespace fb_test;
+
+attribute "priority";
+
+table User {
+  name: string;
+  id: ulong;
+  flex: [ubyte] (flexbuffer);
+}

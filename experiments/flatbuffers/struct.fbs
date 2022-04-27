@@ -1,0 +1,7 @@
+namespace fb_test;
+
+struct Vec3 {
+  x: float;
+  y: float;
+  z: float;
+}

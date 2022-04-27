@@ -2,11 +2,10 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
+	"os"
 
-	"github.com/meshx-org/meshx/pkg/fiber"
-	"go.uber.org/zap"
+	"github.com/meshx-org/meshx/pkg/go/fiber"
 )
 
 type InitProcess struct {
@@ -14,32 +13,32 @@ type InitProcess struct {
 }
 
 func (process InitProcess) Start(ctx context.Context, bootstrap *fiber.Handle) error {
-	zap.L().Sugar().Infof("Started InitProcess %v", bootstrap)
+	logger := log.New(os.Stdout, "[init] ", log.Lmicroseconds|log.Lmsgprefix)
+	
+	logger.Printf("Started InitProcess %#v", bootstrap)
 
 	// program init phase
-
-	_, clientEnd, err := fiber.NewChannel()
-	childProcess, err := fiber.NewProcess("test", SecondProc{})
+	program, err := fiber.NewProgram()
+	childProcess, err := fiber.NewProcess("test", program.Handle().Load())
 
 	if err != nil {
-		fmt.Println("Failed to create new process")
+		logger.Printf("Failed to create new process")
 		return err
 	}
 
+	_, clientEnd, err := fiber.NewChannel()
+
 	childProcess.Start(clientEnd.Handle())
 
-	// program loop
+	// process loop
 
 	for {
 		select {
 		case <-ctx.Done():
-			zap.L().Info("Finished InitProcess")
-			log.SetPrefix("syscall")
-			log.Println("Finished InitProcess")
+			logger.Printf("Finished InitProcess")
 			return nil
 		default:
-			// client.Read()
-			log.Printf("test")
+			logger.Printf("test")
 		}
 	}
 }
