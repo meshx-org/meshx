@@ -1,5 +1,8 @@
-use component_manager::TEST;
+// use component_manager::TEST;
+use fiber_rust::Kernel;
 
 fn main() {
-    println!("{} {}", "Hello, world!", TEST);
+    let kernel = Kernel::new();
+
+    println!("{}", "Hello, world!");
 }

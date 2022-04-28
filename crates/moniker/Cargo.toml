@@ -1,10 +1,11 @@
 [package]
-name = "component_manager"
+name = "moniker"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-moniker = {version = "0.1.0", path = "../moniker"}
-thiserror="1.0.30"
+log = "0.4.16"
+thiserror = "1.0.30"
+itertools="0.10.3"

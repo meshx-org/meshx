@@ -1,3 +1,7 @@
+mod config;
+mod types;
+
+
 pub const TEST: &str = "test";
 
 #[cfg(test)]

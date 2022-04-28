@@ -7,3 +7,4 @@ version = "0.1.0"
 
 [dependencies]
 component_manager = {version = "0.1.0", path = "../component_manager"}
+fiber_rust = {version = "0.1.0", path = "../fiber_rust"}
