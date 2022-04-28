@@ -1,0 +1,46 @@
+# root component
+children:
+  - name: bootstrap
+    url: meshx-boot:///#meta/bootstrap.cm
+    startup: eager
+  - name: "startup"
+    url: "meshx-boot:///#meta/startup.cm"
+    startup: "eager"
+
+offer:
+  - from: parent
+    to: ["#bootstrap", "#core"]
+    protocol:
+      - "meshx.boot.Arguments"
+      - "meshx.boot.FactoryItems"
+      - "meshx.boot.Items"
+      - "meshx.boot.ReadOnlyLog"
+      - "meshx.boot.RootResource"
+      - "meshx.boot.WriteOnlyLog"
+      - "meshx.kernel.DebugResource"
+      - "meshx.kernel.InfoResource"
+      - "meshx.kernel.IoportResource"
+      - "meshx.kernel.IrqResource"
+      - "meshx.kernel.PowerResource"
+      - "meshx.kernel.RootJob"
+      - "meshx.kernel.RootJobForInspect"
+      - "meshx.kernel.SmcResource"
+      - "meshx.process.Launcher"
+      - "meshx.sys2.CrashIntrospect"
+
+  - from: parent
+    to: "#core"
+    protocol: ["meshx.sys2.EventSource", "meshx.time.Maintenance"]
+
+  - from: parent
+    to: "#bootstrap"
+    protocol: ["meshx.sys2.SystemController"]
+
+  - event: "directory_ready"
+    from: "parent"
+    to: "#bootstrap"
+    filter: { name: "diagnostics" }
+
+  - protocol: ["meshx.sys2.EventSource"]
+    from: "parent"
+    to: "#bootstrap"

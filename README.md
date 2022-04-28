@@ -49,5 +49,5 @@ Please see our [security policy](./SECURITY.md) for additional details about res
 MeshX Workspace is open-sourced software licensed under the [GPLv3 license](LICENSE).
 
 
-[app-link]: https://mesh-x.com
-[cloud-link]: https://mesh-x.com
+[app-link]: https://meshx.co
+[cloud-link]: https://meshx.co

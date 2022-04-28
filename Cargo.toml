@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "crates/meshx",
+    "crates/component_manager",
+]
