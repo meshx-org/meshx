@@ -29,13 +29,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
+name = "fiber_kernel"
+version = "0.1.0"
+dependencies = [
+ "fiber_sys",
+]
+
+[[package]]
 name = "fiber_rust"
 version = "0.1.0"
 dependencies = [
  "bitflags",
+ "fiber_sys",
  "log",
  "thiserror",
 ]
+
+[[package]]
+name = "fiber_sys"
+version = "0.1.0"
+dependencies = [
+ "fiber_types",
+ "once_cell",
+]
+
+[[package]]
+name = "fiber_types"
+version = "0.1.0"
 
 [[package]]
 name = "itertools"
@@ -60,6 +80,7 @@ name = "meshx"
 version = "0.1.0"
 dependencies = [
  "component_manager",
+ "fiber_kernel",
  "fiber_rust",
 ]
 
@@ -71,6 +92,12 @@ dependencies = [
  "log",
  "thiserror",
 ]
+
+[[package]]
+name = "once_cell"
+version = "1.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
 
 [[package]]
 name = "proc-macro2"

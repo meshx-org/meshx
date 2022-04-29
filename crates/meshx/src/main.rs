@@ -1,5 +1,6 @@
-// use component_manager::TEST;
-use fiber_rust::Kernel;
+// Copyright 2022 MeshX Contributors. All rights reserved.
+
+use fiber_kernel::Kernel;
 
 fn main() {
     let kernel = Kernel::new();

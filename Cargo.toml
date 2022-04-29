@@ -4,4 +4,7 @@ members = [
     "crates/meshx",
     #"crates/component_manager",
     "crates/fiber_rust",
+    "crates/fiber_sys",
+    "crates/fiber_types",
+    "crates/fiber_kernel",
 ]
