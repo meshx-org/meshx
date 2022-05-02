@@ -1,16 +1,41 @@
 // Copyright 2022 MeshX Contributors. All rights reserved.
+// Copyright 2016 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
 
-use fiber_sys as sys;
+//! Type-safe bindings for Zircon kernel
+//! [syscalls](https://fuchsia.dev/fuchsia-src/reference/syscalls).
 
-use crate::handle::{Handle, HandleRef, AsHandleRef, HandleBased};
+pub mod sys {
+    pub use fiber_sys::*;
+}
+
+
 use crate::info::ObjectQuery;
 use crate::status::Status;
 
 mod handle;
 mod info;
+mod job;
 mod process;
 mod rights;
 mod status;
+mod task;
+mod time;
+
+pub use self::handle::*;
+pub use self::info::*;
+pub use self::job::*;
+pub use self::process::*;
+pub use self::status::*;
+pub use self::task::*;
+pub use self::time::*;
+
+/// Prelude containing common utility traits.
+/// Designed for use like `use fuchsia_zircon::prelude::*;`
+pub mod prelude {
+    pub use crate::{AsHandleRef, HandleBased};
+}
 
 // Implements the HandleBased traits for a Handle newtype struct
 #[macro_export]

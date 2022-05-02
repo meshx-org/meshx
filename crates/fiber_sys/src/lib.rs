@@ -28,9 +28,11 @@ extern "C" {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub trait System {
+    // Handle operations
     fn sys_handle_close(&self, handle: fx_handle_t) -> fx_status_t;
     fn sys_handle_duplicate(&self, handle: fx_handle_t, rights: fx_rights_t, out: *const fx_handle_t) -> fx_status_t;
     fn sys_handle_replace(&self, handle: fx_handle_t, rights: fx_rights_t, out: *const fx_handle_t) -> fx_status_t;
+    // Object operations
     fn sys_object_get_info(
         &self,
         handle: fx_handle_t,
@@ -38,8 +40,31 @@ pub trait System {
         buffer: *const u8,
         buffer_size: usize,
     ) -> fx_status_t;
-    fn sys_process_exit(&self, retcode: i64) -> fx_status_t;
+    // Process operations
+    fn sys_process_create(
+        &self,
+        job: fx_handle_t,
+        name: *const u8,
+        name_size: usize,
+        options: u32,
+        proc_handle: *mut fx_handle_t,
+        vmar_handle: *mut fx_handle_t,
+    ) -> fx_status_t;
     fn sys_process_start(&self, handle: fx_handle_t, entry: fx_vaddr_t, arg1: fx_handle_t) -> fx_status_t;
+    fn sys_process_exit(&self, retcode: i64) -> fx_status_t;
+    // Job operations
+    fn sys_job_create(&self, parent_job: fx_handle_t, options: u32, out: *const fx_handle_t) -> fx_status_t;
+    fn sys_job_set_critical(&self, job: fx_handle_t, options: u32, process: fx_handle_t) -> fx_status_t;
+    fn sys_job_set_policy(
+        &self,
+        handle: fx_handle_t,
+        options: u32,
+        topic: u32,
+        policy: *const u8,
+        policy_size: u32,
+    ) -> fx_status_t;
+    // Task operations
+    fn sys_task_kill(&self, handle: fx_handle_t) -> fx_status_t;
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -63,11 +88,23 @@ pub fn fx_handle_replace(handle: fx_handle_t, rights: fx_rights_t, out: *const f
     sys.sys_handle_replace(handle, rights, out)
 }
 
-
 #[cfg(not(target_arch = "wasm32"))]
 pub fn fx_object_get_info(handle: fx_handle_t, topic: u32, buffer: *const u8, buffer_size: usize) -> fx_status_t {
     let sys = SYSTEM.get().expect("SYSTEM is not initialized");
     sys.sys_object_get_info(handle, topic, buffer, buffer_size)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn fx_process_create(
+    job: fx_handle_t,
+    name: *const u8,
+    name_size: usize,
+    options: u32,
+    proc_handle: *mut fx_handle_t,
+    vmar_handle: *mut fx_handle_t,
+) -> fx_status_t {
+    let sys = SYSTEM.get().expect("SYSTEM is not initialized");
+    sys.sys_process_create(job, name, name_size, options, proc_handle, vmar_handle)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -80,4 +117,34 @@ pub fn fx_process_start(handle: fx_handle_t, entry: fx_vaddr_t, arg1: fx_handle_
 pub fn fx_process_exit(retcode: i64) -> fx_status_t {
     let sys = SYSTEM.get().expect("SYSTEM is not initialized");
     sys.sys_process_exit(retcode)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn fx_job_create(parent_job: fx_handle_t, options: u32, out: *const fx_handle_t) -> fx_status_t {
+    let sys = SYSTEM.get().expect("SYSTEM is not initialized");
+    sys.sys_job_create(parent_job, options, out)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn fx_job_set_critical(job: fx_handle_t, options: u32, process: fx_handle_t) -> fx_status_t {
+    let sys = SYSTEM.get().expect("SYSTEM is not initialized");
+    sys.sys_job_set_critical(job, options, process)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn fx_job_set_policy(
+    handle: fx_handle_t,
+    options: u32,
+    topic: u32,
+    policy: *const u8,
+    policy_size: u32,
+) -> fx_status_t {
+    let sys = SYSTEM.get().expect("SYSTEM is not initialized");
+    sys.sys_job_set_policy(handle, options, topic, policy, policy_size)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn fx_task_kill(handle: fx_handle_t) -> fx_status_t {
+    let sys = SYSTEM.get().expect("SYSTEM is not initialized");
+    sys.sys_task_kill(handle)
 }

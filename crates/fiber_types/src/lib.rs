@@ -22,6 +22,20 @@ pub type fx_ssize_t = isize;
 pub type fx_status_t = i32;
 pub type fx_time_t = i64;
 
+// object property constants
+pub const ZX_MAX_NAME_LEN: usize = 32;
+
+// channel write size constants
+pub const FX_CHANNEL_MAX_MSG_HANDLES: u32 = 64;
+pub const FX_CHANNEL_MAX_MSG_BYTES: u32 = 65536;
+
+// Task response codes if a process is externally killed
+pub const ZX_TASK_RETCODE_SYSCALL_KILL: i64 = -1024;
+pub const ZX_TASK_RETCODE_OOM_KILL: i64 = -1025;
+pub const ZX_TASK_RETCODE_POLICY_KILL: i64 = -1026;
+pub const ZX_TASK_RETCODE_VDSO_KILL: i64 = -1027;
+pub const ZX_TASK_RETCODE_EXCEPTION_KILL: i64 = -1028;
+
 macro_rules! multiconst {
     ($typename:ident, [$($(#[$attr:meta])* $rawname:ident = $value:expr;)*]) => {
         $(
@@ -122,17 +136,46 @@ multiconst!(fx_obj_type_t, [
     FX_OBJ_TYPE_JOB                 = 17;
 ]);
 
-// object property constants
-pub const ZX_MAX_NAME_LEN: usize = 32;
-
-// channel write size constants
-pub const FX_CHANNEL_MAX_MSG_HANDLES: u32 = 64;
-pub const FX_CHANNEL_MAX_MSG_BYTES: u32 = 65536;
-
 multiconst!(fx_object_info_topic_t, [
     FX_INFO_NONE                       = 0;
     FX_INFO_HANDLE_VALID               = 1;
     FX_INFO_HANDLE_BASIC               = 2;  // zx_info_handle_basic_t[1]
+]);
+
+multiconst!(u32, [
+    // policy options
+    FX_JOB_POLICY_RELATIVE = 0;
+    FX_JOB_POLICY_ABSOLUTE = 1;
+
+    // policy topic
+    FX_JOB_POLICY_BASIC = 0;
+    FX_JOB_POLICY_TIMER_SLACK = 1;
+
+    // policy conditions
+    FX_POLICY_BAD_HANDLE            = 0;
+    FX_POLICY_WRONG_OBJECT          = 1;
+    FX_POLICY_NEW_ANY               = 3;
+    FX_POLICY_NEW_VMO               = 4;
+    FX_POLICY_NEW_CHANNEL           = 5;
+    FX_POLICY_NEW_TIMER             = 11;
+    FX_POLICY_NEW_PROCESS           = 12;
+
+    // policy actions
+    FX_POLICY_ACTION_ALLOW           = 0;
+    FX_POLICY_ACTION_DENY            = 1;
+    FX_POLICY_ACTION_ALLOW_EXCEPTION = 2;
+    FX_POLICY_ACTION_DENY_EXCEPTION  = 3;
+    FX_POLICY_ACTION_KILL            = 4;
+
+    // timer slack default modes
+    FX_TIMER_SLACK_CENTER = 0;
+    FX_TIMER_SLACK_EARLY  = 1;
+    FX_TIMER_SLACK_LATE   = 2;
+]);
+
+multiconst!(u32, [
+    // critical options
+    FX_JOB_CRITICAL_PROCESS_RETCODE_NONZERO = 1 << 0;
 ]);
 
 // Don't need struct_decl_macro for this, the wrapper is different.
@@ -163,4 +206,18 @@ pub struct fx_handle_disposition_t {
     pub type_: fx_obj_type_t,
     pub rights: fx_rights_t,
     pub result: fx_status_t,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct fx_policy_basic {
+    pub condition: u32,
+    pub policy: u32,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct fx_policy_timer_slack {
+    pub min_slack: fx_duration_t,
+    pub default_mode: u32,
 }
