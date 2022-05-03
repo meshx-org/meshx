@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 thread_local! {
-    static TL_SCOPES: RefCell<Vec<*const Context>> = RefCell::new(Vec::with_capacity(8))
+    static TL_SCOPES: RefCell<Vec< Context>> = RefCell::new(Vec::with_capacity(8))
 }
 
 #[derive(Debug)]
@@ -14,9 +14,9 @@ impl Context {}
 pub struct ScopeGuard;
 
 impl ScopeGuard {
-    pub fn new(context: &Context) -> Self {
+    pub fn new(context: Context) -> Self {
         TL_SCOPES.with(|s| {
-            s.borrow_mut().push(context as *const Context);
+            s.borrow_mut().push(context);
         });
 
         ScopeGuard
@@ -42,7 +42,7 @@ where
     TL_SCOPES.with(|s| {
         let s = s.borrow();
         match s.last() {
-            Some(logger) => f(unsafe { &**logger }),
+            Some(logger) => f( &*logger ),
             None => panic!("No logger in scope"),
         }
     })
@@ -66,10 +66,10 @@ where
 ///
 /// Note: Thread scopes are thread-local. Each newly spawned thread starts
 /// with a global logger, as a current logger.
-pub fn scope<SF, R>(logger: &Context, f: SF) -> R
+pub fn scope<SF, R>(logger: Context, f: SF) -> R
 where
     SF: FnOnce() -> R,
 {
-    let _guard = ScopeGuard::new(&logger);
+    let _guard = ScopeGuard::new(logger);
     f()
 }

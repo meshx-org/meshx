@@ -18,23 +18,24 @@ pub type fx_paddr_t = usize;
 pub type fx_vaddr_t = usize;
 pub type fx_rights_t = u32;
 pub type fx_signals_t = u32;
+pub type fx_policy_t = u32;
 pub type fx_ssize_t = isize;
 pub type fx_status_t = i32;
 pub type fx_time_t = i64;
 
 // object property constants
-pub const ZX_MAX_NAME_LEN: usize = 32;
+pub const FX_MAX_NAME_LEN: usize = 32;
 
 // channel write size constants
 pub const FX_CHANNEL_MAX_MSG_HANDLES: u32 = 64;
 pub const FX_CHANNEL_MAX_MSG_BYTES: u32 = 65536;
 
 // Task response codes if a process is externally killed
-pub const ZX_TASK_RETCODE_SYSCALL_KILL: i64 = -1024;
-pub const ZX_TASK_RETCODE_OOM_KILL: i64 = -1025;
-pub const ZX_TASK_RETCODE_POLICY_KILL: i64 = -1026;
-pub const ZX_TASK_RETCODE_VDSO_KILL: i64 = -1027;
-pub const ZX_TASK_RETCODE_EXCEPTION_KILL: i64 = -1028;
+pub const FX_TASK_RETCODE_SYSCALL_KILL: i64 = -1024;
+pub const FX_TASK_RETCODE_OOM_KILL: i64 = -1025;
+pub const FX_TASK_RETCODE_POLICY_KILL: i64 = -1026;
+pub const FX_TASK_RETCODE_VDSO_KILL: i64 = -1027;
+pub const FX_TASK_RETCODE_EXCEPTION_KILL: i64 = -1028;
 
 macro_rules! multiconst {
     ($typename:ident, [$($(#[$attr:meta])* $rawname:ident = $value:expr;)*]) => {
@@ -142,7 +143,7 @@ multiconst!(fx_object_info_topic_t, [
     FX_INFO_HANDLE_BASIC               = 2;  // zx_info_handle_basic_t[1]
 ]);
 
-multiconst!(u32, [
+multiconst!(fx_policy_t, [
     // policy options
     FX_JOB_POLICY_RELATIVE = 0;
     FX_JOB_POLICY_ABSOLUTE = 1;

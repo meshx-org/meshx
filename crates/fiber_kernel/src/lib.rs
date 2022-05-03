@@ -2,12 +2,20 @@
 
 mod context;
 mod koid;
+mod object;
 
+use log::{debug, info, trace};
+use object::{HandleOwner, KernelHandle};
+use std::rc::Rc;
 use std::str::FromStr;
 
 use fiber_sys as sys;
 
-pub struct Kernel {}
+use crate::object::{Handle, JobDispatcher, ProcessDispatcher, VmarDispatcher};
+
+pub struct Kernel {
+    cb: fn(&object::ProcessObject),
+}
 
 impl fiber_sys::System for Kernel {
     fn sys_handle_close(&self, handle: sys::fx_handle_t) -> sys::fx_status_t {
@@ -42,8 +50,69 @@ impl fiber_sys::System for Kernel {
         0
     }
 
-    fn sys_process_exit(&self, retcode: i64) -> sys::fx_status_t {
-        0
+    fn sys_process_create(
+        &self,
+        job_handle: sys::fx_handle_t,
+        name: *const u8,
+        mut name_size: usize,
+        options: u32,
+        proc_handle: *mut sys::fx_handle_t,
+        vmar_handle: *mut sys::fx_handle_t,
+    ) -> sys::fx_status_t {
+        trace!("job handle {}, options {:?}\n", job_handle, options);
+
+        // currently, the only valid option value is 0
+        if options != 0 {
+            return sys::FX_ERR_INVALID_ARGS;
+        }
+
+        let up = ProcessDispatcher::get_current();
+
+        // We check the policy against the process calling zx_process_create, which
+        // is the operative policy, rather than against |job_handle|. Access to
+        // |job_handle| is controlled by the rights associated with the handle.
+        let mut result: sys::fx_status_t = up.enforce_basic_policy(sys::FX_POLICY_NEW_PROCESS);
+        if result != sys::FX_OK {
+            return result;
+        }
+
+        // Silently truncate the given name.
+        if name_size > sys::FX_MAX_NAME_LEN {
+            name_size = sys::FX_MAX_NAME_LEN;
+        }
+        let sp = unsafe { String::from_raw_parts(name as *mut u8, name_size, sys::FX_MAX_NAME_LEN) };
+
+        trace!("name = {}", sp);
+
+      
+
+        let (result, parent_job) = up
+            .handle_table()
+            .get_dispatcher_with_rights(job_handle, sys::FX_RIGHT_MANAGE_PROCESS);
+
+        // create a new process dispatcher
+        let (mut result, new_process_handle, process_rights, new_root_vmar_handle, root_vmar_rights) =
+            ProcessDispatcher::create(parent_job, sp, options);
+
+        if result != sys::FX_OK {
+            return result;
+        }
+
+        // TODO: let koid: u32 = new_process_handle.dispatcher().get_koid();
+        // TODO: ktrace(TAG_PROC_CREATE, koid, 0, 0, 0);
+        // TODO: ktrace_name(TAG_PROC_NAME, koid, 0, buf);
+        // Give arch-specific tracing a chance to record process creation.
+        // TODO: arch_trace_process_create( koid, new_vmar_handle.dispatcher().vmar().aspace().arch_aspace().arch_table_phys());
+
+        let h_: HandleOwner<ProcessDispatcher> = Handle::make(new_process_handle, process_rights);
+        result = sys::FX_OK;
+
+        if result == sys::FX_OK {
+            let h_: HandleOwner<VmarDispatcher> = Handle::make(new_root_vmar_handle, root_vmar_rights);
+            result = sys::FX_OK;
+        }
+
+        return result;
     }
 
     fn sys_process_start(
@@ -52,6 +121,14 @@ impl fiber_sys::System for Kernel {
         entry: sys::fx_vaddr_t,
         arg1: sys::fx_handle_t,
     ) -> sys::fx_status_t {
+        let obj = object::ProcessObject(object::KernelObject);
+
+        (self.cb)(&obj);
+
+        0
+    }
+
+    fn sys_process_exit(&self, retcode: i64) -> sys::fx_status_t {
         0
     }
 
@@ -82,23 +159,11 @@ impl fiber_sys::System for Kernel {
     fn sys_task_kill(&self, handle: sys::fx_handle_t) -> sys::fx_status_t {
         0
     }
-
-    fn sys_process_create(
-        &self,
-        job: sys::fx_handle_t,
-        name: *const u8,
-        name_size: usize,
-        options: u32,
-        proc_handle: *mut sys::fx_handle_t,
-        vmar_handle: *mut sys::fx_handle_t,
-    ) -> sys::fx_status_t {
-        0
-    }
 }
 
 #[inline]
 fn fx_test_call() {
-    context::with_logger(|c| print!("{:?} \n", c));
+    context::with_logger(|c| info!("{:?}", c));
 }
 
 #[inline]
@@ -107,15 +172,17 @@ where
     SF: FnOnce() -> R,
 {
     // Make sure to save the guard, see documentation for more information
-    let _guard = context::ScopeGuard::new(&context::Context { test });
+    let _guard = context::ScopeGuard::new(context::Context { test });
     f();
 }
 
 fn bar() {
+    debug!("fn bar");
     fx_test_call();
 }
 
 fn foo() {
+    debug!("fn foo");
     fx_test_call();
 
     // some bytes, in a vector
@@ -124,19 +191,19 @@ fn foo() {
     // We know these bytes are valid, so we'll use `unwrap()`.
     let sparkle_heart = String::from_utf8(sparkle_heart).unwrap();
 
-    // Make sure to save the guard, see documentation for more information
-    fx_create_process(|| bar(), sparkle_heart);
+    fx_create_process(|| bar(), String::from("bar"));
 }
 
 impl Kernel {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(on_process_start_cb: fn(&object::ProcessObject)) -> Self {
+        Self {
+            cb: on_process_start_cb,
+        }
     }
 
     pub fn init(&self) {
-        println!("initializing mp");
+        info!("initializing kernel");
 
-        // Make sure to save the guard, see documentation for more information
-        fx_create_process(|| bar(), String::from("tesadfdsfst"));
+        fx_create_process(|| foo(), String::from("foo"));
     }
 }
