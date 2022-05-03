@@ -1,9 +1,9 @@
-use fiber_sys::fx_koid_t;
+use fiber_sys as sys;
 use std::sync::atomic::{fence, AtomicU32, Ordering};
 
 #[derive(Debug)]
 pub struct Dispatcher {
-    koid: fx_koid_t,
+    koid: sys::fx_koid_t,
     handle_count: AtomicU32,
 }
 
@@ -28,4 +28,22 @@ impl Dispatcher {
         }
         return false;
     }
+}
+
+pub(crate) trait IDispatcher {
+    fn get_type() -> sys::fx_obj_type_t;
+    fn default_rights() -> sys::fx_rights_t;
+
+    fn get_koid(&self) -> sys::fx_koid_t;
+    fn get_related_koid(&self) -> sys::fx_koid_t;
+
+    // set_name() will truncate to ZX_MAX_NAME_LEN - 1 and ensure there is a
+    // terminating null
+    fn set_name(&self, name: String) -> sys::fx_status_t {
+        return sys::FX_ERR_NOT_SUPPORTED;
+    }
+
+    // get_name() will return a null-terminated name of ZX_MAX_NAME_LEN - 1 or fewer
+    // characters.  For objects that don't have names it will be "".
+    fn get_name(&self) -> String;
 }

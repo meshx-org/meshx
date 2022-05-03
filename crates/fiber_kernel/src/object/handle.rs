@@ -30,8 +30,8 @@ pub(crate) type HandleOwner<T> = Box<Handle<T>>;
 ///
 /// This class is thread-unsafe and must be externally synchronized if used
 /// across multiple threads.
-pub struct KernelHandle<T> {
-    dispatcher: Rc<T>,
+pub(crate) struct KernelHandle<T> {
+    pub(super) dispatcher: Rc<T>,
 }
 
 impl<T> KernelHandle<T> {

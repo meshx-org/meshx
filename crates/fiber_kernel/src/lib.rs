@@ -59,7 +59,7 @@ impl fiber_sys::System for Kernel {
         proc_handle: *mut sys::fx_handle_t,
         vmar_handle: *mut sys::fx_handle_t,
     ) -> sys::fx_status_t {
-        trace!("job handle {}, options {:?}\n", job_handle, options);
+        trace!("job handle = {}, options = {:?}\n", job_handle, options);
 
         // currently, the only valid option value is 0
         if options != 0 {
@@ -71,9 +71,9 @@ impl fiber_sys::System for Kernel {
         // We check the policy against the process calling zx_process_create, which
         // is the operative policy, rather than against |job_handle|. Access to
         // |job_handle| is controlled by the rights associated with the handle.
-        let mut result: sys::fx_status_t = up.enforce_basic_policy(sys::FX_POLICY_NEW_PROCESS);
-        if result != sys::FX_OK {
-            return result;
+        let mut status: sys::fx_status_t = up.enforce_basic_policy(sys::FX_POLICY_NEW_PROCESS);
+        if status != sys::FX_OK {
+            return status;
         }
 
         // Silently truncate the given name.
@@ -84,18 +84,22 @@ impl fiber_sys::System for Kernel {
 
         trace!("name = {}", sp);
 
-      
-
-        let (result, parent_job) = up
+        let (status, parent_job) = up
             .handle_table()
             .get_dispatcher_with_rights(job_handle, sys::FX_RIGHT_MANAGE_PROCESS);
 
+        if status != sys::FX_OK && parent_job.is_none() {
+            return status;
+        }
+
+        let parent_job = parent_job.unwrap();
+
         // create a new process dispatcher
-        let (mut result, new_process_handle, process_rights, new_root_vmar_handle, root_vmar_rights) =
+        let (status, new_process_handle, process_rights, new_root_vmar_handle, root_vmar_rights) =
             ProcessDispatcher::create(parent_job, sp, options);
 
-        if result != sys::FX_OK {
-            return result;
+        if status != sys::FX_OK {
+            return status;
         }
 
         // TODO: let koid: u32 = new_process_handle.dispatcher().get_koid();
@@ -105,14 +109,12 @@ impl fiber_sys::System for Kernel {
         // TODO: arch_trace_process_create( koid, new_vmar_handle.dispatcher().vmar().aspace().arch_aspace().arch_table_phys());
 
         let h_: HandleOwner<ProcessDispatcher> = Handle::make(new_process_handle, process_rights);
-        result = sys::FX_OK;
 
-        if result == sys::FX_OK {
+        if status == sys::FX_OK {
             let h_: HandleOwner<VmarDispatcher> = Handle::make(new_root_vmar_handle, root_vmar_rights);
-            result = sys::FX_OK;
         }
 
-        return result;
+        status
     }
 
     fn sys_process_start(
@@ -138,7 +140,31 @@ impl fiber_sys::System for Kernel {
         options: u32,
         out: *const sys::fx_handle_t,
     ) -> sys::fx_status_t {
-        0
+        trace!("parent = {}", parent_job);
+
+        if options != 0 {
+            return sys::FX_ERR_INVALID_ARGS;
+        }
+
+        let up = ProcessDispatcher::get_current();
+
+        let (status, parent_job) = up
+            .handle_table()
+            .get_dispatcher_with_rights(parent_job, sys::FX_RIGHT_MANAGE_JOB);
+
+        if status != sys::FX_OK && parent_job.is_none() {
+            return status;
+        }
+
+        let parent_job = parent_job.unwrap();
+
+        let (status, handle, rights) = JobDispatcher::create(parent_job, options);
+
+        if status == sys::FX_OK && handle.is_some() {
+            let h_: HandleOwner<JobDispatcher> = Handle::make(handle.expect(""), rights);
+        }
+
+        status
     }
 
     fn sys_job_set_critical(&self, job: sys::fx_handle_t, options: u32, process: sys::fx_handle_t) -> sys::fx_status_t {
