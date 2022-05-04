@@ -8,6 +8,8 @@
 use std::rc::Rc;
 use std::sync::atomic::AtomicU64;
 
+use crate::object::IDispatcher;
+
 use super::dispatcher::Dispatcher;
 use fiber_sys::{fx_koid_t, fx_rights_t};
 
@@ -50,9 +52,12 @@ pub(crate) struct Handle<T> {
     handle_rights: fx_rights_t,
 }
 
+pub(crate) trait H {}
+impl<T> H for Handle<T> {}
+
 impl<T> Handle<T> {
     // Handle should never be created by anything other than Make or Dup.
-    pub fn make_from_dispatcher(dispatcher: Rc<T>, rights: fx_rights_t) -> HandleOwner<T> {
+    pub fn new_from_dispatcher(dispatcher: Rc<T>, rights: fx_rights_t) -> HandleOwner<T> {
         Box::from(Handle {
             process_id: AtomicU64::new(0),
             handle_rights: rights,
@@ -60,11 +65,11 @@ impl<T> Handle<T> {
         })
     }
 
-    pub fn make(kernel_handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner<T> {
+    pub fn new(handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner<T> {
         Box::from(Handle {
             process_id: AtomicU64::new(0),
             handle_rights: rights,
-            dispatcher: kernel_handle.dispatcher().clone(),
+            dispatcher: handle.dispatcher().clone(),
         })
     }
 

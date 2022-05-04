@@ -1,20 +1,21 @@
 use std::cell::RefCell;
+use std::rc::Rc;
+
+use crate::object::ProcessDispatcher;
 
 thread_local! {
     static TL_SCOPES: RefCell<Vec< Context>> = RefCell::new(Vec::with_capacity(8))
 }
 
 #[derive(Debug)]
-pub struct Context {
-    pub test: String
+pub(crate) struct Context {
+    pub process: Rc<ProcessDispatcher>,
 }
 
-impl Context {}
-
-pub struct ScopeGuard;
+pub(crate) struct ScopeGuard;
 
 impl ScopeGuard {
-    pub fn new(context: Context) -> Self {
+    pub(crate) fn new(context: Context) -> Self {
         TL_SCOPES.with(|s| {
             s.borrow_mut().push(context);
         });
@@ -35,7 +36,7 @@ impl Drop for ScopeGuard {
 ///
 /// This function doesn't have to clone the Logger
 /// so it might be a bit faster.
-pub fn with_logger<F, R>(f: F) -> R
+pub(crate) fn with_context<F, R>(f: F) -> R
 where
     F: FnOnce(&Context) -> R,
 {
@@ -66,7 +67,7 @@ where
 ///
 /// Note: Thread scopes are thread-local. Each newly spawned thread starts
 /// with a global logger, as a current logger.
-pub fn scope<SF, R>(logger: Context, f: SF) -> R
+pub(crate) fn scope<SF, R>(logger: Context, f: SF) -> R
 where
     SF: FnOnce() -> R,
 {

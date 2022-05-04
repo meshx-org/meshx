@@ -8,9 +8,6 @@ use log::{debug, info};
 use phf::phf_map;
 use std::io::Write;
 
-fn baz() {
-    println!("fn baz");
-}
 
 fn plus(a: i32, b: i32) -> i32 {
     a + b
@@ -29,7 +26,7 @@ fn main() {
     env_logger::init();
 
     let kernel = Kernel::new(|process| {
-        // TODO(szkabaroli): parse vmo 
+        // TODO(szkabaroli): parse vmo
         let vmo = process.get_vmo();
         // let program = parse_program();
         let main_fn = PROCESS_DISPATCH_TABLE["+"];
@@ -42,11 +39,14 @@ fn main() {
 
     let root_job = unsafe { Handle::from_raw(0) };
 
-    let job = Job::from(root_job).create_child_job().unwrap();
-    let process = job.create_child_process("test".to_string().as_bytes()).unwrap();
+    fiber_kernel::fx_create_process(|| {
+        let job = Job::from(root_job).create_child_job().unwrap();
+        let process = job.create_child_process("test".to_string().as_bytes()).unwrap();
 
-    sys::fx_process_start(0, 0, 0);
-    sys::fx_process_start(0, 0, 0);
+        //sys::fx_process_start(0, 0, 0);
+        //sys::fx_process_start(0, 0, 0);
+        process.start(0, unsafe { Handle::from_raw(0) })
+    });
 
     let plus = PROCESS_DISPATCH_TABLE["+"];
     debug!("2 + 3 = {}", plus(2, 3));

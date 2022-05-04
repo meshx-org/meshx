@@ -26,7 +26,17 @@ impl Dispatcher {
             fence(Ordering::Acquire);
             return true;
         }
-        return false;
+
+        false
+    }
+
+    fn current_handle_count(&self) -> u32 {
+        // Requesting the count is fundamentally racy with other users of the dispatcher. A typical
+        // reference count implementation might place an acquire here for the scenario where you then
+        // run an object destructor without acquiring any locks. As a handle count is not a refcount
+        // and a low handle count does not imply any ownership of the dispatcher (which has its own
+        // refcount), this can just be relaxed.
+        self.handle_count.load(Ordering::Relaxed)
     }
 }
 
@@ -36,7 +46,9 @@ pub(crate) trait IDispatcher {
 
     fn get_koid(&self) -> sys::fx_koid_t;
     fn get_related_koid(&self) -> sys::fx_koid_t;
+}
 
+pub(crate) trait INamed {
     // set_name() will truncate to ZX_MAX_NAME_LEN - 1 and ensure there is a
     // terminating null
     fn set_name(&self, name: String) -> sys::fx_status_t {

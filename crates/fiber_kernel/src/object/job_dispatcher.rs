@@ -2,10 +2,14 @@ use fiber_sys as sys;
 
 use std::rc::Rc;
 
-use crate::object::{KernelHandle, IDispatcher};
+use crate::object::{IDispatcher, INamed, KernelHandle};
+
+// The starting max_height value of the root job.
+static ROOT_JOB_MAX_HEIGHT: u32 = 32;
+static ROOT_JOB_NAME: &str = "root";
 
 #[derive(Debug, Clone, Copy)]
-struct JobPolicy;
+pub(crate) struct JobPolicy;
 
 #[derive(Debug, PartialEq)]
 enum State {
@@ -16,9 +20,7 @@ enum State {
 
 type RawJobList = Vec<*const JobDispatcher>;
 
-// TODO: use as a wrapper around mutexed state
-struct InnerJobDispatcher {}
-
+#[derive(Debug)]
 pub(crate) struct JobDispatcher {
     parent_job: Option<Rc<JobDispatcher>>,
     max_height: u32,
@@ -61,16 +63,19 @@ impl IDispatcher for JobDispatcher {
         }
     }
 
+    fn default_rights() -> sys::fx_rights_t {
+        sys::FX_RIGHT_EXECUTE
+    }
+}
+
+
+impl INamed for JobDispatcher {
     fn set_name(&self, name: String) -> sys::fx_status_t {
         sys::FX_OK
     }
 
     fn get_name(&self) -> String {
         self.name.clone()
-    }
-
-    fn default_rights() -> sys::fx_rights_t {
-        sys::FX_RIGHT_EXECUTE
     }
 }
 
@@ -99,7 +104,7 @@ impl JobDispatcher {
         (sys::FX_OK, Some(new_handle), JobDispatcher::default_rights())
     }
 
-    fn new(flags: u32, parent: Option<Rc<JobDispatcher>>, policy: JobPolicy) -> JobDispatcher {
+    pub(crate) fn new(flags: u32, parent: Option<Rc<JobDispatcher>>, policy: JobPolicy) -> JobDispatcher {
         JobDispatcher {
             parent_job: parent.clone(),
             max_height: if parent.is_some() {
@@ -129,12 +134,12 @@ impl JobDispatcher {
         return self.max_height;
     }
 
-    fn get_policy(&self) -> JobPolicy {
+    pub(crate) fn get_policy(&self) -> JobPolicy {
         // Guard<Mutex> guard{ get_lock() };
         self.policy
     }
 
-    fn add_child_job(&self, job: &Rc<JobDispatcher>) -> bool {
+    pub(crate) fn add_child_job(&self, job: &Rc<JobDispatcher>) -> bool {
         //canary_.Assert();
         //Guard<Mutex> guard{get_lock()};
 

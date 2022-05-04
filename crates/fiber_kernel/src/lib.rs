@@ -1,8 +1,8 @@
 // Copyright 2022 MeshX Contributors. All rights reserved.
 
-mod context;
 mod koid;
 mod object;
+mod process_context;
 
 use log::{debug, info, trace};
 use object::{HandleOwner, KernelHandle};
@@ -11,7 +11,7 @@ use std::str::FromStr;
 
 use fiber_sys as sys;
 
-use crate::object::{Handle, JobDispatcher, ProcessDispatcher, VmarDispatcher};
+use crate::object::{Handle, JobDispatcher, JobPolicy, ProcessDispatcher, VmarDispatcher};
 
 pub struct Kernel {
     cb: fn(&object::ProcessObject),
@@ -108,10 +108,10 @@ impl fiber_sys::System for Kernel {
         // Give arch-specific tracing a chance to record process creation.
         // TODO: arch_trace_process_create( koid, new_vmar_handle.dispatcher().vmar().aspace().arch_aspace().arch_table_phys());
 
-        let h_: HandleOwner<ProcessDispatcher> = Handle::make(new_process_handle, process_rights);
+        let handle = Handle::new(new_process_handle, process_rights);
 
         if status == sys::FX_OK {
-            let h_: HandleOwner<VmarDispatcher> = Handle::make(new_root_vmar_handle, root_vmar_rights);
+            let handle = Handle::new(new_root_vmar_handle, root_vmar_rights);
         }
 
         status
@@ -161,7 +161,7 @@ impl fiber_sys::System for Kernel {
         let (status, handle, rights) = JobDispatcher::create(parent_job, options);
 
         if status == sys::FX_OK && handle.is_some() {
-            let h_: HandleOwner<JobDispatcher> = Handle::make(handle.expect(""), rights);
+            let h_ = Handle::new(handle.expect(""), rights);
         }
 
         status
@@ -188,36 +188,20 @@ impl fiber_sys::System for Kernel {
 }
 
 #[inline]
-fn fx_test_call() {
-    context::with_logger(|c| info!("{:?}", c));
-}
-
-#[inline]
-fn fx_create_process<SF, R>(f: SF, test: String)
+pub fn fx_create_process<SF, R>(f: SF)
 where
     SF: FnOnce() -> R,
 {
     // Make sure to save the guard, see documentation for more information
-    let _guard = context::ScopeGuard::new(context::Context { test });
+    let _guard = process_context::ScopeGuard::new(process_context::Context {
+        process: Rc::from(ProcessDispatcher::new(
+            Rc::from(JobDispatcher::new(0, None, JobPolicy)),
+            String::from(""),
+            0,
+        )),
+    });
+
     f();
-}
-
-fn bar() {
-    debug!("fn bar");
-    fx_test_call();
-}
-
-fn foo() {
-    debug!("fn foo");
-    fx_test_call();
-
-    // some bytes, in a vector
-    let sparkle_heart = vec![240, 159, 146, 150];
-
-    // We know these bytes are valid, so we'll use `unwrap()`.
-    let sparkle_heart = String::from_utf8(sparkle_heart).unwrap();
-
-    fx_create_process(|| bar(), String::from("bar"));
 }
 
 impl Kernel {
@@ -229,7 +213,5 @@ impl Kernel {
 
     pub fn init(&self) {
         info!("initializing kernel");
-
-        fx_create_process(|| foo(), String::from("foo"));
     }
 }

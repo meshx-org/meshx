@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
-use crate::object::{HandleTable, JobDispatcher, KernelHandle, VmarDispatcher};
+use crate::object::{HandleTable, JobDispatcher, JobPolicy, KernelHandle, VmarDispatcher};
+use crate::process_context::with_context;
 use fiber_sys as sys;
 
 // state of the process
@@ -11,7 +12,13 @@ enum State {
     DEAD,    // all threads have entered DEAD state and potentially dropped refs on process
 }
 
-pub(crate) struct ProcessDispatcher {}
+#[derive(Debug)]
+pub(crate) struct ProcessDispatcher {
+    handle_table: HandleTable,
+    name: String,
+    job: Rc<JobDispatcher>,
+    policy: JobPolicy,
+}
 
 // Dispatcher implementation.
 impl ProcessDispatcher {
@@ -25,26 +32,38 @@ impl ProcessDispatcher {
 }
 
 impl ProcessDispatcher {
-    pub fn create(
+    pub(crate) fn new(job: Rc<JobDispatcher>, name: String, flags: u32) -> ProcessDispatcher {
+        let new_process = ProcessDispatcher {
+            job: job.clone(),
+            policy: job.get_policy(),
+            handle_table: HandleTable::new(),
+            name: name.clone(),
+        };
+
+        //  kcounter_add(dispatcher_process_create_count, 1);
+        new_process
+    }
+
+    pub(crate) fn create(
         parent_job: Rc<JobDispatcher>,
         name: String,
         options: u32,
     ) -> (
         sys::fx_status_t,
-        KernelHandle<ProcessDispatcher>,
+        KernelHandle<Rc<ProcessDispatcher>>,
         sys::fx_rights_t,
-        KernelHandle<VmarDispatcher>,
+        KernelHandle<Rc<VmarDispatcher>>,
         sys::fx_rights_t,
     ) {
         unimplemented!()
     }
 
-    pub fn get_current() -> ProcessDispatcher {
-        ProcessDispatcher {}
+    pub fn get_current() -> Rc<ProcessDispatcher> {
+        with_context(|context| context.process.clone())
     }
 
     pub fn handle_table(&self) -> HandleTable {
-        unimplemented!()
+        self.handle_table
     }
 
     pub fn enforce_basic_policy(&self, policy: sys::fx_policy_t) -> sys::fx_status_t {
