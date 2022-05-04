@@ -188,9 +188,9 @@ impl fiber_sys::System for Kernel {
 }
 
 #[inline]
-pub fn fx_create_process<SF, R>(f: SF)
+pub fn process_scope<F, R>(f: F)
 where
-    SF: FnOnce() -> R,
+    F: FnOnce() -> R,
 {
     // Make sure to save the guard, see documentation for more information
     let _guard = process_context::ScopeGuard::new(process_context::Context {

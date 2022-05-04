@@ -1,13 +1,9 @@
 // Copyright 2022 MeshX Contributors. All rights reserved.
 
-use std::collections::HashMap;
-
-use fiber_kernel::Kernel;
+use fiber_kernel::{process_scope, Kernel};
 use fiber_rust::{prelude::*, sys, Handle, Job, Process};
 use log::{debug, info};
 use phf::phf_map;
-use std::io::Write;
-
 
 fn plus(a: i32, b: i32) -> i32 {
     a + b
@@ -37,15 +33,14 @@ fn main() {
 
     sys::SYSTEM.set(Box::new(kernel));
 
-    let root_job = unsafe { Handle::from_raw(0) };
+    process_scope(|| {
+        let root_job = unsafe { Handle::from_raw(0) };
 
-    fiber_kernel::fx_create_process(|| {
         let job = Job::from(root_job).create_child_job().unwrap();
         let process = job.create_child_process("test".to_string().as_bytes()).unwrap();
 
-        //sys::fx_process_start(0, 0, 0);
-        //sys::fx_process_start(0, 0, 0);
-        process.start(0, unsafe { Handle::from_raw(0) })
+        process.start(0, unsafe { Handle::from_raw(0) });
+        process.start(0, unsafe { Handle::from_raw(0) });
     });
 
     let plus = PROCESS_DISPATCH_TABLE["+"];

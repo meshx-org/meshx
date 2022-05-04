@@ -110,7 +110,7 @@ impl JobDispatcher {
             max_height: if parent.is_some() {
                 parent.unwrap().max_height() - 1
             } else {
-                0
+                ROOT_JOB_MAX_HEIGHT
             },
             state: State::READY,
             return_code: 0,
