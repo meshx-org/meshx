@@ -6,15 +6,30 @@ mod process_context;
 
 use log::{debug, info, trace};
 use object::{HandleOwner, KernelHandle};
+use smol::{io, net, prelude::*, Unblock};
 use std::rc::Rc;
 use std::str::FromStr;
 
 use fiber_sys as sys;
 
-use crate::object::{Handle, JobDispatcher, JobPolicy, ProcessDispatcher, VmarDispatcher};
+use crate::object::{Handle, JobDispatcher, JobPolicy, KernelObject, ProcessDispatcher, ProcessObject, VmarDispatcher};
 
 pub struct Kernel {
     cb: fn(&object::ProcessObject),
+}
+
+impl Kernel {
+    pub fn run_root(&self) {
+        let res: io::Result<()> = smol::block_on(async {
+            let mut stream = net::TcpStream::connect("example.com:80").await?;
+            let req = b"GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n";
+            stream.write_all(req).await?;
+
+            let mut stdout = Unblock::new(std::io::stdout());
+            io::copy(stream, &mut stdout).await?;
+            Ok(())
+        });
+    }
 }
 
 impl fiber_sys::System for Kernel {
@@ -80,9 +95,12 @@ impl fiber_sys::System for Kernel {
         if name_size > sys::FX_MAX_NAME_LEN {
             name_size = sys::FX_MAX_NAME_LEN;
         }
-        let sp = unsafe { String::from_raw_parts(name as *mut u8, name_size, sys::FX_MAX_NAME_LEN) };
+        trace!("name_size = {}", name_size);
 
-        trace!("name = {}", sp);
+        // NOTE: highly unsafe opertaion
+        let name = unsafe { String::from_raw_parts(name as *mut u8, name_size, sys::FX_MAX_NAME_LEN) };
+
+        trace!("name = {}", name.clone());
 
         let (status, parent_job) = up
             .handle_table()
@@ -95,12 +113,14 @@ impl fiber_sys::System for Kernel {
         let parent_job = parent_job.unwrap();
 
         // create a new process dispatcher
-        let (status, new_process_handle, process_rights, new_root_vmar_handle, root_vmar_rights) =
-            ProcessDispatcher::create(parent_job, sp, options);
+        let result = ProcessDispatcher::create(parent_job, name, options);
 
-        if status != sys::FX_OK {
+        if let Err(status) = result {
             return status;
         }
+
+        let (new_process_handle, process_rights, new_root_vmar_handle, root_vmar_rights) =
+            result.expect("should be a valid value");
 
         // TODO: let koid: u32 = new_process_handle.dispatcher().get_koid();
         // TODO: ktrace(TAG_PROC_CREATE, koid, 0, 0, 0);
@@ -123,9 +143,7 @@ impl fiber_sys::System for Kernel {
         entry: sys::fx_vaddr_t,
         arg1: sys::fx_handle_t,
     ) -> sys::fx_status_t {
-        let obj = object::ProcessObject(object::KernelObject);
-
-        (self.cb)(&obj);
+        (self.cb)(&ProcessObject(KernelObject));
 
         0
     }

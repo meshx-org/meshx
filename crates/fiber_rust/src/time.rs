@@ -1,7 +1,10 @@
+// Copyright 2022 MeshX Contributors. All rights reserved.
 // Copyright 2016 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+
 //! Type-safe bindings for Zircon timer objects.
+
 use crate::ok;
 use crate::{AsHandleRef, Handle, HandleBased, HandleRef, Status};
 use fiber_sys as sys;

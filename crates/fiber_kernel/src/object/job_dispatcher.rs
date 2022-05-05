@@ -1,8 +1,9 @@
 use fiber_sys as sys;
 
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-use crate::object::{IDispatcher, INamed, KernelHandle};
+use crate::object::{IDispatcher, INamed, KernelHandle, ProcessDispatcher};
 
 // The starting max_height value of the root job.
 static ROOT_JOB_MAX_HEIGHT: u32 = 32;
@@ -18,7 +19,15 @@ enum State {
     DEAD,
 }
 
-type RawJobList = Vec<*const JobDispatcher>;
+#[derive(Debug)]
+struct GuardedJobState {
+    // Access to the pointers in these lists, especially any promotions to
+    // RefPtr, must be handled very carefully, because the children can die
+    // even when |lock_| is held. See ForEachChildInLocked() for more details
+    // and for a safe way to enumerate them.
+    jobs: Vec<*const JobDispatcher>,      // TA_GUARDED(get_lock());
+    procs: Vec<*const ProcessDispatcher>, // TA_GUARDED(get_lock());
+}
 
 #[derive(Debug)]
 pub(crate) struct JobDispatcher {
@@ -36,13 +45,9 @@ pub(crate) struct JobDispatcher {
     // TODO(cpu): The OOM kill system is incomplete, see fxbug.dev/32577 for details.
     kill_on_oom: bool, // TA_GUARDED(get_lock());
 
-    // Access to the pointers in these lists, especially any promotions to
-    // RefPtr, must be handled very carefully, because the children can die
-    // even when |lock_| is held. See ForEachChildInLocked() for more details
-    // and for a safe way to enumerate them.
-    jobs: RawJobList, // TA_GUARDED(get_lock());
-    // RawProcessList procs_ TA_GUARDED(get_lock());
     policy: JobPolicy, // TA_GUARDED(get_lock());
+
+    guarded: RefCell<GuardedJobState>,
 }
 
 // Dispatcher implementation.
@@ -64,10 +69,9 @@ impl IDispatcher for JobDispatcher {
     }
 
     fn default_rights() -> sys::fx_rights_t {
-        sys::FX_RIGHT_EXECUTE
+        sys::FX_RIGHT_NONE
     }
 }
-
 
 impl INamed for JobDispatcher {
     fn set_name(&self, name: String) -> sys::fx_status_t {
@@ -112,12 +116,15 @@ impl JobDispatcher {
             } else {
                 ROOT_JOB_MAX_HEIGHT
             },
+            name: String::from(""),
             state: State::READY,
             return_code: 0,
-            policy,
             kill_on_oom: false,
-            name: String::from(""),
-            jobs: vec![],
+          
+           
+            policy,
+            guarded: RefCell::new(GuardedJobState {
+                 jobs: vec![] ,  procs: vec![],}),
         }
 
         // kcounter_add(dispatcher_job_create_count, 1);
@@ -142,6 +149,7 @@ impl JobDispatcher {
     pub(crate) fn add_child_job(&self, job: &Rc<JobDispatcher>) -> bool {
         //canary_.Assert();
         //Guard<Mutex> guard{get_lock()};
+        let mut guarded_state = self.guarded.borrow_mut();
 
         if self.state != State::READY {
             return false;
@@ -158,11 +166,24 @@ impl JobDispatcher {
         // DEBUG_ASSERT(!fbl::InContainer<JobDispatcher::RawListTag>(*job));
         // DEBUG_ASSERT(neighbor != job.get());
 
-        // self.jobs.push(job.as_ref());
-
-        todo!();
+        guarded_state.jobs.push(job.as_ref());
 
         // TODO: UpdateSignalsLocked();
+        return true;
+    }
+
+    pub(crate) fn add_child_process(&self, process: &Rc<ProcessDispatcher>) -> bool {
+        //canary_.Assert();
+        //<Mutex> guard{get_lock()};
+        let mut guarded_state = self.guarded.borrow_mut();
+
+        if self.state != State::READY {
+            return false;
+        }
+
+        guarded_state.procs.push(process.as_ref());
+        
+        // TODO:  UpdateSignalsLocked();
         return true;
     }
 }

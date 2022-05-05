@@ -1,7 +1,9 @@
+// Copyright 2022 MeshX Contributors. All rights reserved.
 // Copyright 2017 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //! Type-safe bindings for Zircon jobs.
+use crate::vmar::Vmar;
 use crate::{impl_handle_based, ok};
 use crate::{object_get_info, ObjectQuery};
 use crate::{AsHandleRef, Duration, Handle, HandleBased, HandleRef, Process, Status, Task};
@@ -41,25 +43,33 @@ impl Job {
     /// Wraps the
     /// [zx_process_create](https://fuchsia.dev/fuchsia-src/reference/syscalls/process_create.md)
     /// syscall.
-    pub fn create_child_process(&self, name: &[u8]) -> Result<Process, Status> {
+    pub fn create_child_process(&self, name: &str) -> Result<(Process, Vmar), Status> {
         let parent_job_raw = self.raw_handle();
         let name_ptr = name.as_ptr();
-        let name_len = name.len();
+        let name_size = name.len();
         let options = 0;
         let mut process_out = 0;
         let mut vmar_out = 0;
+
         let status = unsafe {
             sys::fx_process_create(
                 parent_job_raw,
                 name_ptr,
-                name_len,
+                name_size,
                 options,
                 &mut process_out,
                 &mut vmar_out,
             )
         };
+
         ok(status)?;
-        unsafe { Ok(Process::from(Handle::from_raw(process_out))) }
+
+        unsafe {
+            Ok((
+                Process::from(Handle::from_raw(process_out)),
+                Vmar::from(Handle::from_raw(vmar_out)),
+            ))
+        }
     }
 
     /// Wraps the [zx_job_set_policy](//docs/reference/syscalls/job_set_policy.md) syscall.

@@ -21,6 +21,7 @@ pub type fx_signals_t = u32;
 pub type fx_policy_t = u32;
 pub type fx_ssize_t = isize;
 pub type fx_status_t = i32;
+pub type fx_vm_option_t = u32;
 pub type fx_time_t = i64;
 
 // object property constants
@@ -134,6 +135,7 @@ multiconst!(fx_obj_type_t, [
     FX_OBJ_TYPE_NONE                = 0;
     FX_OBJ_TYPE_PROCESS             = 1;
     FX_OBJ_TYPE_CHANNEL             = 4;
+    FX_OBJ_TYPE_VMAR                = 5;
     FX_OBJ_TYPE_JOB                 = 17;
 ]);
 
@@ -177,6 +179,24 @@ multiconst!(fx_policy_t, [
 multiconst!(u32, [
     // critical options
     FX_JOB_CRITICAL_PROCESS_RETCODE_NONZERO = 1 << 0;
+]);
+
+// TODO: add an alias for this type in the C headers.
+multiconst!(fx_vm_option_t, [
+    FX_VM_PERM_READ             = 1 << 0;
+    FX_VM_PERM_WRITE            = 1 << 1;
+    FX_VM_PERM_EXECUTE          = 1 << 2;
+    FX_VM_COMPACT               = 1 << 3;
+    FX_VM_SPECIFIC              = 1 << 4;
+    FX_VM_SPECIFIC_OVERWRITE    = 1 << 5;
+    FX_VM_CAN_MAP_SPECIFIC      = 1 << 6;
+    FX_VM_CAN_MAP_READ          = 1 << 7;
+    FX_VM_CAN_MAP_WRITE         = 1 << 8;
+    FX_VM_CAN_MAP_EXECUTE       = 1 << 9;
+    FX_VM_MAP_RANGE             = 1 << 10;
+    FX_VM_REQUIRE_NON_RESIZABLE = 1 << 11;
+    FX_VM_ALLOW_FAULTS          = 1 << 12;
+    FX_VM_OFFSET_IS_UPPER_LIMIT = 1 << 13;
 ]);
 
 // Don't need struct_decl_macro for this, the wrapper is different.

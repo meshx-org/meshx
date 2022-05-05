@@ -104,7 +104,11 @@ pub fn fx_process_create(
     vmar_handle: *mut fx_handle_t,
 ) -> fx_status_t {
     let sys = SYSTEM.get().expect("SYSTEM is not initialized");
-    sys.sys_process_create(job, name, name_size, options, proc_handle, vmar_handle)
+    println!("start");
+    let s = sys.sys_process_create(job, name, name_size, options, proc_handle, vmar_handle);
+    println!("end");
+
+    s
 }
 
 #[cfg(not(target_arch = "wasm32"))]

@@ -21,6 +21,7 @@ mod process;
 mod rights;
 mod status;
 mod task;
+mod vmar;
 mod time;
 
 pub use self::handle::*;

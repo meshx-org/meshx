@@ -1,10 +1,12 @@
 use std::rc::Rc;
 
-use crate::object::{HandleTable, JobDispatcher, JobPolicy, KernelHandle, VmarDispatcher};
+use crate::object::{HandleTable, IDispatcher, JobDispatcher, JobPolicy, KernelHandle, VmarDispatcher};
 use crate::process_context::with_context;
 use fiber_sys as sys;
+use log::trace;
 
 // state of the process
+#[derive(Debug, PartialEq)]
 enum State {
     INITIAL, // initial state, no thread present in process
     RUNNING, // first thread has started and is running
@@ -18,16 +20,25 @@ pub(crate) struct ProcessDispatcher {
     name: String,
     job: Rc<JobDispatcher>,
     policy: JobPolicy,
+    state: State,
 }
 
 // Dispatcher implementation.
-impl ProcessDispatcher {
+impl IDispatcher for ProcessDispatcher {
     fn get_type() -> sys::fx_obj_type_t {
         sys::FX_OBJ_TYPE_PROCESS
     }
 
-    fn get_koid() -> sys::fx_koid_t {
+    fn get_koid(&self) -> sys::fx_koid_t {
         0
+    }
+
+    fn get_related_koid(&self) -> sys::fx_koid_t {
+        0
+    }
+
+    fn default_rights() -> sys::fx_rights_t {
+        sys::FX_RIGHT_EXECUTE
     }
 }
 
@@ -38,6 +49,7 @@ impl ProcessDispatcher {
             policy: job.get_policy(),
             handle_table: HandleTable::new(),
             name: name.clone(),
+            state: State::INITIAL,
         };
 
         //  kcounter_add(dispatcher_process_create_count, 1);
@@ -47,26 +59,104 @@ impl ProcessDispatcher {
     pub(crate) fn create(
         parent_job: Rc<JobDispatcher>,
         name: String,
-        options: u32,
-    ) -> (
+        flags: u32,
+    ) -> Result<
+        (
+            KernelHandle<ProcessDispatcher>,
+            sys::fx_rights_t,
+            KernelHandle<VmarDispatcher>,
+            sys::fx_rights_t,
+        ),
         sys::fx_status_t,
-        KernelHandle<Rc<ProcessDispatcher>>,
-        sys::fx_rights_t,
-        KernelHandle<Rc<VmarDispatcher>>,
-        sys::fx_rights_t,
-    ) {
-        unimplemented!()
+    > {
+        let handle = KernelHandle {
+            dispatcher: Rc::from(ProcessDispatcher::new(parent_job.clone(), name.clone(), flags)),
+        };
+
+        let status = handle.dispatcher().init();
+        if status != sys::FX_OK {
+            return Err(status);
+        }
+
+        
+        // Create a dispatcher for the root VMAR.
+        let (vmar_handle, vmar_rights) = VmarDispatcher::create(0)?;
+        
+        // Only now that the process has been fully created and initialized can we register it with its
+        // parent job. We don't want anyone to see it in a partially initalized state.
+        if !parent_job.add_child_process(handle.dispatcher()) {
+            return Err(sys::FX_ERR_BAD_STATE);
+        }
+       
+
+        Ok((handle, ProcessDispatcher::default_rights(), vmar_handle, vmar_rights))
     }
 
-    pub fn get_current() -> Rc<ProcessDispatcher> {
+    fn init(&self) -> sys::fx_status_t {
+        //Guard<Mutex> guard{get_lock()};
+        debug_assert!(self.state == State::INITIAL);
+
+        // create an address space for this process, named after the process's koid.
+        //let aspace_name: [u8; ZX_MAX_NAME_LEN] = format!("proc:{}", self.get_koid()).into();
+
+        //let aspace_ = VmAspace::Create(VmAspace::TYPE_USER, aspace_name);
+
+        //if (!aspace_) {
+        //  trace!("error creating address space\n");
+        //  return sys::FX_ERR_NO_MEMORY;
+        //}
+
+        return sys::FX_OK;
+    }
+
+    pub(crate) fn get_current() -> Rc<ProcessDispatcher> {
         with_context(|context| context.process.clone())
     }
 
-    pub fn handle_table(&self) -> HandleTable {
+    pub(crate) fn handle_table(&self) -> HandleTable {
         self.handle_table
     }
 
-    pub fn enforce_basic_policy(&self, policy: sys::fx_policy_t) -> sys::fx_status_t {
+    pub(crate) fn enforce_basic_policy(&self, policy: sys::fx_policy_t) -> sys::fx_status_t {
         sys::FX_OK
     }
 }
+
+/*impl ThreadDispatcher {
+    // low level LK entry point for the thread
+    fn start_routine(arg: *const ()) -> i32 {
+        LTRACE_ENTRY;
+        let t: *const ThreadDispatcher = arg as *const ThreadDispatcher;
+        // IWBN to dump the values just before calling |arch_enter_uspace()|
+        // but at that point they're in |iframe| and may have been modified by
+        // the debugger user, and fetching them out of the iframe will require
+        // architecture-specific code. Instead just print them here. This is just
+        // for tracing which is generally off, and then only time the values will
+        // have changed is if a debugger user changes them. KISS.
+        trace!("arch_enter_uspace SP: %# PC: %#, ARG1: %#, ARG2: %#\n", t.user_entry_.sp, t.user_entry_.pc, t.user_entry_.arg1, t.user_entry_.arg2);
+        
+        // Initialize an iframe for entry into userspace.
+        // We need all registers accessible from the ZX_EXCP_THREAD_STARTING
+        // exception handler (the debugger wants the thread to look as if the
+        // thread is at the first instruction). For architectural exceptions the
+        // general regs are left in the iframe for speed and simplicity. To keep
+        // things simple we use the same scheme.
+        let iframe = iframe_t{};
+        arch_setup_uspace_iframe(&iframe, t.user_entry.pc, t.user_entry.sp, t.user_entry.arg1);
+        let context = arch_exception_context_t {};
+        context.frame = &iframe;
+        
+        // Notify job debugger if attached.
+        if (t.is_initial_thread_) {
+          t.process_.OnProcessStartForJobDebugger(t, &context);
+        }
+        
+        // Notify debugger if attached.
+        t.HandleSingleShotException(t.process.exceptionate(Exceptionate::Type::kDebug), ZX_EXCP_THREAD_STARTING, context);
+        
+        arch_iframe_process_pending_signals(&iframe);
+        // switch to user mode and start the process
+        arch_enter_uspace(&iframe);
+        unreachable!();
+      }
+}*/
