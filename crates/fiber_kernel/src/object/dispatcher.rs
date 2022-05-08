@@ -1,4 +1,5 @@
 use fiber_sys as sys;
+use std::any::Any;
 use std::sync::atomic::{fence, AtomicU32, Ordering};
 
 #[derive(Debug)]
@@ -40,7 +41,7 @@ impl Dispatcher {
     }
 }
 
-pub(crate) trait IDispatcher {
+pub(crate) trait IDispatcher: Any {
     fn get_type() -> sys::fx_obj_type_t;
     fn default_rights() -> sys::fx_rights_t;
 

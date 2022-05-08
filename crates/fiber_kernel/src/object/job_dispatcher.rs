@@ -1,6 +1,6 @@
 use fiber_sys as sys;
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::object::{IDispatcher, INamed, KernelHandle, ProcessDispatcher};
@@ -120,11 +120,12 @@ impl JobDispatcher {
             state: State::READY,
             return_code: 0,
             kill_on_oom: false,
-          
-           
+
             policy,
             guarded: RefCell::new(GuardedJobState {
-                 jobs: vec![] ,  procs: vec![],}),
+                jobs: vec![],
+                procs: vec![],
+            }),
         }
 
         // kcounter_add(dispatcher_job_create_count, 1);
@@ -182,7 +183,7 @@ impl JobDispatcher {
         }
 
         guarded_state.procs.push(process.as_ref());
-        
+
         // TODO:  UpdateSignalsLocked();
         return true;
     }

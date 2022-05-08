@@ -38,6 +38,8 @@ pub const FX_TASK_RETCODE_POLICY_KILL: i64 = -1026;
 pub const FX_TASK_RETCODE_VDSO_KILL: i64 = -1027;
 pub const FX_TASK_RETCODE_EXCEPTION_KILL: i64 = -1028;
 
+pub const FX_HANDLE_FIXED_BITS_MASK: u32 = 0x80000000;
+
 macro_rules! multiconst {
     ($typename:ident, [$($(#[$attr:meta])* $rawname:ident = $value:expr;)*]) => {
         $(
@@ -136,6 +138,7 @@ multiconst!(fx_obj_type_t, [
     FX_OBJ_TYPE_PROCESS             = 1;
     FX_OBJ_TYPE_CHANNEL             = 4;
     FX_OBJ_TYPE_VMAR                = 5;
+    FX_OBJ_TYPE_DATAVIEW            = 6;
     FX_OBJ_TYPE_JOB                 = 17;
 ]);
 

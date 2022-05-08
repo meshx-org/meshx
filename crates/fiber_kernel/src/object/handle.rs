@@ -5,17 +5,17 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT
 
+use std::any::Any;
 use std::rc::Rc;
 use std::sync::atomic::AtomicU64;
 
-use crate::object::IDispatcher;
-
 use super::dispatcher::Dispatcher;
 use fiber_sys::{fx_koid_t, fx_rights_t};
+use static_assertions::const_assert;
 
 // HandleOwner wraps a Handle in a Box that has single
 // ownership of the Handle and deletes it whenever it falls out of scope.
-pub(crate) type HandleOwner<T> = Box<Handle<T>>;
+pub(crate) type HandleOwner = Box<Handle>;
 
 /// A minimal wrapper around a Dispatcher which is owned by the kernel.
 ///
@@ -43,45 +43,76 @@ impl<T> KernelHandle<T> {
 }
 
 /// A Handle is how a specific process refers to a specific Dispatcher.
-pub(crate) struct Handle<T> {
+pub(crate) struct Handle {
     // process_id_ is atomic because threads from different processes can
     // access it concurrently, while holding different instances of
     // handle_table_lock_.
     process_id: AtomicU64,
-    dispatcher: Rc<T>,
+    dispatcher: Rc<dyn Any>,
     handle_rights: fx_rights_t,
+    base_value: u32,
 }
 
-pub(crate) trait H {}
-impl<T> H for Handle<T> {}
+impl Handle {
+    /*fn from_u32(value: u32 ) -> Handle* {
+        let index: u32  = HandleValueToIndex(value);
+        let handle_addr: uintptr_t  = IndexToHandle(index);
 
-impl<T> Handle<T> {
-    // Handle should never be created by anything other than Make or Dup.
-    pub fn new_from_dispatcher(dispatcher: Rc<T>, rights: fx_rights_t) -> HandleOwner<T> {
-        Box::from(Handle {
+        if (unlikely(!gHandleTableArena.arena_.Committed(reinterpret_cast<void*>(handle_addr))))
+          return nullptr;
+
+        handle_addr = gHandleTableArena.arena_.Confine(handle_addr);
+        let handle = reinterpret_cast<Handle*>(handle_addr);
+        return reinterpret_cast<Handle*>( fbl::conditional_select_nospec_eq(handle->base_value(), value, handle_addr, 0));
+    }*/
+
+    // Called only by Make.
+    fn new(dispatcher: Rc<dyn Any>, rights: fx_rights_t, base_value: u32) -> Self {
+        Handle {
             process_id: AtomicU64::new(0),
             handle_rights: rights,
             dispatcher,
-        })
+            base_value: 0,
+        }
     }
 
-    pub fn new(handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner<T> {
-        Box::from(Handle {
+    // Called only by Dup.
+    fn new_from_raw(rhs: *const Handle, rights: fx_rights_t, base_value: u32) -> Self {
+        Handle {
             process_id: AtomicU64::new(0),
             handle_rights: rights,
-            dispatcher: handle.dispatcher().clone(),
-        })
+            dispatcher: Rc::new(unsafe { (*rhs).dispatcher.clone() }),
+            base_value: 0,
+        }
     }
 
-    //pub fn dup(source: *const Handle<T>, rights: fx_rights_t) -> HandleOwner<T> {
-    //    Box::from(Handle {
-    //        process_id: AtomicU64::new(0),
-    //        handle_rights: rights,
-    //    })
-    //}
+    /// Maps an integer obtained by Handle::base_value() back to a Handle.
+    pub(super) fn from_u32(base_value: u32) -> *const Self {
+        std::ptr::null()
+    }
+
+    // Handle should never be created by anything other than Make or Dup.
+    pub(crate) fn make_from_dispatcher<T: 'static>(dispatcher: Rc<T>, rights: fx_rights_t) -> HandleOwner {
+        Box::new(Handle::new(dispatcher, rights, 0))
+    }
+
+    pub(crate) fn make<T: 'static>(handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner {
+        Box::new(Handle::new(handle.dispatcher().clone(), rights, 0))
+    }
+
+    pub(crate) fn dup<T: 'static>(source: *const Handle, rights: fx_rights_t) -> HandleOwner {
+        Box::new(Handle::new_from_raw(source, rights, 0))
+    }
+
+    /// Returns a value that can be decoded by Handle::FromU32() to derive a
+    /// pointer to this instance.  ProcessDispatcher will XOR this with its
+    /// |handle_rand_| to create the zx_handle_t value that user space sees.
+    fn base_value(&self) -> u32 {
+        return self.base_value;
+    }
 
     /// Returns the Dispatcher to which this instance points.
-    pub fn dispatcher(&self) -> &Rc<T> {
+    pub fn dispatcher(&self) -> &Rc<dyn Any> {
         return &self.dispatcher;
     }
 
@@ -103,15 +134,6 @@ impl<T> Handle<T> {
     /// To be called once during bring up.
     pub fn init() {}
 
-    // Maps an integer obtained by Handle::base_value() back to a Handle.
-    //pub fn from_u32(value: u32) -> Handle<T> {
-    //    Handle {
-    //        process_id: AtomicU64::new(0),
-    //        dispatcher: Rc::new(Dispatcher::new()),
-    //        handle_rights: 0,
-    //    }
-    //}
-
     /// Get the number of outstanding handles for a given dispatcher.
     pub fn count(dp: Rc<Dispatcher>) -> u32 {
         0
@@ -119,3 +141,81 @@ impl<T> Handle<T> {
 
     /* Private */
 }
+
+// Compute floor(log2(|val|)), or 0 if |val| is 0
+const fn bit_width(mut x: i64) -> i64 {
+    let mut i;
+    let mut j;
+    let mut k;
+    let l;
+    let m;
+    x = x | (x >> 1);
+    x = x | (x >> 2);
+    x = x | (x >> 4);
+    x = x | (x >> 8);
+    x = x | (x >> 16);
+
+    // i = 0x55555555
+    i = 0x55 | (0x55 << 8);
+    i = i | (i << 16);
+
+    // j = 0x33333333
+    j = 0x33 | (0x33 << 8);
+    j = j | (j << 16);
+
+    // k = 0x0f0f0f0f
+    k = 0x0f | (0x0f << 8);
+    k = k | (k << 16);
+
+    // l = 0x00ff00ff
+    l = 0xff | (0xff << 16);
+
+    // m = 0x0000ffff
+    m = 0xff | (0xff << 8);
+
+    x = (x & i) + ((x >> 1) & i);
+    x = (x & j) + ((x >> 2) & j);
+    x = (x & k) + ((x >> 4) & k);
+    x = (x & l) + ((x >> 8) & l);
+    x = (x & m) + ((x >> 16) & m);
+    x = x + !0;
+    return x;
+}
+
+const fn log2_floor(val: u32) -> u32 {
+    return if val == 0 { 0 } else { (bit_width(val as i64)) as u32 };
+}
+
+const fn log2_uint_floor(val: u32) -> u32 {
+    log2_floor(val)
+}
+
+// The number of outstanding (live) handles in the arena.
+pub(super) const MAX_HANDLE_COUNT: u32 = 256 * 1024;
+
+// Warning level: When the number of handles exceeds this value, we start to emit
+// warnings to the kernel's debug log.
+pub(super) const HIGH_HANDLE_COUNT: u32 = (MAX_HANDLE_COUNT * 7) / 8;
+
+// Masks for building a Handle's base_value, which ProcessDispatcher
+// uses to create zx_handle_t values.
+//
+// base_value bit fields:
+//   [31..(32 - kHandleReservedBits)]                     : Must be zero
+//   [(31 - kHandleReservedBits)..kHandleGenerationShift] : Generation number
+//                                                          Masked by kHandleGenerationMask
+//   [kHandleGenerationShift-1..0]                        : Index into handle_arena
+//                                                          Masked by kHandleIndexMask
+pub(super) const HANDLE_RESERVED_BITS: u32 = 2;
+pub(super) const HANDLE_INDEX_MASK: u32 = MAX_HANDLE_COUNT - 1;
+pub(super) const HANDLE_RESERVED_BITS_MASK: u32 = ((1 << HANDLE_RESERVED_BITS) - 1) << (32 - HANDLE_RESERVED_BITS);
+pub(super) const HANDLE_GENERATION_MASK: u32 = !HANDLE_INDEX_MASK & !HANDLE_RESERVED_BITS_MASK;
+pub(super) const HANDLE_GENERATION_SHIFT: u32 = log2_uint_floor(MAX_HANDLE_COUNT);
+
+const_assert!((HANDLE_INDEX_MASK & MAX_HANDLE_COUNT) == 0); //kMaxHandleCount must be a power of 2
+const_assert!(((3 << (HANDLE_GENERATION_SHIFT - 1)) & HANDLE_GENERATION_MASK) == 1 << HANDLE_GENERATION_SHIFT); //Shift is wrong
+const_assert!((HANDLE_GENERATION_MASK >> HANDLE_GENERATION_SHIFT) >= 255); // Not enough room for a useful generation count
+const_assert!((HANDLE_RESERVED_BITS_MASK & HANDLE_GENERATION_MASK) == 0); // Handle Mask Overlap!
+const_assert!((HANDLE_RESERVED_BITS_MASK & HANDLE_INDEX_MASK) == 0); // Handle Mask Overlap!
+const_assert!((HANDLE_GENERATION_MASK & HANDLE_INDEX_MASK) == 0); // Handle Mask Overlap!
+const_assert!((HANDLE_RESERVED_BITS_MASK | HANDLE_GENERATION_MASK | HANDLE_INDEX_MASK) == 0xffffffff); // Handle masks do not cover all bits!

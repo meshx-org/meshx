@@ -43,7 +43,7 @@ where
     TL_SCOPES.with(|s| {
         let s = s.borrow();
         match s.last() {
-            Some(logger) => f( &*logger ),
+            Some(logger) => f(&*logger),
             None => panic!("No logger in scope"),
         }
     })

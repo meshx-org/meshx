@@ -58,6 +58,7 @@ fn main() {
 
         let (process, vmar) = job.create_child_process(name.as_str()).unwrap();
 
+
         std::mem::forget(name);
 
         process.start(0, unsafe { Handle::from_raw(0) });

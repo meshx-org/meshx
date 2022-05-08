@@ -4,32 +4,15 @@ mod koid;
 mod object;
 mod process_context;
 
-use log::{debug, info, trace};
-use object::{HandleOwner, KernelHandle};
-use smol::{io, net, prelude::*, Unblock};
+use log::{info, trace};
 use std::rc::Rc;
-use std::str::FromStr;
 
 use fiber_sys as sys;
 
-use crate::object::{Handle, JobDispatcher, JobPolicy, KernelObject, ProcessDispatcher, ProcessObject, VmarDispatcher};
+use crate::object::{Handle, JobDispatcher, JobPolicy, ProcessDispatcher};
 
 pub struct Kernel {
     cb: fn(&object::ProcessObject),
-}
-
-impl Kernel {
-    pub fn run_root(&self) {
-        let res: io::Result<()> = smol::block_on(async {
-            let mut stream = net::TcpStream::connect("example.com:80").await?;
-            let req = b"GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n";
-            stream.write_all(req).await?;
-
-            let mut stdout = Unblock::new(std::io::stdout());
-            io::copy(stream, &mut stdout).await?;
-            Ok(())
-        });
-    }
 }
 
 impl fiber_sys::System for Kernel {
@@ -86,7 +69,7 @@ impl fiber_sys::System for Kernel {
         // We check the policy against the process calling zx_process_create, which
         // is the operative policy, rather than against |job_handle|. Access to
         // |job_handle| is controlled by the rights associated with the handle.
-        let mut status: sys::fx_status_t = up.enforce_basic_policy(sys::FX_POLICY_NEW_PROCESS);
+        let status: sys::fx_status_t = up.enforce_basic_policy(sys::FX_POLICY_NEW_PROCESS);
         if status != sys::FX_OK {
             return status;
         }
@@ -102,15 +85,15 @@ impl fiber_sys::System for Kernel {
 
         trace!("name = {}", name.clone());
 
-        let (status, parent_job) = up
+        let result = up
             .handle_table()
             .get_dispatcher_with_rights(job_handle, sys::FX_RIGHT_MANAGE_PROCESS);
 
-        if status != sys::FX_OK && parent_job.is_none() {
+        if let Err(status) = result {
             return status;
         }
 
-        let parent_job = parent_job.unwrap();
+        let parent_job = result.unwrap();
 
         // create a new process dispatcher
         let result = ProcessDispatcher::create(parent_job, name, options);
@@ -119,7 +102,7 @@ impl fiber_sys::System for Kernel {
             return status;
         }
 
-        let (new_process_handle, process_rights, new_root_vmar_handle, root_vmar_rights) =
+        let (new_process_handle, process_rights, new_root_dv_handle, root_dv_rights) =
             result.expect("should be a valid value");
 
         // TODO: let koid: u32 = new_process_handle.dispatcher().get_koid();
@@ -128,10 +111,10 @@ impl fiber_sys::System for Kernel {
         // Give arch-specific tracing a chance to record process creation.
         // TODO: arch_trace_process_create( koid, new_vmar_handle.dispatcher().vmar().aspace().arch_aspace().arch_table_phys());
 
-        let handle = Handle::new(new_process_handle, process_rights);
+        let handle = Handle::make(new_process_handle, process_rights);
 
         if status == sys::FX_OK {
-            let handle = Handle::new(new_root_vmar_handle, root_vmar_rights);
+            let handle = Handle::make(new_root_dv_handle, root_dv_rights);
         }
 
         status
@@ -143,7 +126,17 @@ impl fiber_sys::System for Kernel {
         entry: sys::fx_vaddr_t,
         arg1: sys::fx_handle_t,
     ) -> sys::fx_status_t {
-        (self.cb)(&ProcessObject(KernelObject));
+        let up = ProcessDispatcher::get_current();
+
+        let result = up.handle_table().get_dispatcher_with_rights(handle, 0);
+
+        if let Err(status) = result {
+            return status;
+        }
+
+        let process: Rc<ProcessDispatcher> = result.unwrap();
+
+        // (self.cb)(&ProcessObject(KernelObject));
 
         0
     }
@@ -166,20 +159,20 @@ impl fiber_sys::System for Kernel {
 
         let up = ProcessDispatcher::get_current();
 
-        let (status, parent_job) = up
+        let result = up
             .handle_table()
             .get_dispatcher_with_rights(parent_job, sys::FX_RIGHT_MANAGE_JOB);
 
-        if status != sys::FX_OK && parent_job.is_none() {
+        if let Err(status) = result {
             return status;
         }
 
-        let parent_job = parent_job.unwrap();
+        let parent_job = result.unwrap();
 
         let (status, handle, rights) = JobDispatcher::create(parent_job, options);
 
         if status == sys::FX_OK && handle.is_some() {
-            let h_ = Handle::new(handle.expect(""), rights);
+            let h_ = Handle::make(handle.expect(""), rights);
         }
 
         status
@@ -212,11 +205,7 @@ where
 {
     // Make sure to save the guard, see documentation for more information
     let _guard = process_context::ScopeGuard::new(process_context::Context {
-        process: Rc::from(ProcessDispatcher::new(
-            Rc::from(JobDispatcher::new(0, None, JobPolicy)),
-            String::from(""),
-            0,
-        )),
+        process: ProcessDispatcher::new(Rc::from(JobDispatcher::new(0, None, JobPolicy)), String::from(""), 0),
     });
 
     f();
@@ -231,5 +220,18 @@ impl Kernel {
 
     pub fn init(&self) {
         info!("initializing kernel");
+    }
+
+    pub fn run_root(&self) {
+        // TODO
+        //let res: io::Result<()> = smol::block_on(async {
+        //    let mut stream = net::TcpStream::connect("example.com:80").await?;
+        //    let req = b"GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n";
+        //    stream.write_all(req).await?;
+
+        //    let mut stdout = Unblock::new(std::io::stdout());
+        //    io::copy(stream, &mut stdout).await?;
+        //    Ok(())
+        //});
     }
 }
