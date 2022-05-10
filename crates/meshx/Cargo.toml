@@ -10,5 +10,5 @@ component_manager = {version = "0.1.0", path = "../component_manager"}
 fiber_kernel = {version = "0.1.0", path = "../fiber_kernel"}
 fiber_rust = {version = "0.1.0", path = "../fiber_rust"}
 phf = {version = "0.10", features = ["macros"]}
-log="0.4.16"
+log="0.4.17"
 env_logger="0.9.0"
