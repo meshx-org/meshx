@@ -1,26 +1,28 @@
 name: Continous Integration
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+    workflow_dispatch:
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+env:
+    CARGO_TERM_COLOR: always
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Begin CI...
-        uses: actions/checkout@v3
-    
-      - name: Install
-        run: echo "TODO Install"
-
-      - name: Lint
-        run: echo "TODO Lint"
-
-      - name: Test
-        run: echo "TODO Unit tests"
+    build_and_test:
+        name: Rust project - latest
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                toolchain:
+                    - stable
+                    - beta
+                    - nightly
+        steps:
+            - uses: actions/checkout@v2
+            - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+            - run: cargo build --verbose --bin meshx
+            - run: cargo test --verbose --bin meshx
