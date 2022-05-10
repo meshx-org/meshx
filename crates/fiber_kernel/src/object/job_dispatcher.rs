@@ -3,7 +3,7 @@ use fiber_sys as sys;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::object::{IDispatcher, INamed, KernelHandle, ProcessDispatcher};
+use crate::object::{BaseDispatcher, Dispatcher, INamed, KernelHandle, ProcessDispatcher, TypedDispatcher};
 
 // The starting max_height value of the root job.
 static ROOT_JOB_MAX_HEIGHT: u32 = 32;
@@ -31,6 +31,8 @@ struct GuardedJobState {
 
 #[derive(Debug)]
 pub(crate) struct JobDispatcher {
+    base: BaseDispatcher,
+
     parent_job: Option<Rc<JobDispatcher>>,
     max_height: u32,
 
@@ -51,13 +53,9 @@ pub(crate) struct JobDispatcher {
 }
 
 // Dispatcher implementation.
-impl IDispatcher for JobDispatcher {
-    fn get_type() -> sys::fx_obj_type_t {
-        sys::FX_OBJ_TYPE_JOB
-    }
-
+impl Dispatcher for JobDispatcher {
     fn get_koid(&self) -> sys::fx_koid_t {
-        0
+        self.base.get_koid()
     }
 
     fn get_related_koid(&self) -> sys::fx_koid_t {
@@ -68,8 +66,18 @@ impl IDispatcher for JobDispatcher {
         }
     }
 
+    fn base(&self) -> &BaseDispatcher {
+        &self.base
+    }
+}
+
+impl TypedDispatcher for JobDispatcher {
     fn default_rights() -> sys::fx_rights_t {
         sys::FX_RIGHT_NONE
+    }
+
+    fn get_type() -> sys::fx_obj_type_t {
+        sys::FX_OBJ_TYPE_JOB
     }
 }
 
@@ -110,6 +118,7 @@ impl JobDispatcher {
 
     pub(crate) fn new(flags: u32, parent: Option<Rc<JobDispatcher>>, policy: JobPolicy) -> JobDispatcher {
         JobDispatcher {
+            base: BaseDispatcher::new(),
             parent_job: parent.clone(),
             max_height: if parent.is_some() {
                 parent.unwrap().max_height() - 1

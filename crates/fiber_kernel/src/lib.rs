@@ -1,10 +1,10 @@
 // Copyright 2022 MeshX Contributors. All rights reserved.
-
-mod koid;
+pub mod koid;
 mod object;
 mod process_context;
 
 use log::{info, trace};
+use std::fmt;
 use std::rc::Rc;
 
 use fiber_sys as sys;
@@ -13,6 +13,12 @@ use crate::object::{Handle, JobDispatcher, JobPolicy, ProcessDispatcher};
 
 pub struct Kernel {
     cb: fn(&object::ProcessObject),
+}
+
+impl fmt::Debug for Kernel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Kernel").finish()
+    }
 }
 
 impl fiber_sys::System for Kernel {
@@ -205,14 +211,20 @@ where
 {
     // Make sure to save the guard, see documentation for more information
     let _guard = process_context::ScopeGuard::new(process_context::Context {
-        process: ProcessDispatcher::new(Rc::from(JobDispatcher::new(0, None, JobPolicy)), String::from(""), 0),
+        process: ProcessDispatcher::create(Rc::from(JobDispatcher::new(0, None, JobPolicy)), String::from(""), 0)
+            .unwrap()
+            .0
+            .dispatcher()
+            .clone(),
     });
 
     f();
 }
 
+type OnProcessStartHook = fn(&object::ProcessObject);
+
 impl Kernel {
-    pub fn new(on_process_start_cb: fn(&object::ProcessObject)) -> Self {
+    pub fn new(on_process_start_cb: OnProcessStartHook) -> Self {
         Self {
             cb: on_process_start_cb,
         }

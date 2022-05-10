@@ -139,6 +139,7 @@ multiconst!(fx_obj_type_t, [
     FX_OBJ_TYPE_CHANNEL             = 4;
     FX_OBJ_TYPE_VMAR                = 5;
     FX_OBJ_TYPE_DATAVIEW            = 6;
+    FX_OBJ_TYPE_DATAOBJECT          = 7;
     FX_OBJ_TYPE_JOB                 = 17;
 ]);
 

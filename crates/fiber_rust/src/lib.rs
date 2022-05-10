@@ -19,7 +19,7 @@ mod info;
 mod job;
 mod process;
 mod rights;
-mod status;
+pub mod status;
 mod task;
 mod vmar;
 mod time;

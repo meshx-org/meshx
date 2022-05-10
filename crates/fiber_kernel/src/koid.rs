@@ -1,14 +1,9 @@
+use fiber_sys as sys;
 use std::sync::atomic;
 
-type fx_koid_t = u32;
+const KOID_GENERATOR: atomic::AtomicU64 = atomic::AtomicU64::new(0);
 
 // Generates unique 64bit ids for kernel objects.
-struct KernelObjectId {
-    koid_generator: atomic::AtomicU32,
-}
-
-impl KernelObjectId {
-    pub fn gen(&self) -> fx_koid_t {
-        return self.koid_generator.fetch_add(1, atomic::Ordering::Relaxed);
-    }
+pub fn generate() -> sys::fx_koid_t {
+    return KOID_GENERATOR.fetch_add(1, atomic::Ordering::Relaxed);
 }

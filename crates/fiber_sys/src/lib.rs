@@ -46,7 +46,7 @@ extern "C" {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub trait System {
+pub trait System:  std::fmt::Debug {
     // Handle operations
     fn sys_handle_close(&self, handle: fx_handle_t) -> fx_status_t;
     fn sys_handle_duplicate(&self, handle: fx_handle_t, rights: fx_rights_t, out: *const fx_handle_t) -> fx_status_t;

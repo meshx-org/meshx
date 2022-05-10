@@ -6,16 +6,21 @@ mod process_dispatcher;
 mod dv_dispatcher;
 mod do_dispatcher;
 
-pub use dispatcher::*;
-pub use handle::*;
-pub use handle_table::*;
-pub use job_dispatcher::*;
-pub use process_dispatcher::*;
-pub use dv_dispatcher::*;
-pub use do_dispatcher::*;
+pub(crate) use dispatcher::*;
+pub(crate) use handle::*;
+pub(crate) use handle_table::*;
+pub(crate) use job_dispatcher::*;
+pub(crate) use process_dispatcher::*;
+pub(crate) use dv_dispatcher::*;
+pub(crate) use do_dispatcher::*;
 
+#[derive(Debug)]
 pub struct KernelObject;
+
+#[derive(Debug)]
 pub struct ProcessObject(pub KernelObject);
+
+#[derive(Debug)]
 pub struct VmoObject(pub KernelObject);
 
 impl ProcessObject {

@@ -2,25 +2,33 @@ use std::rc::Rc;
 
 use fiber_sys as sys;
 
-use crate::object::{IDispatcher, KernelHandle};
+use crate::object::{BaseDispatcher, Dispatcher, KernelHandle, TypedDispatcher};
 
-pub(crate) struct DataObjectDispatcher {}
+pub(crate) struct DataObjectDispatcher {
+    base: BaseDispatcher,
+}
 
-impl IDispatcher for DataObjectDispatcher {
-    fn get_type() -> sys::fx_obj_type_t {
-        sys::FX_OBJ_TYPE_DATAVIEW
-    }
-
+impl Dispatcher for DataObjectDispatcher {
     fn get_koid(&self) -> sys::fx_koid_t {
-        0
+        self.base.get_koid()
     }
 
     fn get_related_koid(&self) -> sys::fx_koid_t {
         0
     }
 
+    fn base(&self) -> &BaseDispatcher {
+        &self.base
+    }
+}
+
+impl TypedDispatcher for DataObjectDispatcher {
     fn default_rights() -> sys::fx_rights_t {
         sys::FX_RIGHT_NONE
+    }
+
+    fn get_type() -> sys::fx_obj_type_t {
+        sys::FX_OBJ_TYPE_DATAOBJECT
     }
 }
 
@@ -36,6 +44,8 @@ impl DataObjectDispatcher {
     }
 
     fn new() -> Self {
-        DataObjectDispatcher {}
+        DataObjectDispatcher {
+            base: BaseDispatcher::new(),
+        }
     }
 }

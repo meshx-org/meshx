@@ -3,9 +3,28 @@ use std::collections::VecDeque;
 use std::rc::Rc;
 
 use fiber_sys as sys;
+use once_cell::sync::Lazy;
 use static_assertions::const_assert;
 
-use crate::object::{Handle, HandleOwner, IDispatcher, ProcessDispatcher, HANDLE_RESERVED_BITS};
+use crate::object::{Dispatcher, Handle, HandleOwner, ProcessDispatcher, HANDLE_RESERVED_BITS};
+
+pub struct Arena;
+
+impl Arena {
+    pub fn base(&self) -> *const () {
+        std::ptr::null()
+    }
+
+    pub fn committed(&self, node: *const ()) -> bool {
+        false
+    }
+}
+
+pub struct HandleTableArena {
+    pub arena: Arena,
+}
+
+pub static HANDLE_TABLE: Lazy<HandleTableArena> = Lazy::new(|| HandleTableArena { arena: Arena });
 
 const HANDLE_MUST_BE_ONE_MASK: u32 = (0x1 << HANDLE_RESERVED_BITS) - 1;
 //const_assert!(HANDLE_MUST_BE_ONE_MASK == sys::FX_HANDLE_FIXED_BITS_MASK); // kHandleMustBeOneMask must match ZX_HANDLE_FIXED_BITS_MASK!

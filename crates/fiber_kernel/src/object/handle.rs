@@ -6,10 +6,13 @@
 // https://opensource.org/licenses/MIT
 
 use std::any::Any;
+use std::arch::asm;
+use std::mem::size_of;
 use std::rc::Rc;
 use std::sync::atomic::AtomicU64;
 
-use super::dispatcher::Dispatcher;
+use crate::object::{BaseDispatcher, Dispatcher, HANDLE_TABLE};
+
 use fiber_sys::{fx_koid_t, fx_rights_t};
 use static_assertions::const_assert;
 
@@ -53,19 +56,25 @@ pub(crate) struct Handle {
     base_value: u32,
 }
 
+fn index_to_handle(index: usize) -> *const u32 {
+    unsafe { (HANDLE_TABLE.arena.base() as *const u32).offset((index * size_of::<Handle>()).try_into().unwrap()) }
+}
+
+fn handle_value_to_index(value: u32) -> u32 {
+    value & HANDLE_INDEX_MASK
+}
+
+/// (x == y) ? a : b
+#[inline]
+const fn conditional_select_spec_eq(x: usize, y: usize, a: usize, b: usize) -> usize {
+    if x == y {
+        a
+    } else {
+        b
+    }
+}
+
 impl Handle {
-    /*fn from_u32(value: u32 ) -> Handle* {
-        let index: u32  = HandleValueToIndex(value);
-        let handle_addr: uintptr_t  = IndexToHandle(index);
-
-        if (unlikely(!gHandleTableArena.arena_.Committed(reinterpret_cast<void*>(handle_addr))))
-          return nullptr;
-
-        handle_addr = gHandleTableArena.arena_.Confine(handle_addr);
-        let handle = reinterpret_cast<Handle*>(handle_addr);
-        return reinterpret_cast<Handle*>( fbl::conditional_select_nospec_eq(handle->base_value(), value, handle_addr, 0));
-    }*/
-
     // Called only by Make.
     fn new(dispatcher: Rc<dyn Any>, rights: fx_rights_t, base_value: u32) -> Self {
         Handle {
@@ -87,8 +96,22 @@ impl Handle {
     }
 
     /// Maps an integer obtained by Handle::base_value() back to a Handle.
-    pub(super) fn from_u32(base_value: u32) -> *const Self {
-        std::ptr::null()
+    pub(super) fn from_u32(value: u32) -> *const Self {
+        let index = handle_value_to_index(value);
+        let handle_addr = index_to_handle(index as usize);
+
+        let handle_addr = handle_addr as *const Self;
+
+        if !HANDLE_TABLE.arena.committed(handle_addr as *const ()) {
+            return std::ptr::null();
+        }
+
+        // let handle_addr = gHandleTableArena.arena.Confine(handle_addr);
+
+        let handle = unsafe { &*handle_addr };
+        let handle_addr = unsafe { handle_addr as usize };
+
+        conditional_select_spec_eq(handle.base_value() as usize, value as usize, handle_addr, 0) as *const Handle
     }
 
     // Handle should never be created by anything other than Make or Dup.
@@ -107,39 +130,39 @@ impl Handle {
     /// Returns a value that can be decoded by Handle::FromU32() to derive a
     /// pointer to this instance.  ProcessDispatcher will XOR this with its
     /// |handle_rand_| to create the zx_handle_t value that user space sees.
-    fn base_value(&self) -> u32 {
+    pub(crate) fn base_value(&self) -> u32 {
         return self.base_value;
     }
 
+    // Get the number of outstanding handles for a given dispatcher.
+    pub(crate) fn count(dispatcher: Rc<dyn Dispatcher>) -> u32 {
+        dispatcher.base().current_handle_count()
+    }
+
+    /// To be called once during bring up.
+    pub(crate) fn init() {
+        //gHandleTableArena.arena_.Init("handles", kMaxHandleCount);
+    }
+
     /// Returns the Dispatcher to which this instance points.
-    pub fn dispatcher(&self) -> &Rc<dyn Any> {
+    pub(crate) fn dispatcher(&self) -> &Rc<dyn Any> {
         return &self.dispatcher;
     }
 
     /// Returns the process that owns this instance. Used to guarantee
     /// that one process may not access a handle owned by a different process.
-    pub fn process_id(&self) -> fx_koid_t {
+    pub(crate) fn process_id(&self) -> fx_koid_t {
         self.process_id.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Sets the value returned by process_id().
-    pub fn set_process_id(&self, pid: fx_koid_t) {}
+    pub(crate) fn set_process_id(&self, pid: fx_koid_t) {}
 
     /// Returns the |rights| parameter that was provided when this instance
     /// was created.
-    pub fn rights(&self) -> fx_rights_t {
+    pub(crate) fn rights(&self) -> fx_rights_t {
         self.handle_rights
     }
-
-    /// To be called once during bring up.
-    pub fn init() {}
-
-    /// Get the number of outstanding handles for a given dispatcher.
-    pub fn count(dp: Rc<Dispatcher>) -> u32 {
-        0
-    }
-
-    /* Private */
 }
 
 // Compute floor(log2(|val|)), or 0 if |val| is 0

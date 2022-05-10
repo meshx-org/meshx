@@ -1,7 +1,8 @@
 use std::rc::Rc;
 
 use crate::object::{
-    DataObjectDispatcher, DataViewDispatcher, HandleTable, IDispatcher, JobDispatcher, JobPolicy, KernelHandle,
+    DataObjectDispatcher, DataViewDispatcher, Dispatcher, HandleTable, JobDispatcher, JobPolicy, KernelHandle,
+    TypedDispatcher, BaseDispatcher,
 };
 use crate::process_context::with_context;
 use fiber_sys as sys;
@@ -17,6 +18,7 @@ enum State {
 
 #[derive(Debug)]
 pub(crate) struct ProcessDispatcher {
+    base: BaseDispatcher,
     handle_table: Option<HandleTable>,
     name: String,
     job: Rc<JobDispatcher>,
@@ -25,27 +27,34 @@ pub(crate) struct ProcessDispatcher {
 }
 
 // Dispatcher implementation.
-impl IDispatcher for ProcessDispatcher {
-    fn get_type() -> sys::fx_obj_type_t {
-        sys::FX_OBJ_TYPE_PROCESS
-    }
-
+impl Dispatcher for ProcessDispatcher {
     fn get_koid(&self) -> sys::fx_koid_t {
-        0
+        self.base.get_koid()
     }
 
     fn get_related_koid(&self) -> sys::fx_koid_t {
         0
     }
 
+    fn base(&self) -> &super::BaseDispatcher {
+        &self.base
+    }
+}
+
+impl TypedDispatcher for ProcessDispatcher {
     fn default_rights() -> sys::fx_rights_t {
         sys::FX_RIGHT_EXECUTE
+    }
+
+    fn get_type() -> sys::fx_obj_type_t {
+        sys::FX_OBJ_TYPE_PROCESS
     }
 }
 
 impl ProcessDispatcher {
-    pub(crate) fn new(job: Rc<JobDispatcher>, name: String, flags: u32) -> Rc<ProcessDispatcher> {
+    fn new(job: Rc<JobDispatcher>, name: String, flags: u32) -> Rc<ProcessDispatcher> {
         let mut new_process = ProcessDispatcher {
+            base: BaseDispatcher::new(),
             job: job.clone(),
             policy: job.get_policy(),
             handle_table: None,
