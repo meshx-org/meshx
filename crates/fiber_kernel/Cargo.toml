@@ -11,4 +11,4 @@ fiber_sys = {version = "0.1.0", path = "../fiber_sys"}
 log="0.4.17"
 smol="1.2.5"
 static_assertions = "1.1"
-once_cell="1.12.0"
+once_cell="1.12.1"
