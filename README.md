@@ -1,3 +1,12 @@
+<!--
+parent:
+  order: false
+-->
+
+<div align="center">
+  <h1>MeshX Workspace</h1>
+</div>
+
 <!-- Header -->
 <p align="center"><img src="docs/images/meshx-workspace-header.png" alt="MeshX Workspace"></p>
 
@@ -11,12 +20,12 @@
 
 ---
 
-### 🚧 Warning
+### 🚨 Warning
 This is a work-in-progress project, which means lot of the features simply not there yet. But as soon as we're ready we'll let you know!
 
 ---
 
-## Introduction
+## 👋 Welcome
 
 MeshX is the foundation for the future of business software. It provides a declarative approach to create your cozy digital workplace. It can replace many of the siloed business tools you use and instead provide seamless, interconnected ecosystem of tools. 
 
@@ -33,21 +42,24 @@ MeshX is the foundation for the future of business software. It provides a decla
 Thank you for considering contributing to MeshX! You can read the contribution guide [here](.github/CONTRIBUTING.md).
 -->
 
-## Contributing
+## 🚧 Contributing
 We're not currently in a stage where accepting contributions would be helpful. Please check back later.
 
-## Code of Conduct
+## 📙 Code of Conduct
 
 This project has adopted the [Contributor Covenant Code of Conduct v2.1](CODE_OF_CONDUCT.md). For more information see the [Code of Conduct FAQ](https://www.contributor-covenant.org/faq), or contact [opensource@meshx.co](mailto:opensource@meshx.co) with any additional questions or comments.
 
-## Security Policy
+## 👮 Security Policy
 
 Please see our [security policy](./SECURITY.md) for additional details about responsible disclosure of security related issues.
 
-## License
+## 📜 License
 
 MeshX Workspace is open-sourced software licensed under the [Apache2.0 license](LICENSE).
 
+## ©️ Copyright
+
+Copyright MeshX Contributors.
 
 [app-link]: https://meshx.co
 [cloud-link]: https://meshx.co
