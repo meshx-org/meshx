@@ -51,13 +51,13 @@ pub(crate) struct Handle {
     // access it concurrently, while holding different instances of
     // handle_table_lock_.
     process_id: AtomicU64,
-    dispatcher: Rc<dyn Any>,
+    dispatcher: Rc<dyn Dispatcher>,
     handle_rights: fx_rights_t,
-    base_value: u32,
+    pub(super) base_value: u32,
 }
 
 fn index_to_handle(index: usize) -> *const u32 {
-    unsafe { (HANDLE_TABLE.arena.base() as *const u32).offset((index * size_of::<Handle>()).try_into().unwrap()) }
+    &0
 }
 
 fn handle_value_to_index(value: u32) -> u32 {
@@ -76,7 +76,7 @@ const fn conditional_select_spec_eq(x: usize, y: usize, a: usize, b: usize) -> u
 
 impl Handle {
     // Called only by Make.
-    fn new(dispatcher: Rc<dyn Any>, rights: fx_rights_t, base_value: u32) -> Self {
+    fn new(dispatcher: Rc<dyn Dispatcher>, rights: fx_rights_t, base_value: u32) -> Self {
         Handle {
             process_id: AtomicU64::new(0),
             handle_rights: rights,
@@ -102,9 +102,9 @@ impl Handle {
 
         let handle_addr = handle_addr as *const Self;
 
-        if !HANDLE_TABLE.arena.committed(handle_addr as *const ()) {
-            return std::ptr::null();
-        }
+        // if !HANDLE_TABLE.arena.committed(handle_addr as *const ()) {
+        //     return std::ptr::null();
+        //  }
 
         // let handle_addr = gHandleTableArena.arena.Confine(handle_addr);
 
@@ -145,7 +145,7 @@ impl Handle {
     }
 
     /// Returns the Dispatcher to which this instance points.
-    pub(crate) fn dispatcher(&self) -> &Rc<dyn Any> {
+    pub(crate) fn dispatcher(&self) -> &Rc<dyn Dispatcher> {
         return &self.dispatcher;
     }
 

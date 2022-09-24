@@ -1,7 +1,7 @@
+use crate::koid;
 use fiber_sys as sys;
 use std::any::Any;
 use std::sync::atomic::{fence, AtomicU32, Ordering};
-use crate::koid;
 
 #[derive(Debug)]
 pub(crate) struct BaseDispatcher {
@@ -62,10 +62,7 @@ pub(crate) trait Dispatcher: Any {
     fn get_koid(&self) -> sys::fx_koid_t;
     fn get_related_koid(&self) -> sys::fx_koid_t;
 
-    fn on_zero_handles()
-    where
-        Self: Sized,
-    {
+    fn on_zero_handles(&self) {
         unreachable!()
     }
 

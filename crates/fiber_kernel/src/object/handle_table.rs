@@ -1,30 +1,137 @@
 use std::any::Any;
 use std::collections::VecDeque;
+use std::mem::size_of;
 use std::rc::Rc;
 
 use fiber_sys as sys;
-use once_cell::sync::Lazy;
+use generational_arena::{Arena, Index};
+use once_cell::unsync::Lazy;
 use static_assertions::const_assert;
 
-use crate::object::{Dispatcher, Handle, HandleOwner, ProcessDispatcher, HANDLE_RESERVED_BITS};
+use crate::object::{
+    Dispatcher, Handle, HandleOwner, ProcessDispatcher, HANDLE_GENERATION_MASK, HANDLE_GENERATION_SHIFT,
+    HANDLE_INDEX_MASK, HANDLE_RESERVED_BITS, MAX_HANDLE_COUNT,
+};
 
-pub struct Arena;
+pub(crate) struct HandleTableArena {
+    pub arena: Arena<Handle>,
+}
 
-impl Arena {
-    pub fn base(&self) -> *const () {
-        std::ptr::null()
+// |index| is the literal index into the table. |old_value| is the
+// |index mixed with the per-handle-lifetime state.
+fn new_handle_value(index: u32, old_value: u32) -> u32 {
+    debug_assert_eq!((index & !HANDLE_INDEX_MASK), 0);
+
+    let old_gen = 0;
+
+    if old_value != 0 {
+        // This slot has been used before.
+        debug_assert_eq!((old_value & HANDLE_INDEX_MASK), index);
+        old_gen = (old_value & HANDLE_GENERATION_MASK) >> HANDLE_GENERATION_SHIFT;
     }
 
-    pub fn committed(&self, node: *const ()) -> bool {
-        false
+    let new_gen = ((old_gen + 1) << HANDLE_GENERATION_SHIFT) & HANDLE_GENERATION_MASK;
+
+    index | new_gen
+}
+
+impl HandleTableArena {
+    fn handle_to_index(&self, id: *const Handle) -> u32 {
+        Index::
+        (a, b)
+    }
+
+    // Returns a new |base_value| based on the value stored in the free
+    // arena slot pointed to by |addr|. The new value will be different
+    // from the last |base_value| used by this slot.
+    fn get_new_base_value(addr: *const ()) -> u32 {
+        // Get the index of this slot within the arena.
+        let handle_index = handle_to_index(addr as *const Handle);
+
+        // Check the free memory for a stashed base_value.
+        let v = unsafe { (*(addr as *const Handle)).base_value };
+
+        new_handle_value(handle_index, v)
+    }
+
+    /// Allocate space for a Handle from the arena, but don't instantiate the
+    /// object.  |base_value| gets the value for Handle::base_value_.  |what|
+    /// says whether this is allocation or duplication, for the error message.
+    fn alloc(&self, dispatcher: &Rc<dyn Dispatcher>, what: &str) -> (Index, u32) {
+        // Attempt to allocate a handle.
+        let idx = self.arena.insert(Handle {
+            process_id: sys::FX_KOID_INVALID.into(),
+            dispatcher: todo!(),
+            handle_rights: todo!(),
+            base_value: todo!(),
+        });
+        
+        let outstanding_handles = self.arena.len();
+
+        //if (unlikely(addr == nullptr)) {
+        //    kcounter_add(handle_count_alloc_failed, 1);
+        //    printf("WARNING: Could not allocate %s handle (%zu outstanding)\n", what, outstanding_handles);
+        //    return nullptr;
+        //}
+
+        // Emit a warning if too many handles have been created and we haven't recently logged
+        //if (unlikely(outstanding_handles > kHighHandleCount) && handle_count_high_log_.Ready()) {
+        //    printf("WARNING: High handle count: %zu / %zu handles\n", outstanding_handles,
+        //            kHighHandleCount);
+        //}
+
+        dispatcher.base().increment_handle_count();
+
+        // checking the process_id_ and dispatcher is really about trying to catch cases where this
+        // Handle might somehow already be in use.
+        //debug_assert!((addr).process_id().eq(&sys::FX_KOID_INVALID) == true);
+        //debug_assert!((addr).dispatcher() == nullptr);
+
+        (idx, get_new_base_value(addr))
+    }
+
+    fn delete(&self, handle: *const Handle) {
+        let handle = unsafe { &(*handle) };
+
+        let dispatcher = handle.dispatcher().clone();
+
+
+        let old_base_value = handle.base_value;
+        let base_value = &handle.base_value;
+
+        // There may be stale pointers to this slot and they will look at process_id. We expect
+        // process_id to already have been cleared by the process dispatcher before the handle got to
+        // this point.
+        debug_assert!(handle.process_id()  == sys::FX_KOID_INVALID);
+
+        // TODO:
+        //if (dispatcher.is_waitable()) {
+        //    dispatcher.cancel(handle);
+        //}
+
+        // The destructor should not do anything interesting but call it for completeness.
+        std::mem::forget(handle);
+
+        // Make sure the base value was not altered by the destructor.
+        debug_assert!(unsafe { (*base_value) } == old_base_value);
+
+        let zero_handles = dispatcher.base().decrement_handle_count();
+        self.arena.remove(handle);
+
+        // TODO: we need downcast for this
+        //if (zero_handles) {
+        //    dispatcher.on_zero_handles();
+        //}
+
+        // If |disp| is the last reference (which is likely) then the dispatcher object
+        // gets destroyed at the exit of this function.
+        //kcounter_add(handle_count_live, -1);
     }
 }
 
-pub struct HandleTableArena {
-    pub arena: Arena,
-}
-
-pub static HANDLE_TABLE: Lazy<HandleTableArena> = Lazy::new(|| HandleTableArena { arena: Arena });
+pub(crate) const HANDLE_TABLE: Lazy<HandleTableArena> = Lazy::new(|| HandleTableArena {
+    arena: Arena::with_capacity(size_of::<Handle>() * MAX_HANDLE_COUNT as usize),
+});
 
 const HANDLE_MUST_BE_ONE_MASK: u32 = (0x1 << HANDLE_RESERVED_BITS) - 1;
 //const_assert!(HANDLE_MUST_BE_ONE_MASK == sys::FX_HANDLE_FIXED_BITS_MASK); // kHandleMustBeOneMask must match ZX_HANDLE_FIXED_BITS_MASK!
