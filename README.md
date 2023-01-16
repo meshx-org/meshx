@@ -14,7 +14,7 @@ parent:
 <p align="center">
     <a href="https://github.com/meshx-org/meshx/actions/workflows/ci.yaml"><img src="https://github.com/meshx-org/meshx/actions/workflows/ci.yaml/badge.svg?branch=main" alt="CI Status"></a>
     <a href="https://packagist.org/packages/laravel/cashier"><img src="https://img.shields.io/github/license/meshx-org/meshx?color=blue" alt="License"></a>
-    <img alt="Discord" src="https://img.shields.io/discord/674675845423562762?label=Discord&logo=discord&style=social">
+    <a href="#"><img alt="Discord" src="https://img.shields.io/discord/674675845423562762?label=Discord&logo=discord&style=social"></a>
     <a href="#"><img src="https://img.shields.io/twitter/follow/meshxhq?style=social" alt="Twitter"></a>
 </p>
 
