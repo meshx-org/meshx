@@ -1,0 +1,166 @@
+// ######################################
+// Readme
+// ######################################
+// You will notice the pattern ( X ~ Y | X )
+// instead of X ~ Y?. This is because we do not
+// want the concat operator ~ between X and Y
+// to consume any whitespace after X, if Y is not present.
+
+// This is how PEG grammars work:
+// https://pest.rs/book/grammars/peg.html
+
+// This is the basic syntax of Pest grammar files:
+// https://pest.rs/book/grammars/syntax.html#cheat-sheet
+
+library              =  { SOI ~ NEWLINE* ~ declaration_list ~ EOI }
+
+declaration_list     = _{ (declaration ~ NEWLINE+) * ~ declaration? }
+declaration          = _{ (library_declaration | const_declaration | struct_declaration/*layout_declaration*/ | protocol_declaration) }
+library_declaration  =  { LIBRARY_KEYWORD ~ compound_identifier }
+
+const_declaration = { 
+    block_attribute_list 
+    ~ CONST_KEYWORD 
+    ~ identifier 
+    ~ type_definition 
+    ~ "=" 
+    ~ constant 
+}
+
+struct_declaration =  { 
+    block_attribute_list
+    ~ (STRUCT_KEYWORD | TABLE_KEYWORD) 
+    ~ identifier  
+    ~ BLOCK_OPEN
+    ~ (struct_layout_member | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)* 
+    ~ BLOCK_CLOSE
+}
+
+layout_declaration =  { 
+    block_attribute_list 
+    ~ TYPE_KEYWORD 
+    ~ identifier 
+    ~ "=" 
+    ~ inline_layout 
+}
+
+protocol_declaration  =  { 
+    block_attribute_list 
+    ~ PROTOCOL_KEYWORD 
+    ~ identifier 
+    ~ "{" 
+    ~ ( NEWLINE* ~ protocol_member ~ ";" ~ NEWLINE* )+ 
+    ~ "}" 
+}
+
+declaration_modifiers =  { STRICT_KEYWORD | FLEXIBLE_KEYWORD | RESOURCE_KEYWORD }
+
+protocol_member       =  { protocol_method | protocol_event | protocol_compose }
+protocol_method       =  { block_attribute_list ~ identifier ~ parameter_list ~ ( "->" ~ parameter_list ~ ( "error" ~ type_definition ) ) }
+protocol_event        =  { block_attribute_list ~ "->" ~ identifier ~ parameter_list }
+protocol_compose      =  { COMPOSE_KEYWORD ~ compound_identifier }
+
+parameter_list        =   { "(" ~ layout_body ~ ")" }
+
+layout                = _{ compound_identifier | inline_layout }
+layout_subtype        =  { type_definition }
+layout_kind           =  { "struct" | "bits" | "enum" | "union" | "table" }
+layout_body           =  { "{" ~ (value_layout | struct_layout | ordinal_layout) ~ "}" }
+
+value_layout          =  { ( NEWLINE* ~ value_layout_member ~ NEWLINE* )+ }
+value_layout_member   =  { identifier ~ "=" ~ constant ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
+struct_layout         =  { ( NEWLINE* ~ struct_layout_member ~ NEWLINE* )+ }
+struct_layout_member  =  { member_field ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
+ordinal_layout        =  { ( NEWLINE* ~ ordinal_layout_member ~ NEWLINE* )+ }
+ordinal_layout_member =  { "#" ~ ordinal ~ (member_field | RESERVED_KEYWORD) ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
+
+member_field         =  { identifier ~ type_definition }
+inline_layout        =  { (block_attribute_list) ~ (declaration_modifiers)* ~ layout_kind ~ layout_subtype? ~ layout_body }
+
+layout_parameters    = !{ layout_parameter ~ ("," ~ layout_parameter ~ WHITESPACE* )*  }
+layout_parameter     = _{ type | constant }
+
+layout_type          =  { inline_layout }
+array_type           =  { "array" ~ ("(" ~ layout_parameters ~ ")") }
+vector_type          =  { "vector" ~ ("(" ~ layout_parameters ~ ")") }
+string_type          =  { "string" ~ ("(" ~ layout_parameters ~ ")")? }
+primitive_type       =  { "bool" | "f32" | "f64" | "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" }
+type                 = _{ string_type | primitive_type | vector_type | array_type | compound_identifier }
+type_definition      = ${ ":" ~ type }
+
+// ######################################
+// Comments and Documentation Comments
+// ######################################
+comment_block = ${ ((doc_comment | comment) ~ NEWLINE?)+ }
+trailing_comment = ${ doc_comment | comment }
+doc_comment = { WHITESPACE* ~ "///" ~ doc_content }
+comment = { WHITESPACE* ~ (!"///") ~ "//" ~ doc_content }
+doc_content = @{ (!NEWLINE ~ ANY)* }
+
+// ######################################
+// Attributes
+// ######################################
+
+inline_attribute_list =  { (attribute)* }
+block_attribute_list  =  { (attribute ~ trailing_comment? ~ NEWLINE)* }
+attribute             =  { "@" ~ compound_identifier ~ ("(" ~ (attribute_args | constant)  ~ ")")? }
+attribute_args 	      =  { attribute_arg ~ ("," ~ attribute_arg ~ WHITESPACE* )* }
+attribute_arg         =  { identifier ~ "=" ~ constant }
+
+// ######################################
+// Literals / Values
+// ######################################
+
+literal         =  { string_literal | numeric_literal | "true" | "false" }
+
+numeric_literal = @{ ("-")? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+
+// String literals. We follow exactly the same grammar as JSON strings
+// References:
+// - https://datatracker.ietf.org/doc/html/rfc8259
+// - https://www.json.org/json-en.html
+ASCII_CONTROL_CHARACTER = _{ '\u{0000}'..'\u{001F}' }
+string_escape           = _{ "\\" ~ ANY }
+string_content          = @{ (string_escape | !("\"" | ASCII_CONTROL_CHARACTER) ~ ANY)* }
+string_literal          = ${ "\"" ~ string_content ~ "\"" }
+constant                =  { literal | compound_identifier }
+
+ordinal                 =  { ASCII_NONZERO_DIGIT }
+
+// ######################################
+// shared building blocks
+// ######################################
+identifier              = @{ !KEYWORDS ~ ( "_" | ASCII_ALPHA ) ~ ASCII_ALPHANUMERIC* }
+compound_identifier     =  { identifier ~ ( "." ~ identifier )* }
+
+// the any part is to not crash on comments next to an open block, see test `parse_comments_without_crasing_or_loosing_info`
+BLOCK_OPEN              = { "{" ~ (!NEWLINE ~ ANY)* ~ NEWLINE }
+BLOCK_CLOSE             = { "}" }
+
+CATCH_ALL               = { (!NEWLINE ~ ANY)+ ~ NEWLINE? }
+BLOCK_LEVEL_CATCH_ALL   = { !BLOCK_CLOSE ~ CATCH_ALL }
+
+LIBRARY_KEYWORD  = _{ "library" }
+ENUM_KEYWORD     = _{ "enum" }
+STRUCT_KEYWORD   = _{ "struct" }
+TABLE_KEYWORD    = _{ "table" }
+UNION_KEYWORD    = _{ "union" }
+BITS_KEYWORD     = _{ "bits" }
+TYPE_KEYWORD     = _{ "type" }
+CONST_KEYWORD    = _{ "const" }
+COMPOSE_KEYWORD  = _{ "compose" }
+PROTOCOL_KEYWORD = _{ "protocol" }
+STRICT_KEYWORD   = _{ "strict" }
+RESERVED_KEYWORD = _{ "reserved" }
+FLEXIBLE_KEYWORD = _{ "flexible" }
+RESOURCE_KEYWORD = _{ "resource" }
+ERROR_KEYWORD    = _{ "error" }
+
+KEYWORDS         = _{ "true" | "false" | declaration_modifiers | TYPE_KEYWORD | LIBRARY_KEYWORD | CONST_KEYWORD | COMPOSE_KEYWORD | PROTOCOL_KEYWORD | ERROR_KEYWORD | RESERVED_KEYWORD }
+
+WHITESPACE     = _{ " " | "\t" }
+NEWLINE        = _{ "\n" | "\r\n" | "\r" }
+empty_lines    = @{ (WHITESPACE* ~ NEWLINE)+ }
+trailing_comma = @{ "," }
+
+// COMMENT    = { "/*" ~ (!"*/" ~ ANY)* ~ "*/" }

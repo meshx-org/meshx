@@ -1,7 +1,12 @@
+> **Warning**
+> Draft document
+
 # MeshX Workspace Control Tool
+
 Manages various aspects of a running workspace
 
 ## Add Repostiory
+
 Add a repositry to the workspace local registry
 
 ```bash
@@ -9,6 +14,7 @@ $ mxctl package repo add $REPO http://$HOST_ADDRESS:8083/config.json
 ```
 
 ## Resolve Package
+
 Resolves a package by url but no installs it
 
 ```bash
@@ -16,6 +22,7 @@ $ mxctl package resolve mxpkg://meshx.co/core
 ```
 
 ## Install package
+
 Installs a package (creates all the resources described in it)
 
 ```bash
@@ -23,11 +30,13 @@ $ mxctl package install mxpkg://meshx.co/core -s $SPACE
 ```
 
 ## Uninstall package
+
 ```bash
 $ mxctl package uninstall mxpkg://meshx.co/core -s $SPACE
 ```
 
 ## Spawn a component from a package
+
 Resolves a component if not exists locally yet and then spawns an instance
 
 ```bash
@@ -63,6 +72,7 @@ Creating component instance...
 ```
 
 ## Describe a component instance
+
 Get information about a running component instance
 
 ```bash

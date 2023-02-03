@@ -1,0 +1,29 @@
+library {
+  name = "meshx.component.resolver"
+}
+
+const MAX_COMPONENT_URL_LENGTH {
+  doc   = "Max length of component URL."
+  type  = uint32
+  value = 2083
+}
+
+struct Package {
+  doc = <<-EOT
+  A package is a signed collection of immutable files.
+  
+  This object provides access to a package's content and relevant metadata.
+  EOT
+
+  member url {
+    doc       = "The URL of the package itself."
+    type      = string
+    maxLength = MAX_COMPONENT_URL_LENGTH
+  }
+
+  member directory {
+    doc  = "The package's content directory."
+    type = client_end
+    of { type = meshx.io.Directory }
+  }
+}

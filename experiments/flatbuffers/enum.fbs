@@ -1,3 +1,0 @@
-namespace fb_test;
-
-enum Color : byte { Red = 1, Green, Blue }

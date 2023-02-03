@@ -1,0 +1,102 @@
+{{!
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+}}
+
+{{#each doc_comments }}
+///{{ this }}
+{{/each }}
+class {{ name }} extends $fidl.Struct {
+  const {{ name }}({
+{{#each members }}
+    {{#unless type.nullable }}{{#unless default_value }}required {{/unless}}{{/unless}}
+    this.{{ name }}{{#if default_value }}= {{ default_value }}{{/if}},
+{{/each }}
+  });
+  {{ name }}.clone({{ name }} $orig, {
+{{#each members }}
+    {{ this.type.optional_decl }} {{ name }},
+{{/each}}
+  }) : this(
+      {{#each members }}
+        {{ this.name }}: {{ this.name }} ?? $orig.{{ this.name }},
+      {{/each}}
+      );
+  {{#if has_nullable_field }}
+    {{ name }}.cloneWithout({{ name }} $orig, {
+      {{#each members }}
+        {{#if this.type.nullable }}bool {{ this.name }}=false,{{/if}}
+      {{/each}}
+    }) : this(
+      {{#each members }}
+        {{#if this.type.Nullable }}
+          {{ this.name }}: {{ this.name }} ? null : $orig.{{ this.name }},
+        {{else}}
+          {{ this.name }}: $orig.{{ this.name }},
+        {{/if}}
+      {{/each}}
+      );
+  {{/if}}
+  {{ name }} $cloneWith({
+  {{#each members }}
+    {{#if type.nullable }}$fidl.OptionalNullable<{{ type.decl }}> {{ name }} =
+      const $fidl.OptionalNullable.undefined(),
+    {{else}}{{ type.decl }}? {{ name }},
+    {{/if}}
+  {{/each}}
+  }) {
+    return {{ name }}(
+  {{#each members }}
+      {{#if type.nullable}}{{ name }}: {{ name }}.or(this.{{ name }}),
+      {{else}}{{ name }}: {{ name }} ?? this.{{ name }},
+      {{/if}}
+  {{/each}}
+    );
+  }
+{{#each members }}
+  {{#each doc_comments }}
+  ///{{ this }}
+  {{/each}}
+  final {{ this.type.decl }} {{ this.name }};
+{{/each}}
+  @override
+  List<Object?> get $fields {
+    return <Object?>[
+    {{#each members }}
+      {{ this.name }},
+    {{/each}}
+    ];
+  }
+  {{#each members }}
+  static const $fieldType{{ @index }} = {{ this.type_symbol }};
+  {{/each}}
+  @override
+  void $encode($fidl.Encoder $encoder, int $offset, int $depth) {
+    {{#each members }}
+    $fieldType{{ @index }}.encode(
+        $encoder, {{ this.name }}, $offset + {{ member.offset_v2 }}, $depth);
+    {{/each }}
+  }
+  static {{ name }} _structDecode($fidl.Decoder $decoder, int $offset, int $depth) {
+    switch ($decoder.wireFormat) {
+      case $fidl.WireFormat.v2:
+        {{#each addings }}
+        {{#if (ne this.padding_v2 0) }}
+        $decoder.checkPadding($offset + {{ this.offset_v2 }}, {{ this.padding_v2 }});
+        {{/if}}
+        {{/each}}
+        return {{ name }}(
+        {{#each members as | member | }}
+        {{#if (ne @index 0) }},{{/if}}
+          {{ member.name }}: $fieldType{{ @index }}.decode(
+              $decoder, $offset + {{ member.offset_v2 }}, $depth)
+        {{/each}}
+        );
+    }
+  }
+}
+
+// See fxbug.dev/7644:
+// ignore: recursive_compile_time_constant
+const $fidl.StructType<{{ name }}> {{ type_symbol }} = {{ type_expr }};

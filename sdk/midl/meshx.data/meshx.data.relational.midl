@@ -1,0 +1,5 @@
+library {
+  name = "meshx.data.relational"
+}
+
+# TODO: add relational protocol

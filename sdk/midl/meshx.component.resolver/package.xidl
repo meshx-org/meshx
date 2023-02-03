@@ -1,0 +1,60 @@
+library foo;
+
+using other.lib;
+using lib2 = other.lib2;
+
+annotation id(member) :void;
+annotation foo(struct, enum) :string;
+annotation baz(*) :int32;
+
+alias test = :vector(string);
+alias test = :array(string, 10);
+alias test = :box(string);
+alias testHandle = :zx.handle(zx.vmo, zx.READ | zx.WRITE);
+alias StoryID = :string(MAX_SIZE);
+alias Chapters = :vector(StoryID, 5);
+
+const MAX_SIZE :uint32 = 100;
+const ENABLED_FLAG :bool = true;
+const OFFSET :int8 = -33;
+const ANSWER :uint16 = 42;
+const ANSWER_IN_BINARY :uint16 = 0b101010;
+const POPULATION_USA_2018 :uint32 = 330000000;
+const DIAMOND :uint64 = 0x183c7effff7e3c18;
+const MESHX :uint64 = 4054509061583223046;
+const USERNAME :string = "squeenze";
+const MIN_TEMP :float32 = -273.15;
+const CONVERSION_FACTOR :float64 = 1.41421358;
+const MY_DRINK :Beverage = Beverage.WATER;
+
+record Profile {
+    #0 id      :int32   @id @db.text @default(autoincrement())
+    #1 bio     :string
+    #2 user    :User    @relation(fields: [userId], references: [id])
+    #3 userId  :int32   @unique
+    #4 omit             @deprecated
+    #5 visible :bool
+}
+
+struct Profile {
+    bio    :string;
+    user   :User    @relation(fields: [userId], references: [id]);
+    userId :int32   @unique;
+}
+
+union Result {
+    1: number :float64 @unique;
+    2: reserved;
+    3: error :Error;
+}
+
+@strict
+enum TestEnum {
+    WITH_A_MEMBER = 1;
+}
+
+protocol Frob {
+    // "Thing" refers to "Thing" in the "objects" library
+    // "tex.Color" refers to "Color" in the "textures" library
+    Paint(struct { thing Thing; color tex.Color; });
+}

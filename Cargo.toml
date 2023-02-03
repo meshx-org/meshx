@@ -2,9 +2,14 @@
 
 members = [
     "crates/meshx",
-    #"crates/component_manager",
     "crates/fiber_rust",
     "crates/fiber_sys",
     "crates/fiber_types",
     "crates/fiber_kernel",
+    "experiments/wasm_tcp",
+    "experiments/wasm_host",
+    "tools/midl/midlc",
+    "tools/midl/midlgen",
+    "tools/midl/midlgen_ts",
+    "tools/midl/midlgen_rust",
 ]

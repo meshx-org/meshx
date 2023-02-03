@@ -1,0 +1,127 @@
+{{!
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+}}
+
+{{#each doc_comments}}
+///{{ this }}
+{{/each}}
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+{{#if is_strict }}
+#[repr({{ type }})]
+{{else}}
+#[non_exhaustive]
+{{/if}}
+pub enum {{ name }} {
+    {{#each members }}
+    {{#each this.doc_comments }}
+    ///{{ this }}
+    {{/each}}
+    {{ this.name }}{{#if @root.is_strict }} = {{ this.value }}{{/if}},
+    {{/each}}
+    {{#if is_flexible }}
+    #[deprecated = "Use `{{ name }}::unknown()` to construct and `{{ name }}Unknown!()` to exhaustively match."]
+    #[doc(hidden)]
+    __Unknown({{ type }}),
+    {{/if}}
+}
+
+{{#if is_flexible }}
+/// Pattern that matches an unknown `{{ name }}` member.
+#[macro_export]
+macro_rules! {{ name }}Unknown {
+    () => { _ };
+}
+{{/if}}
+
+impl {{ name }} {
+    #[inline]
+    pub fn from_primitive(prim: {{ type }}) -> Option<Self> {
+        match prim {
+            {{#each members }}
+            {{ this.value }} => Some(Self::{{ this.name }}),
+            {{/each}}
+            _ => None,
+        }
+    }
+
+{{#if is_strict }}
+    #[inline]
+    pub const fn into_primitive(self) -> {{ type }} {
+        self as {{ type }}
+    }
+
+    #[deprecated = "Strict enums should not use `validate`"]
+    #[inline]
+    pub fn validate(self) -> std::result::Result<Self, {{ type }}> {
+        Ok(self)
+    }
+
+    #[deprecated = "Strict enums should not use `is_unknown`"]
+    #[inline]
+    pub fn is_unknown(&self) -> bool {
+        false
+    }
+{{else}}
+    #[inline]
+    pub fn from_primitive_allow_unknown(prim: {{ type }}) -> Self {
+        match prim {
+            {{#each members }}
+            {{ value }} => Self::{{ name }},
+            {{/each}}
+            #[allow(deprecated)]
+            x => Self::__Unknown(x),
+        }
+    }
+
+    #[inline]
+    pub fn unknown() -> Self {
+        #[allow(deprecated)]
+        Self::__Unknown({{ printf unknown_value_for_tmpl "%#x" }})
+    }
+
+    #[inline]
+    pub const fn into_primitive(self) -> {{ type }} {
+        match self {
+            {{#each members }}
+            Self::{{ name }} => {{ value }},
+            {{/each}}
+            #[allow(deprecated)]
+            Self::__Unknown(x) => x,
+        }
+    }
+
+    #[inline]
+    pub fn validate(self) -> std::result::Result<Self, {{ type }}> {
+        match self {
+            {{#each members }}
+            {{#if is_unknown }}
+            Self::{{ this.name }} => Err(self.into_primitive()),
+            {{/if}}
+            {{/each}}
+            #[allow(deprecated)]
+            Self::__Unknown(x) => Err(x),
+            {{#if members }}
+            _ => Ok(self),
+            {{/if}}
+        }
+    }
+
+    #[inline]
+    pub fn is_unknown(&self) -> bool {
+        self.validate().is_err()
+    }
+{{/if}}
+}
+
+fidl_enum! {
+    name: {{ name }},
+    prim_ty: {{ type }},
+    {{#if is_flexible}}
+    flexible: true,
+    {{else}}
+    strict: true,
+    min_member: {{ min_member }},
+    {{/if}}
+}

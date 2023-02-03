@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "strict": true,
+        "baseUrl": ".",
+        "paths": {
+            "mylib": ["packages/mylib/src/index.ts"]
+        }
+    }
+}

@@ -1,0 +1,72 @@
+library {
+  name = "meshx.data.kv"
+}
+
+use { name = meshx.test }
+use { name = meshx.test2 }
+
+alias Key {
+  type      = string
+  maxLength = 128
+}
+
+alias Value {
+  type = vector
+  of {
+    type      = byte
+    maxLength = 64000
+  }
+}
+
+enum WriteError {
+  doc  = "An enumeration of things that may go wrong when trying to write a value to our store."
+  type = uint8
+  member UNKNOWN { value = 0 }
+  member INVALID_KEY { value = 1 }
+  member INVALID_VALUE { value = 2 }
+  member ALREADY_EXISTS { value = 3 }
+}
+
+protocol Batch {
+  method ReadItem {
+    request {
+      struct {}
+    }
+  }
+
+  method WriteItem {
+    request {
+      struct {}
+    }
+  }
+}
+
+protocol KV {
+  discoverable = true
+
+  method write {
+    request {
+      member attempt { type = Item }
+    }
+    error { type = WriteError }
+  }
+
+  method set {
+    request { type = struct.Data }
+    response { type = struct.Data }
+  }
+
+  method delete {
+    request { type = struct.Data }
+    response { type = struct.Data }
+  }
+
+  method close {
+    error { type = struct.Error }
+  }
+
+  method batch {
+    request { type = type.data }
+    response { type = type.data }
+  }
+}
