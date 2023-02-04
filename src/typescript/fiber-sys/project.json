@@ -1,0 +1,40 @@
+{
+    "name": "src/typescript/fiber-sys",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "src/typescript/fiber-sys/src",
+    "projectType": "library",
+    "targets": {
+        "build": {
+            "executor": "@nrwl/js:tsc",
+            "outputs": ["{options.outputPath}"],
+            "options": {
+                "outputPath": "dist/./src/typescript/fiber-sys",
+                "main": "src/typescript/fiber-sys/src/index.ts",
+                "tsConfig": "src/typescript/fiber-sys/tsconfig.lib.json",
+                "assets": ["src/typescript/fiber-sys/*.md"]
+            }
+        },
+        "publish": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "node tools/scripts/publish.mjs src-typescript-fiber-sys {args.ver} {args.tag}"
+            },
+            "dependsOn": ["build"]
+        },
+        "lint": {
+            "executor": "@nrwl/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": ["src/typescript/fiber-sys/**/*.ts"]
+            }
+        },
+        "test": {
+            "executor": "@nrwl/vite:test",
+            "outputs": ["coverage/src/typescript/fiber-sys"],
+            "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../../coverage/src/typescript/fiber-sys"
+            }
+        }
+    }
+}

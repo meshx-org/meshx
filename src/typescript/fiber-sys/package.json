@@ -1,0 +1,8 @@
+{
+    "name": "@meshx-org/fiber-sys",
+    "version": "0.0.1",
+    "type": "commonjs",
+    "dependencies": {
+        "@meshx-org/fiber-types": "*"
+    }
+}

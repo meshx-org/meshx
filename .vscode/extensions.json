@@ -4,6 +4,7 @@
         "esbenp.prettier-vscode",
         "dbaeumer.vscode-eslint",
         "serayuzgur.crates",
-        "rust-lang.rust-analyzer"
+        "rust-lang.rust-analyzer",
+        "firsttris.vscode-jest-runner"
     ]
 }

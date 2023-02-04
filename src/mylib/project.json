@@ -1,0 +1,34 @@
+{
+    "name": "src/mylib",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "src/mylib/src",
+    "projectType": "library",
+    "targets": {
+        "build": {
+            "executor": "@nrwl/esbuild:esbuild",
+            "outputs": ["{options.outputPath}"],
+            "options": {
+                "outputPath": "dist/src/mylib",
+                "main": "src/mylib/src/index.ts",
+                "tsConfig": "src/mylib/tsconfig.lib.json",
+                "assets": ["src/mylib/*.md"]
+            }
+        },
+        "lint": {
+            "executor": "@nrwl/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": ["src/mylib/**/*.ts"]
+            }
+        },
+        "test": {
+            "executor": "@nrwl/vite:test",
+            "outputs": ["coverage/src/mylib"],
+            "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../coverage/src/mylib"
+            }
+        }
+    },
+    "tags": []
+}

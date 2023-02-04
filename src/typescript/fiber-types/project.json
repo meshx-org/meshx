@@ -1,0 +1,33 @@
+{
+    "name": "src-typescript-fiber-types",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "src/typescript/fiber-types/src",
+    "projectType": "library",
+    "targets": {
+        "build": {
+            "executor": "@nrwl/js:tsc",
+            "outputs": ["{options.outputPath}"],
+            "options": {
+                "outputPath": "dist/./src/typescript/fiber-types",
+                "main": "src/typescript/fiber-types/src/index.ts",
+                "tsConfig": "src/typescript/fiber-types/tsconfig.lib.json",
+                "assets": ["src/typescript/fiber-types/*.md"]
+            }
+        },
+        "publish": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "node tools/scripts/publish.mjs src-typescript-fiber-types {args.ver} {args.tag}"
+            },
+            "dependsOn": ["build"]
+        },
+        "lint": {
+            "executor": "@nrwl/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": ["src/typescript/fiber-types/**/*.ts"]
+            }
+        }
+    },
+    "tags": []
+}

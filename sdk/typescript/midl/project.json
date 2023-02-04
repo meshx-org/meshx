@@ -1,0 +1,41 @@
+{
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "name": "sdk-typescript-midl",
+    "sourceRoot": "sdk/typescript/midl/src",
+    "projectType": "library",
+    "targets": {
+        "build": {
+            "executor": "@nrwl/js:tsc",
+            "outputs": ["{options.outputPath}"],
+            "options": {
+                "outputPath": "dist/./sdk/typescript/midl",
+                "tsConfig": "sdk/typescript/midl/tsconfig.lib.json",
+                "packageJson": "sdk/typescript/midl/package.json",
+                "main": "sdk/typescript/midl/src/index.ts",
+                "assets": ["sdk/typescript/midl/*.md"]
+            }
+        },
+        "lint": {
+            "executor": "@nrwl/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": ["sdk/typescript/midl/**/*.ts"]
+            }
+        },
+        "test": {
+            "executor": "@nrwl/jest:jest",
+            "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+            "options": {
+                "jestConfig": "sdk/typescript/midl/jest.config.ts",
+                "passWithNoTests": true
+            },
+            "configurations": {
+                "ci": {
+                    "ci": true,
+                    "codeCoverage": true
+                }
+            }
+        }
+    },
+    "tags": []
+}

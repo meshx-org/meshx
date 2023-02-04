@@ -1,0 +1,41 @@
+{
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "name": "sdk/typescript/fiber",
+    "sourceRoot": "sdk/typescript/fiber/src",
+    "projectType": "library",
+    "targets": {
+        "build": {
+            "executor": "@nrwl/js:tsc",
+            "outputs": ["{options.outputPath}"],
+            "options": {
+                "outputPath": "dist/./sdk/typescript/fiber",
+                "main": "sdk/typescript/fiber/src/index.ts",
+                "tsConfig": "sdk/typescript/fiber/tsconfig.lib.json",
+                "assets": ["sdk/typescript/fiber/*.md"]
+            }
+        },
+        "publish": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "node tools/scripts/publish.mjs sdk-typescript-fiber {args.ver} {args.tag}"
+            },
+            "dependsOn": ["build"]
+        },
+        "lint": {
+            "executor": "@nrwl/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": ["sdk/typescript/fiber/**/*.ts"]
+            }
+        },
+        "test": {
+            "executor": "@nrwl/vite:test",
+            "outputs": ["coverage/sdk/typescript/fiber"],
+            "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../../coverage/sdk/typescript/fiber"
+            }
+        }
+    },
+    "tags": []
+}
