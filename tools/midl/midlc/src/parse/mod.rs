@@ -16,7 +16,6 @@ use super::error::ParserError;
 use super::diagnotics::Diagnostics;
 
 use pest::iterators::{Pair, Pairs};
-use pest::Parser;
 
 #[derive(Parser)]
 #[grammar = "midl.pest"]
@@ -41,9 +40,6 @@ enum HandleSubtype {
 }
 
 pub(crate) fn parse_identifier(identifier_pair: &Pair<'_, Rule>) -> Result<ast::Identifier, ParserError> {
-    let (start_line, start_col) = identifier_pair.as_span().end_pos().line_col();
-    let (end_line, end_col) = identifier_pair.as_span().start_pos().line_col();
-
     Ok(ast::Identifier {
         value: identifier_pair.as_str().to_string(),
         span: ast::Span::from(identifier_pair.as_span()),

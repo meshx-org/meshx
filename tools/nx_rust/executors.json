@@ -1,0 +1,14 @@
+{
+    "executors": {
+        "echo": {
+            "implementation": "./src/executors/echo/executor",
+            "schema": "./src/executors/echo/schema.json",
+            "description": "Execute a Node application."
+        },
+        "build": {
+            "implementation": "./src/executors/build/executor",
+            "schema": "./src/executors/build/schema.json",
+            "description": "Build a cargo binary or library"
+        }
+    }
+}

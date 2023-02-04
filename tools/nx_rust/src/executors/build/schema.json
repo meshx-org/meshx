@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/schema",
+    "type": "object",
+    "required": [
+        "outDir"
+    ],
+    "properties": {
+        "outDir": {
+            "type": "string",
+            "description": "Output directory"
+        },
+        "cwd": {
+            "type": "string"
+        }
+    }
+}

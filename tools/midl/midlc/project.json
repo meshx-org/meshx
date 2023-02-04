@@ -1,0 +1,47 @@
+{
+    "name": "tools/midlc",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "tools/midl/midlc/src",
+    "projectType": "application",
+    "implicitDependencies": [
+        "tools/midl/midlgen"
+    ],
+    "targets": {
+        "build": {
+            "executor": "nx_rust:build",
+            "outputs": [
+                "{workspaceRoot}/dist/tools/midl/midlc"
+            ],
+            "options": {
+                "outDir": "dist/tools/midl/midlc"
+            }
+        },
+        "build:old": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "cargo build -Z unstable-options --color=always --out-dir=../../../dist/tools/midl/midlc",
+                "cwd": "tools/midl/midlc"
+            }
+        },
+        "build/component": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "echo 'test'",
+                "cwd": "tools/midl/midlc"
+            },
+            "dependsOn": [
+                "build"
+            ]
+        },
+        "run": {
+            "executor": "nx_rust:run",
+            "options": {}
+        },
+        "echo": {
+            "executor": "nx_rust:echo",
+            "options": {
+                "textToEcho": "Hello World"
+            }
+        }
+    }
+}

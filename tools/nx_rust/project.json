@@ -1,0 +1,59 @@
+{
+    "root": "tools/nx_rust",
+    "sourceRoot": "tools/nx_rust/src",
+    "projectType": "library",
+    "targets": {
+        "lint": {
+            "executor": "@nrwl/linter:eslint",
+            "options": {
+                "lintFilePatterns": [
+                    "tools/nx_rust/**/*.ts"
+                ]
+            }
+        },
+        "build": {
+            "executor": "@nrwl/js:tsc",
+            "outputs": [
+                "{workspaceRoot}/dist/tools/nx_rust"
+            ],
+            "options": {
+                "outputPath": "dist/tools/nx_rust",
+                "main": "tools/nx_rust/src/index.ts",
+                "tsConfig": "tools/nx_rust/tsconfig.lib.json",
+                "assets": [
+                    {
+                        "input": "./tools/nx_rust",
+                        "glob": "**/*.md",
+                        "output": "./src"
+                    },
+                    {
+                        "input": "./tools/nx_rust/src",
+                        "glob": "**/!(*.ts)",
+                        "output": "./src"
+                    },
+                    {
+                        "input": "./tools/nx_rust/src",
+                        "glob": "**/*.d.ts",
+                        "output": "./src"
+                    },
+                    {
+                        "input": "./tools/nx_rust",
+                        "glob": "generators.json",
+                        "output": "."
+                    },
+                    {
+                        "input": "./tools/nx_rust",
+                        "glob": "package.json",
+                        "output": "."
+                    },
+                    {
+                        "input": "./tools/nx_rust",
+                        "glob": "executors.json",
+                        "output": "."
+                    }
+                ]
+            }
+        }
+    },
+    "tags": []
+}

@@ -2,7 +2,10 @@
     "$schema": "./node_modules/nx/schemas/workspace-schema.json",
     "version": 2,
     "projects": {
-        "kernel": "packages/kernel",
-        "ts/mylib": "packages/mylib"
+        "packages/kernel": "packages/kernel",
+        "packages/mylib": "packages/mylib",
+        "tools/midl/midlc": "tools/midl/midlc",
+        "tools/midl/midlgen": "tools/midl/midlgen",
+        "tools/nx_rust": "tools/nx_rust"
     }
 }

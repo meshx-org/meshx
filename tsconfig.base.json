@@ -3,7 +3,8 @@
         "strict": true,
         "baseUrl": ".",
         "paths": {
-            "mylib": ["packages/mylib/src/index.ts"]
+            "mylib": ["packages/mylib/src/index.ts"],
+            "nx_rust": ["tools/nx_rust/src/index.ts"]
         }
     }
 }

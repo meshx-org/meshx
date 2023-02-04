@@ -1,0 +1,19 @@
+{
+    "name": "tools/midl/midlgen",
+    "root": "tools/midl/midlgen",
+    "projectType": "application",
+    "tags": [
+        "scope:tooling"
+    ],
+    "targets": {
+        "build": {
+            "executor": "nx_rust:build",
+            "outputs": [
+                "{workspaceRoot}/dist/tools/midl/midlgen"
+            ],
+            "options": {
+                "outDir": "dist/tools/midl/midlgen"
+            }
+        }
+    }
+}

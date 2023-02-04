@@ -1,5 +1,5 @@
 {
-    "name": "ts/mylib",
+    "name": "packages/mylib",
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "sourceRoot": "packages/mylib/src",
     "projectType": "library",
