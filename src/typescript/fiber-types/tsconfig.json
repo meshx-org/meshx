@@ -4,6 +4,7 @@
         "module": "commonjs",
         "forceConsistentCasingInFileNames": true,
         "strict": true,
+        "target": "es2020",
         "noImplicitOverride": true,
         "noPropertyAccessFromIndexSignature": true,
         "noImplicitReturns": true,

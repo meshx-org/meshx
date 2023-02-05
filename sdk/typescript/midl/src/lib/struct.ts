@@ -4,12 +4,10 @@
 // found in the LICENSE file.
 
 import { Encoder, Decoder } from "./codec"
-import { deepEquals } from './hash_codes'
+import { deepEquals } from "./hash_codes"
 
 export abstract class Struct {
-    constructor() {}
-
-    private fields: Array<Object | null> = []
+    private fields: Array<object | null> = []
 
     // @override
     // int get hashCode => deepHash($fields);
@@ -37,4 +35,8 @@ export abstract class Struct {
     }
 }
 
-export type StructDecode<T> = (decoder: Decoder, offset: number, depth: number) => T
+export type StructDecode<T> = (
+    decoder: Decoder,
+    offset: number,
+    depth: number
+) => T

@@ -3,10 +3,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import { FidlError, FidlErrorCode } from './errors'
-import { IncomingMessage, IncomingMessageSink, OutgoingMessage, OutgoingMessageSink } from './message'
-
-type Channel = any
+import { FidlError, FidlErrorCode } from "./errors"
+import {
+    IncomingMessage,
+    IncomingMessageSink,
+    OutgoingMessage,
+    OutgoingMessageSink,
+} from "./message"
+import {
+    Channel,
+    ChannelPair,
+    ChannelReader,
+    ChannelReaderError,
+} from "@meshx-org/fiber"
+import { Status } from "@meshx-org/fiber-types"
+import { Completer } from "./completer"
 
 export const epitaphOrdinal = 0xffffffffffffffffn
 export type EpitaphHandler = (statusCode: number) => void
@@ -137,7 +148,9 @@ export class InterfaceRequest<T> {
     /// Returns [channel] and sets [channel] to `null`.
     ///
     /// Useful for taking ownership of the underlying channel.
-    passChannel(): Channel | null {
+    passChannel(): Channel {
+        if (!this._channel) throw new Error("no channel")
+
         const result = this._channel
         this._channel = null
         return result
@@ -155,7 +168,7 @@ export class InterfacePair<T> {
     public handle: InterfaceHandle<T> | null
 
     constructor() {
-        let pair = new FX.ChannelPair()
+        const pair = ChannelPair.create()
         this.request = new InterfaceRequest<T>(pair.first)
         this.handle = new InterfaceHandle<T>(pair.second)
     }
@@ -224,8 +237,8 @@ export abstract class Binding<T> {
     /// The `impl` parameter must not be null.
     wrap(impl: T): InterfaceHandle<T> | null {
         // TODO assert(!isBound)
-        let pair = new FX.ChannelPair()
-        if (pair.status != FX.OK) {
+        const pair = ChannelPair.create()
+        if (pair.status != Status.OK) {
             return null
         }
 
@@ -251,7 +264,7 @@ export abstract class Binding<T> {
     /// `channel` property of the given `interfaceRequest` must not be `null`.
     bind(impl: T, interfaceRequest: InterfaceRequest<T>): void {
         // assert(!isBound);
-        let channel = interfaceRequest.passChannel()!
+        const channel = interfaceRequest.passChannel()
         this._impl = impl
         this._reader.bind(channel)
         const callback = this.onBind
@@ -298,18 +311,26 @@ export abstract class Binding<T> {
     ///
     /// This function is called by this object whenever a message arrives over a
     /// bound channel.
-    protected abstract handleMessage(message: IncomingMessage, respond: OutgoingMessageSink): void
+    protected abstract handleMessage(
+        message: IncomingMessage,
+        respond: OutgoingMessageSink
+    ): void
 
     private handleReadable(): void {
         const result = this._reader.channel!.queryAndReadEtc()
         if (result.bytes.lengthInBytes == 0) {
-            throw new FidlError(`Unexpected empty message or error: ${result} from channel ${this._reader.channel}`)
+            throw new FidlError(
+                `Unexpected empty message or error: ${result} from channel ${this._reader.channel}`
+            )
         }
         const message = IncomingMessage.fromReadEtcResult(result)
 
         if (!message.isCompatible()) {
             close()
-            throw new FidlError('Incompatible wire format', FidlErrorCode.fidlUnknownMagic)
+            throw new FidlError(
+                "Incompatible wire format",
+                FidlErrorCode.fidlUnknownMagic
+            )
         }
 
         this.handleMessage(message, this.sendMessage)
@@ -333,7 +354,10 @@ export abstract class Binding<T> {
             response.closeHandles()
             return
         }
-        this._reader.channel!.writeEtc(response.data, response.handleDispositions)
+        this._reader.channel!.writeEtc(
+            response.data,
+            response.handleDispositions
+        )
     }
 }
 
@@ -400,7 +424,7 @@ export class ProxyController<T> {
     private _pendingResponsesCount = 0
 
     private readonly _reader = new ChannelReader()
-    private readonly _callbackMap = new Map<number, Function>()
+    private readonly _callbackMap = new Map<number, () => void>()
 
     /// A future that completes when the proxy is bound.
     private _boundCompleter = new Completer<null>()
@@ -445,10 +469,10 @@ export class ProxyController<T> {
     /// The proxy must not already have been bound.
     request(): InterfaceRequest<T> {
         // TODO: assert(!isBound);
-        const pair = new FX.ChannelPair()
+        const pair = ChannelPair.create()
         // TODO: assert(pair.status == FX.OK);
-        this._reader.bind(pair.first!)
-        this._boundCompleter.complete()
+        this._reader.bind(pair.first)
+        this._boundCompleter.complete(null)
 
         const callback = this.onBind
         if (callback != null) {
@@ -470,7 +494,7 @@ export class ProxyController<T> {
     bind(interfaceHandle: InterfaceHandle<T>): void {
         // TODO: assert(!isBound);
         this._reader.bind(interfaceHandle.passChannel()!)
-        this._boundCompleter.complete()
+        this._boundCompleter.complete(null)
 
         const callback = this.onBind
         if (callback != null) {
@@ -505,7 +529,7 @@ export class ProxyController<T> {
     close(): void {
         if (this.isBound) {
             if (this._pendingResponsesCount > 0) {
-                this.proxyError('The proxy is closed.')
+                this.proxyError("The proxy is closed.")
             }
             this._reset()
             this._reader.close()
@@ -520,7 +544,9 @@ export class ProxyController<T> {
         this._callbackMap.clear()
         this._errorCompleter = new Completer<ProxyError>()
         if (!this._boundCompleter.isCompleted) {
-            this._boundCompleter.completeError(`Proxy<${this.$interfaceName}> closed.`)
+            this._boundCompleter.completeError(
+                `Proxy<${this.$interfaceName}> closed.`
+            )
         }
         this._boundCompleter = new Completer<null>()
         this._nextTxid = 1
@@ -531,7 +557,7 @@ export class ProxyController<T> {
         const result = this._reader.channel!.queryAndReadEtc()
 
         if (result.bytes.lengthInBytes == 0) {
-            this.proxyError('Read from channel ${_reader.channel} failed')
+            this.proxyError("Read from channel ${_reader.channel} failed")
             return
         }
 
@@ -543,7 +569,7 @@ export class ProxyController<T> {
             }
         } catch (e: unknown) {
             if (e instanceof Error) {
-                for (let handleInfo in result.handleInfos) {
+                for (const handleInfo in result.handleInfos) {
                     handleInfo.handle.close()
                 }
                 this.proxyError(e.toString())
@@ -569,12 +595,17 @@ export class ProxyController<T> {
     /// Used by subclasses of [Proxy<T>] to send encoded messages.
     public sendMessage(message: OutgoingMessage): void {
         if (!this._reader.isBound) {
-            this.proxyError('The proxy is closed.')
+            this.proxyError("The proxy is closed.")
             return
         }
-        const status = this._reader.channel!.writeEtc(message.data, message.handleDispositions)
-        if (status != FX.OK) {
-            this.proxyError(`Failed to write to channel: ${this._reader.channel} (status: ${status})`)
+        const status = this._reader.channel!.writeEtc(
+            message.data,
+            message.handleDispositions
+        )
+        if (status != Status.OK) {
+            this.proxyError(
+                `Failed to write to channel: ${this._reader.channel} (status: ${status})`
+            )
         }
     }
 
@@ -582,18 +613,27 @@ export class ProxyController<T> {
     /// to handle the response.
     ///
     /// Used by subclasses of [Proxy<T>] to send encoded messages.
-    sendMessageWithResponse(message: OutgoingMessage, callback: Function): void {
+    sendMessageWithResponse(
+        message: OutgoingMessage,
+        callback: () => void
+    ): void {
         if (!this._reader.isBound) {
-            this.proxyError('The sender is closed.')
+            this.proxyError("The sender is closed.")
             return
         }
         const _kUserspaceTxidMask = 0x7fffffff
         let txid = this._nextTxid++ & _kUserspaceTxidMask
-        while (txid == 0 || this._callbackMap.has(txid)) txid = this._nextTxid++ & _kUserspaceTxidMask
+        while (txid == 0 || this._callbackMap.has(txid))
+            txid = this._nextTxid++ & _kUserspaceTxidMask
         message.txid = txid
-        const status = this._reader.channel!.writeEtc(message.data, message.handleDispositions)
-        if (status != FX.OK) {
-            this.proxyError('Failed to write to channel: ${_reader.channel} (status: $status)')
+        const status = this._reader.channel!.writeEtc(
+            message.data,
+            message.handleDispositions
+        )
+        if (status != Status.OK) {
+            this.proxyError(
+                "Failed to write to channel: ${_reader.channel} (status: $status)"
+            )
             return
         }
         this._callbackMap.set(message.txid, callback)
@@ -604,12 +644,12 @@ export class ProxyController<T> {
     ///
     /// Used by subclasses of [Proxy<T>] to retrieve registered callbacks when
     /// handling response messages.
-    getCallback(txid: number): Function | null {
+    getCallback(txid: number): VoidCallback | null {
         const message = this._callbackMap.get(txid)
         const result = this._callbackMap.delete(txid)
 
         if (!result) {
-            this.proxyError('Message had unknown request id: $txid')
+            this.proxyError("Message had unknown request id: $txid")
             return null
         }
 
@@ -622,7 +662,7 @@ export class ProxyController<T> {
         console.log(fullMessage)
 
         if (!this._errorCompleter.isCompleted) {
-            this.error.whenComplete(() => {
+            this.error.then(() => {
                 this._errorCompleter = new Completer<ProxyError>()
             })
             this._errorCompleter.complete(new ProxyError(fullMessage))

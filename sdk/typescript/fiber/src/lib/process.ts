@@ -13,7 +13,7 @@ export class Process extends HandleWrapper {
     /// [zx_process_start](https://fuchsia.dev/fuchsia-src/reference/syscalls/process_start.md)
     /// syscall.
     public start(entry: number, arg1: Handle): fx_status_t {
-        const process_raw = this.raw
+        const process_raw = this.handle!.raw
         const arg1_raw = arg1.raw
 
         const status = fx_process_start(process_raw, entry, arg1_raw)

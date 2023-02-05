@@ -4,7 +4,11 @@ import {
     fx_handle_t,
     fx_vaddr_t,
     fx_status_t,
+    fx_signals_t,
+    fx_time_t,
+    fx_port_packet_t,
     u32,
+    u64,
     i64,
     Ref,
 } from "@meshx-org/fiber-types"
@@ -19,6 +23,7 @@ export interface System {
         job_out: Ref<fx_handle_t>
     ): fx_status_t
 
+    /** Process operations */
     sys_process_create(
         parent: fx_handle_t,
         name: Uint8Array,
@@ -36,8 +41,28 @@ export interface System {
 
     sys_process_exit(retcode: i64): void
 
+    /** Object operations */
+
+    sys_port_create(port_out: Ref<fx_handle_t>): fx_status_t
+    sys_port_wait(
+        handle: fx_handle_t,
+        deadline: fx_time_t,
+        on_packet: (packet: fx_port_packet_t) => void
+    ): fx_status_t
+
+    /** Port operations */
+
+    sys_object_wait_async(
+        handle: fx_handle_t,
+        port: fx_handle_t,
+        key: u64,
+        signals: fx_signals_t,
+        options: u32
+    ): fx_status_t
+
+    /** Channel operations */
+
     sys_channel_create(
-        process: fx_handle_t,
         out1: Ref<fx_handle_t>,
         out2: Ref<fx_handle_t>
     ): fx_status_t
@@ -50,6 +75,28 @@ declare global {
               parent_job: fx_handle_t,
               options: u32,
               job_out: Ref<fx_handle_t>
+          ) => fx_status_t)
+        | undefined
+
+    var sys_port_create:
+        | ((port_out: Ref<fx_handle_t>) => fx_status_t)
+        | undefined
+
+    var sys_port_wait:
+        | ((
+              handle: fx_handle_t,
+              deadline: fx_time_t,
+              on_packet: (packet: fx_port_packet_t) => void
+          ) => fx_status_t)
+        | undefined
+
+    var sys_object_wait_async:
+        | ((
+              handle: fx_handle_t,
+              port: fx_handle_t,
+              key: u64,
+              signals: fx_signals_t,
+              options: u32
           ) => fx_status_t)
         | undefined
 
@@ -74,11 +121,7 @@ declare global {
 
     var sys_process_exit: ((retcode: i64) => void) | undefined
     var sys_channel_create:
-        | ((
-              process: fx_handle_t,
-              out1: Ref<fx_handle_t>,
-              out2: Ref<fx_handle_t>
-          ) => fx_status_t)
+        | ((out1: Ref<fx_handle_t>, out2: Ref<fx_handle_t>) => fx_status_t)
         | undefined
 }
 
@@ -99,6 +142,37 @@ function fx_job_create(
 export function fx_handle_close(handle: fx_handle_t): fx_status_t {
     if (self.sys_handle_close) return self.sys_handle_close(handle)
     else if (sys) return sys.sys_handle_close(handle)
+    else throw new Error("system is not initialized")
+}
+
+export function fx_port_create(port_out: Ref<fx_handle_t>): fx_status_t {
+    if (self.sys_port_create) return self.sys_port_create(port_out)
+    else if (sys) return sys.sys_port_create(port_out)
+    else throw new Error("system is not initialized")
+}
+
+export function fx_port_wait(
+    handle: fx_handle_t,
+    deadline: fx_time_t,
+    on_packet: (packet: fx_port_packet_t) => void
+): fx_status_t {
+    if (self.sys_port_wait)
+        return self.sys_port_wait(handle, deadline, on_packet)
+    else if (sys) return sys.sys_port_wait(handle, deadline, on_packet)
+    else throw new Error("system is not initialized")
+}
+
+export function fx_object_wait_async(
+    handle: fx_handle_t,
+    port: fx_handle_t,
+    key: u64,
+    signals: fx_signals_t,
+    options: u32
+): fx_status_t {
+    if (self.sys_object_wait_async)
+        return self.sys_object_wait_async(handle, port, key, signals, options)
+    else if (sys)
+        return sys.sys_object_wait_async(handle, port, key, signals, options)
     else throw new Error("system is not initialized")
 }
 
@@ -149,13 +223,11 @@ export function fx_process_exit(retcode: i64): void {
 }
 
 export function fx_channel_create(
-    process: fx_handle_t,
     out1: Ref<fx_handle_t>,
     out2: Ref<fx_handle_t>
 ): fx_status_t {
-    if (self.sys_channel_create)
-        return self.sys_channel_create(process, out1, out2)
-    else if (sys) return sys.sys_channel_create(process, out1, out2)
+    if (self.sys_channel_create) return self.sys_channel_create(out1, out2)
+    else if (sys) return sys.sys_channel_create(out1, out2)
     else throw new Error("system is not initialized")
 }
 

@@ -42,11 +42,17 @@ export enum FidlErrorCode {
 }
 
 export class FidlError {
-    constructor(message: string, code: FidlErrorCode = FidlErrorCode.unknown) {}
+    constructor(
+        public message: string,
+        public code: FidlErrorCode = FidlErrorCode.unknown
+    ) {}
 }
 
 export class FidlRangeCheckError extends FidlError {
     constructor(value: number, min: number, max: number) {
-        super(`FidlRangeCheckError: ${value} < ${min} or ${value} > ${max}`, FidlErrorCode.fidlIntOutOfRange)
+        super(
+            `FidlRangeCheckError: ${value} < ${min} or ${value} > ${max}`,
+            FidlErrorCode.fidlIntOutOfRange
+        )
     }
 }

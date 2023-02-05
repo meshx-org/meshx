@@ -1,8 +1,17 @@
-import { fx_handle_t, FX_INVALID_HANDLE } from '@meshx-org/fiber-types'
-import { fx_handle_close } from '@meshx-org/fiber-sys'
+import {
+    fx_handle_t,
+    fx_signals_t,
+    FX_INVALID_HANDLE,
+} from "@meshx-org/fiber-types"
+import { fx_handle_close } from "@meshx-org/fiber-sys"
+import { AsyncWaitCallback, HandleWaiter } from "./handle_waiter"
+
+export type HandleDisposition = any
+export type HandleInfo = any
 
 export class Handle {
     private $handle: fx_handle_t = FX_INVALID_HANDLE
+    private waiters: HandleWaiter[] = []
 
     constructor(handle: fx_handle_t) {
         this.$handle = handle
@@ -32,6 +41,19 @@ export class Handle {
 
     // TODO: Implement
     public async replace(): Promise<Handle> {
-        throw new Error('Not implemented')
+        throw new Error("Not implemented")
+    }
+
+    public asyncWait(
+        signals: fx_signals_t,
+        callback: AsyncWaitCallback
+    ): HandleWaiter {
+        const waiter = new HandleWaiter(this, signals, callback)
+        this.waiters.push(waiter)
+        return waiter
+    }
+
+    public releaseWaiter(waiter: HandleWaiter) {
+        this.waiters = this.waiters.filter((current) => current !== waiter)
     }
 }

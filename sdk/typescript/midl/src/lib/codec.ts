@@ -3,7 +3,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import * as FX from '@meshx-org/fiber'
+import { HandleDisposition, HandleInfo } from '@meshx-org/fiber'
+import { Status } from "@meshx-org/fiber-types"
 
 import { FidlError, FidlErrorCode, FidlRangeCheckError } from './errors'
 import {
@@ -39,7 +40,7 @@ function _checkRange(value: number, min: number, max: number): void {
 export class Encoder {
     public data = new DataView(new ArrayBuffer(_kInitialBufferSize))
 
-    private handleDispositions: Array<FX.HandleDisposition> = []
+    private handleDispositions: Array<HandleDisposition> = []
     private extent = 0
     private wireFormat: WireFormat
 
@@ -84,7 +85,7 @@ export class Encoder {
         return this.handleDispositions.length
     }
 
-    addHandleDisposition(value: FX.HandleDisposition): void {
+    addHandleDisposition(value: HandleDisposition): void {
         this.handleDispositions.push(value)
     }
 
@@ -117,7 +118,7 @@ export class Encoder {
         this.encodeUint64(kTransportErrOrdinal, kMessageHeaderSize)
 
         // Inline value of the zx_status.
-        this.encodeInt32(FX.ERR_NOT_SUPPORTED, kEnvelopeOffset)
+        this.encodeInt32(Status.ERR_NOT_SUPPORTED, kEnvelopeOffset)
 
         // Number of handles in the envelope.
         this.encodeUint16(0, kEnvelopeOffset + 4)
@@ -180,7 +181,7 @@ export class Encoder {
 
 export class Decoder {
     public data: DataView
-    public handleInfos: FX.HandleInfo[]
+    public handleInfos: HandleInfo[]
     public wireFormat: WireFormat
 
     private nextOffset = 0
@@ -190,7 +191,7 @@ export class Decoder {
         return new Decoder(message.data, message.handleInfos, message.parseWireFormat())
     }
 
-    constructor(data: DataView, handleInfos: FX.HandleInfo[], wireFormat: WireFormat) {
+    constructor(data: DataView, handleInfos: HandleInfo[], wireFormat: WireFormat) {
         this.data = data
         this.handleInfos = handleInfos
         this.wireFormat = wireFormat
@@ -220,7 +221,7 @@ export class Decoder {
         return this.handleInfos.length - this.nextHandle
     }
 
-    claimHandle(): FX.HandleInfo {
+    claimHandle(): HandleInfo {
         if (this.nextHandle >= this.handleInfos.length) {
             throw new FidlError('Cannot access out of range handle', FidlErrorCode.fidlTooFewHandles)
         }

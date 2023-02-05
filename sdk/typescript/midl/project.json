@@ -1,6 +1,6 @@
 {
     "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-    "name": "sdk-typescript-midl",
+    "name": "sdk/typescript/midl",
     "sourceRoot": "sdk/typescript/midl/src",
     "projectType": "library",
     "targets": {

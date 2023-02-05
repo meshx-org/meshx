@@ -1,4 +1,5 @@
 {
+    "name": "tools/nx_rust",
     "root": "tools/nx_rust",
     "sourceRoot": "tools/nx_rust/src",
     "projectType": "library",

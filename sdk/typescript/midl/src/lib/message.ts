@@ -3,15 +3,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import * as FX from '@meshx-org/fiber'
-import { align, Decoder, Encoder } from './codec'
-import { FidlError, FidlErrorCode } from './errors'
-import { WireFormat } from './wireformat'
+import {
+    FX_RIGHT_GET_PROPERTY,
+    FX_RIGHT_INSPECT,
+    FX_RIGHT_READ,
+    FX_RIGHT_TRANSFER,
+    FX_RIGHT_WAIT,
+} from "@meshx-org/fiber-types"
+import { HandleDisposition, HandleInfo } from "@meshx-org/fiber"
+import { align, Decoder, Encoder } from "./codec"
+import { FidlError, FidlErrorCode } from "./errors"
+import { WireFormat } from "./wireformat"
 
 export const kMessageHeaderSize = 16
 export const kLargeMessageInfoSize = 16
 export const kLargeMessageVmoRights =
-    FX.RIGHT_GET_PROPERTY | FX.RIGHT_INSPECT | FX.RIGHT_READ | FX.RIGHT_TRANSFER | FX.RIGHT_WAIT
+    FX_RIGHT_GET_PROPERTY |
+    FX_RIGHT_INSPECT |
+    FX_RIGHT_READ |
+    FX_RIGHT_TRANSFER |
+    FX_RIGHT_WAIT
 
 export const kMessageTxidOffset = 0
 export const kMessageFlagOffset = 4
@@ -75,19 +86,29 @@ class BaseMessage {
     }
 
     parseWireFormat(): WireFormat {
-        if ((this.data.getUint8(kMessageFlagOffset) & kWireFormatV2FlagMask) != 0) {
+        if (
+            (this.data.getUint8(kMessageFlagOffset) & kWireFormatV2FlagMask) !=
+            0
+        ) {
             return WireFormat.v2
         }
 
-        throw new FidlError('unknown wire format', FidlErrorCode.fidlUnsupportedWireFormat)
+        throw new FidlError(
+            "unknown wire format",
+            FidlErrorCode.fidlUnsupportedWireFormat
+        )
     }
 
     get strictness(): CallStrictness {
-        return strictnessFromFlags(this.data.getUint8(kMessageDynamicFlagOffset))
+        return strictnessFromFlags(
+            this.data.getUint8(kMessageDynamicFlagOffset)
+        )
     }
 
     get overflowing(): CallOverflowing {
-        return overflowingFromFlags(this.data.getUint8(kMessageDynamicFlagOffset))
+        return overflowingFromFlags(
+            this.data.getUint8(kMessageDynamicFlagOffset)
+        )
     }
 
     isCompatible(): boolean {
@@ -119,7 +140,7 @@ class BaseMessage {
                 if (isPrintable.test(s)) {
                     printable.push(s)
                 } else {
-                    printable.push('.')
+                    printable.push(".")
                 }
             }
 
@@ -127,17 +148,17 @@ class BaseMessage {
         }
 
         console.log(
-            '==================================================\n' +
+            "==================================================\n" +
                 buffer +
-                '=================================================='
+                "=================================================="
         )
     }
 }
 
 export class IncomingMessage extends BaseMessage {
-    public handleInfos: FX.HandleInfo[]
+    public handleInfos: HandleInfo[]
 
-    constructor(data: DataView, handleInfos: FX.HandleInfo[]) {
+    constructor(data: DataView, handleInfos: HandleInfo[]) {
         super(data)
         this.handleInfos = handleInfos
     }
@@ -156,9 +177,9 @@ export class IncomingMessage extends BaseMessage {
 }
 
 export class OutgoingMessage extends BaseMessage {
-    public handleDispositions: FX.HandleDisposition[]
+    public handleDispositions: HandleDisposition[]
 
-    constructor(data: DataView, handleDispositions: FX.HandleDisposition[]) {
+    constructor(data: DataView, handleDispositions: HandleDisposition[]) {
         super(data)
         this.handleDispositions = handleDispositions
     }
@@ -179,7 +200,12 @@ export class OutgoingMessage extends BaseMessage {
 }
 
 /** Encodes a FIDL message that contains a single parameter. */
-export function encodeMessage<T>(encoder: Encoder, inlineSize: number, ty: MemberType, value: T): void {
+export function encodeMessage<T>(
+    encoder: Encoder,
+    inlineSize: number,
+    ty: MemberType,
+    value: T
+): void {
     encoder.alloc(inlineSize, 0)
     ty.encode(encoder, value, kMessageHeaderSize, 1)
 }
@@ -191,7 +217,11 @@ export function encodeMessage<T>(encoder: Encoder, inlineSize: number, ty: Membe
  * MemberType.encode() must pass in a concrete type, rather than an element
  * popped from a List<FidlType>.
  */
-export function encodeMessageWithCallback(encoder: Encoder, inlineSize: number, f: () => void): void {
+export function encodeMessageWithCallback(
+    encoder: Encoder,
+    inlineSize: number,
+    f: () => void
+): void {
     encoder.alloc(inlineSize, 0)
     f()
 }
@@ -221,8 +251,8 @@ function validateDecoding(decoder: Decoder): void {
     }
 
     if (decoder.countUnclaimedBytes() > 0) {
-        let unclaimed = decoder.countUnclaimedBytes()
-        let total = decoder.data.byteLength
+        const unclaimed = decoder.countUnclaimedBytes()
+        const total = decoder.data.byteLength
         throw new FidlError(
             `Message contains unread bytes (unclaimed: ${unclaimed}, total: ${total})`,
             FidlErrorCode.fidlTooManyBytes
@@ -231,10 +261,18 @@ function validateDecoding(decoder: Decoder): void {
 }
 
 /** Decodes a FIDL message that contains a single parameter. */
-export function decodeMessage<T>(message: IncomingMessage, inlineSize: number, typ: MemberType): T {
-    return decodeMessageWithCallback(message, inlineSize, (decoder: Decoder, offset: number) => {
-        return typ.decode(decoder, offset, 1)
-    })
+export function decodeMessage<T>(
+    message: IncomingMessage,
+    inlineSize: number,
+    typ: MemberType
+): T {
+    return decodeMessageWithCallback(
+        message,
+        inlineSize,
+        (decoder: Decoder, offset: number) => {
+            return typ.decode(decoder, offset, 1)
+        }
+    )
 }
 
 /// Decodes a FIDL message with multiple parameters.  The callback parameter
@@ -247,7 +285,11 @@ export function decodeMessage<T>(message: IncomingMessage, inlineSize: number, t
 /// whereas we want to retain concrete types of each decoded parameter.  The
 /// only way to accomplish this in Dart is to pass in a function that collects
 /// these multiple values into a bespoke, properly typed class.
-export function decodeMessageWithCallback<T>(message: IncomingMessage, inlineSize: number, f: DecodeMessageCallback<T>): T {
+export function decodeMessageWithCallback<T>(
+    message: IncomingMessage,
+    inlineSize: number,
+    f: DecodeMessageCallback<T>
+): T {
     const size = kMessageHeaderSize + inlineSize
     const decoder = Decoder.fromMessage(message)
     decoder.claimBytes(size, 0)
