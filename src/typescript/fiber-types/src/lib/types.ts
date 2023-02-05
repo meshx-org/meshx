@@ -1,23 +1,38 @@
+export type u16 = number
+export type i16 = number
+
 export type u32 = number
 export type i32 = number
+
 export type u64 = bigint
 export type i64 = bigint
 
+export type f32 = number // A 32-bit float.
+export type f64 = number // A 64-bit float.
+
 export type fx_handle_t = u32
 export type fx_status_t = i32
-export type fx_vaddr_t = number
-export type fx_rights_t = number
+export type fx_vaddr_t = u64
+export type fx_rights_t = u32
 export type fx_koid_t = u64
 export type fx_txid_t = number
 export type fx_signals_t = u32
 export type fx_policy_t = number
 export type fx_time_t = i64
+export type fx_handle_type_t = u32
+export type fx_handle_op_t = u32
+export type fx_obj_type_t = u32
 
 // multiconst: fx_time_t
 export const FX_TIME_INFINITE: fx_time_t = 9_223_372_036_854_775_807n
 export const FX_TIME_INFINITE_PAST: fx_time_t = -9_223_372_036_854_775_808n
 
-export const FX_INVALID_HANDLE = 0
+// multiconst: fx_handle_t
+export const FX_INVALID_HANDLE: fx_handle_t = 0
+
+// multiconst: fx_handle_op_t
+export const FX_HANDLE_OP_MOVE: fx_handle_op_t = 0
+export const FX_HANDLE_OP_DUPLICATE: fx_handle_op_t = 1
 
 // multiconst: fx_koid_t
 export const FX_KOID_INVALID: fx_koid_t = 0n
@@ -91,6 +106,20 @@ export const FX_POL_NEW_PROCESS = 1
 
 export function todo() {
     throw new Error("not implemented")
+}
+
+export type fx_handle_disposition_t = {
+    handle: fx_handle_t
+    result: fx_status_t
+    type: fx_handle_type_t
+    rights: fx_rights_t
+    operation: number
+}
+
+export type fx_handle_info_t = {
+    handle: fx_handle_t
+    type: fx_handle_type_t
+    rights: fx_rights_t
 }
 
 export type fx_port_packet_t = {

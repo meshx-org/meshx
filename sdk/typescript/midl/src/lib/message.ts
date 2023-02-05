@@ -9,11 +9,23 @@ import {
     FX_RIGHT_READ,
     FX_RIGHT_TRANSFER,
     FX_RIGHT_WAIT,
+    Status,
 } from "@meshx-org/fiber-types"
-import { HandleDisposition, HandleInfo } from "@meshx-org/fiber"
+import { HandleDisposition, HandleInfo, ReadEtcResult } from "@meshx-org/fiber"
 import { align, Decoder, Encoder } from "./codec"
 import { FidlError, FidlErrorCode } from "./errors"
 import { WireFormat } from "./wireformat"
+
+// TODO: implement it
+class MemberType {
+    public decode(decoder: any, offset: any, padding: number): any {
+        throw "not implemented"
+    }
+
+    public encode(encoder: any, value: any, offset: any, padding: number) {
+        throw "not implemented"
+    }
+}
 
 export const kMessageHeaderSize = 16
 export const kLargeMessageInfoSize = 16
@@ -163,6 +175,16 @@ export class IncomingMessage extends BaseMessage {
         this.handleInfos = handleInfos
     }
 
+    static fromReadEtcResult(result: ReadEtcResult): IncomingMessage {
+        if (result.status !== Status.OK) {
+            throw new Error(
+                `ony results with Status.OK can be used to create a message`
+            )
+        }
+
+        return new IncomingMessage(result.bytes!, result.handleInfos!)
+    }
+
     closeHandles(): void {
         for (let i = 0; i < this.handleInfos.length; ++i) {
             this.handleInfos[i].handle.close()
@@ -190,7 +212,7 @@ export class OutgoingMessage extends BaseMessage {
 
     closeHandles(): void {
         for (let i = 0; i < this.handleDispositions.length; ++i) {
-            this.handleDispositions[i].handle.close()
+            this.handleDispositions[i].handle?.close()
         }
     }
 
@@ -233,10 +255,9 @@ function validateDecoding(decoder: Decoder): void {
     if (decoder.countUnclaimedHandles() > 0) {
         // If there are unclaimed handles at the end of the decoding, close all
         // handles to the best of our ability, and throw an error.
-        for (const handleInfo in decoder.handleInfos) {
+        for (const handleInfo of decoder.handleInfos) {
             try {
                 handleInfo.handle.close()
-                // ignore: avoid_catches_without_on_clauses
             } catch (e) {
                 // best effort
             }

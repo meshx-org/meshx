@@ -224,8 +224,8 @@ export abstract class Binding<T> {
     /// FIDL compiler for a specific interface.
     constructor(reader: any) {
         this._reader = reader
-        this._reader.onReadable = _handleReadable
-        this._reader.onError = _handleError
+        this._reader.onReadable = this.handleReadable
+        this._reader.onError = this.handleError
     }
 
     /// Returns an interface handle whose peer is bound to the given object.
@@ -318,7 +318,7 @@ export abstract class Binding<T> {
 
     private handleReadable(): void {
         const result = this._reader.channel!.queryAndReadEtc()
-        if (result.bytes.lengthInBytes == 0) {
+        if (result.bytes?.byteLength == 0) {
             throw new FidlError(
                 `Unexpected empty message or error: ${result} from channel ${this._reader.channel}`
             )
@@ -399,8 +399,8 @@ export class ProxyController<T> {
         this.$interfaceName = $interfaceName
         this.$serviceName = $serviceName
 
-        this._reader.onReadable = _handleReadable
-        this._reader.onError = _handleError
+        this._reader.onReadable = this._handleReadable
+        this._reader.onError = this._handleError
     }
 
     /// Event for binding.
@@ -554,9 +554,9 @@ export class ProxyController<T> {
     }
 
     private _handleReadable(): void {
-        const result = this._reader.channel!.queryAndReadEtc()
+        const result = this._reader.channel.queryAndReadEtc()
 
-        if (result.bytes.lengthInBytes == 0) {
+        if (result.bytes?.byteLength == 0) {
             this.proxyError("Read from channel ${_reader.channel} failed")
             return
         }
@@ -569,7 +569,7 @@ export class ProxyController<T> {
             }
         } catch (e: unknown) {
             if (e instanceof Error) {
-                for (const handleInfo in result.handleInfos) {
+                for (const handleInfo of result.handleInfos ?? []) {
                     handleInfo.handle.close()
                 }
                 this.proxyError(e.toString())

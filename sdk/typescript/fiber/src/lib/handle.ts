@@ -6,9 +6,6 @@ import {
 import { fx_handle_close } from "@meshx-org/fiber-sys"
 import { AsyncWaitCallback, HandleWaiter } from "./handle_waiter"
 
-export type HandleDisposition = any
-export type HandleInfo = any
-
 export class Handle {
     private $handle: fx_handle_t = FX_INVALID_HANDLE
     private waiters: HandleWaiter[] = []

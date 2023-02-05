@@ -11,6 +11,8 @@ import {
     u64,
     i64,
     Ref,
+    fx_handle_info_t,
+    fx_handle_disposition_t,
 } from "@meshx-org/fiber-types"
 
 export interface System {
@@ -222,13 +224,59 @@ export function fx_process_exit(retcode: i64): void {
     else throw new Error("system is not initialized")
 }
 
+export function fx_channel_read(
+    handle: fx_handle_t,
+    options: u32,
+    bytes: ArrayBuffer | null,
+    handles: fx_handle_t[] | null,
+    num_bytes: u32,
+    num_handles: u32,
+    actual_bytes: Ref<u32>,
+    actual_handles: Ref<u32>
+): fx_status_t {
+    return 0
+}
+
+export function fx_channel_read_etc(
+    handle: fx_handle_t,
+    options: u32,
+    bytes: ArrayBuffer | null,
+    handleInfos: fx_handle_info_t[] | null,
+    num_bytes: u32,
+    num_handles: u32,
+    actual_bytes: Ref<u32>,
+    actual_handles: Ref<u32>
+): fx_status_t {
+    return 0
+}
+
+export function fx_channel_write(
+    handle: fx_handle_t,
+    options: u32,
+    bytes: ArrayBuffer,
+    num_bytes: u32,
+    handles: fx_handle_t[],
+    num_handles: u32
+): fx_status_t {
+    return 0
+}
+
+export function fx_channel_write_etc(
+    handle: fx_handle_t,
+    options: u32,
+    bytes: ArrayBuffer,
+    num_bytes: u32,
+    handles: fx_handle_disposition_t[],
+    num_handles: u32
+): fx_status_t {
+    return 0
+}
+
 export function fx_channel_create(
     out1: Ref<fx_handle_t>,
     out2: Ref<fx_handle_t>
 ): fx_status_t {
-    if (self.sys_channel_create) return self.sys_channel_create(out1, out2)
-    else if (sys) return sys.sys_channel_create(out1, out2)
-    else throw new Error("system is not initialized")
+    return 0
 }
 
 export { init, fx_job_create }
