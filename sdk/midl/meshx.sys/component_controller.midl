@@ -1,103 +1,56 @@
-library {
-  name = "meshx.sys"
+library meshx.sys
+
+enum TerminationReason :u8 {
+    /// The channel closed without giving a termination reason.
+    UNKNOWN = 0
+    /// Component ran and exited with a given return_code.
+    EXITED = 1
+    /// The given URL given to launch was invalid.
+    URL_INVALID = 2
+    /// The requested package could not be found.
+    PACKAGE_NOT_FOUND = 3
+    /// An internal error happened during the launch process.
+    INTERNAL_ERROR = 4
+    /// Process creation failed.
+    PROCESS_CREATION_ERROR = 5
+    /// A Runner failed to start.
+    RUNNER_FAILED = 6
+    /// A Runner terminated while attempting to run a component.
+    RUNNER_TERMINATED = 7
+    /// Attempted to use an unsupported feature.
+    UNSUPPORTED = 8
+    /// Attempted to create a component in a realm which is shutting down.
+    REALM_SHUTTING_DOWN = 9
+    /// Insufficient privilege to start the component.
+    ACCESS_DENIED = 10
 }
 
-enum TerminationReason {
-  variant UNKNOWN {
-    doc   = "The channel closed without giving a termination reason."
-    value = 0
-  }
-  variant EXITED {
-    doc   = "Component ran and exited with a given return_code."
-    value = 1
-  }
-  variant URL_INVALIDd {
-    doc   = "The given URL given to launch was invalid."
-    value = 2
-  }
-  variant PACKAGE_NOT_FOUND {
-    doc   = "The requested package could not be found."
-    value = 3
-  }
-  variant INTERNAL_ERROR {
-    doc   = "An internal error happened during the launch process."
-    value = 4
-  }
-  variant PROCESS_CREATION_ERROR {
-    doc   = "Process creation failed."
-    value = 5
-  }
-  variant RUNNER_FAILED {
-    doc   = "A Runner failed to start."
-    value = 6
-  }
-  variant RUNNER_TERMINATED {
-    doc   = "A Runner terminated while attempting to run a component."
-    value = 7
-  }
-  variant UNSUPPORTED {
-    doc   = "Attempted to use an unsupported feature."
-    value = 8
-  }
-  variant REALM_SHUTTING_DOWN {
-    doc   = "Attempted to create a component in a realm which is shutting down."
-    value = 9
-  }
-  variant ACCESS_DENIED {
-    doc   = " Insufficient privilege to start the component."
-    value = 10
-  }
-}
-
+/// An interface for controlling components.
+///  
+/// Closing this interface implicitly kills the controlled component unless
+/// the `Detach` method has been called.
+///  
+/// If the component exits, this interface will be closed.
+///  
+/// Typically obtained via `Launcher.CreateComponent`.
 protocol ComponentController {
-  doc = <<-EOT
-  An interface for controlling components.
-  
-  Closing this interface implicitly kills the controlled component unless
-  the `Detach` method has been called.
-  
-  If the component exits, this interface will be closed.
-  
-  Typically obtained via `Launcher.CreateComponent`.
-  EOT
+    /// Terminates the component.
+    /// 
+    /// This ComponentController connection is closed when the component has
+    /// terminated.
+    fn Kill() -> ()
 
-  method Kill {
-    doc = <<-EOT
-    Terminates the component.
+    /// Event that is triggered when the component is terminated.
+    /// 
+    /// This event provides the return code of the process and reason for
+    /// its termination. The return_code is only valid if the termination
+    /// reason is EXITED. If the termination reason is not EXITED, the
+    /// return code is guaranteed not to be 0.
+    -> OnTerminated
 
-    This ComponentController connection is closed when the component has
-    terminated.
-    EOT
-
-    request {}
-    response {}
-    error {}
-  }
-
-  event OnTerminated {
-    doc = <<-EOT
-    Event that is triggered when the component is terminated.
-    
-    This event provides the return code of the process and reason for
-    its termination. The return_code is only valid if the termination
-    reason is EXITED. If the termination reason is not EXITED, the
-    return code is guaranteed not to be 0.
-    EOT
-
-    data {
-      member return_code { type = int64 }
-      member termination_reason { type = struct.TerminationReason }
-    }
-  }
-
-  event OnDirectoryReady {
-    doc = <<-EOT
-    Event that is triggered when the component's output directory is mounted.
-    
-    This event will not be triggered for every component, only those that
-    serve a directory over their `PA_DIRECTORY_REQUEST` handle.
-    EOT
-
-    data {}
-  }
+    /// Event that is triggered when the component's output directory is mounted.
+    ///   
+    /// This event will not be triggered for every component, only those that
+    /// serve a directory over their `PA_DIRECTORY_REQUEST` handle.
+    -> OnDirectoryReady
 }

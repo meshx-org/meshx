@@ -1,3 +1,5 @@
+use midlgen::{CompoundIdentifier, Identifier};
+
 struct StructMember;
 struct StructPadding;
 
@@ -60,7 +62,7 @@ pub fn compile(r: midlgen::Root) -> Root {
         root: Root::default(),
         // experiments: .experiments,
         // types_root: r,
-        library: midlgen::LibraryIdentifier::from(r.name),
+        library: midlgen::LibraryIdentifier::from(midlgen::EncodedLibraryIdentifier("".to_owned())),
         // paramableTypes: map[fidlgen.EncodedCompoundIdentifier]Parameterizer{},
     };
 

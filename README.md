@@ -21,21 +21,22 @@ parent:
 ---
 
 ### 🚨 Warning
+
 This is a work-in-progress project, which means lot of the features simply not there yet. But as soon as we're ready we'll let you know!
 
 ---
 
 ## 👋 Welcome
 
-MeshX is the foundation for the future of business software. It provides a declarative approach to create your cozy digital workplace. It can replace many of the siloed business tools you use and instead provide seamless, interconnected ecosystem of tools. 
+MeshX is the foundation for the future of business software. It provides a declarative approach to create your cozy digital workplace. It can replace many of the siloed business tools you use and instead provide seamless, interconnected ecosystem of tools.
 
-- Connected data with **multiple database** connectors available
-- **P2P sharing** without any dependency on central servers
-- Consistent view on your work using the [MeshX App][app-link]
-- Automations using a **low-code** workflow editor
-- **Declarative** API (similar to kubernetes but with a different purpose)
-- Highly **extensible** with code or without
-- Easy start in the cloud with [MeshX Cloud][cloud-link]
+-   Connected data with **multiple database** connectors available
+-   **P2P sharing** without any dependency on central servers
+-   Consistent view on your work using the [MeshX App][app-link]
+-   Automations using a **low-code** workflow editor
+-   **Declarative** API (similar to kubernetes but with a different purpose)
+-   Highly **extensible** with code or without
+-   Easy start in the cloud with [MeshX Cloud][cloud-link]
 
 <!--
 ## Contributing
@@ -43,6 +44,7 @@ Thank you for considering contributing to MeshX! You can read the contribution g
 -->
 
 ## 🚧 Contributing
+
 We're not currently in a stage where accepting contributions would be helpful. Please check back later.
 
 ## 📙 Code of Conduct

@@ -23,14 +23,14 @@ use {
     bitflags::bitflags,
     fuchsia_zircon_status as zx_status,
     futures::future::{self, MaybeDone, TryFutureExt},
-    fidl::{
-        fidl_bits,
-        fidl_empty_struct,
-        fidl_enum,
-        fidl_struct_copy,
-        fidl_struct,
-        fidl_table,
-        fidl_union,
+    midl::{
+        midl_bits,
+        midl_empty_struct,
+        midl_enum,
+        midl_struct_copy,
+        midl_struct,
+        midl_table,
+        midl_union,
         wrap_handle_metadata,
         encoding::{Encodable as _, Decodable as _, zerocopy},
         endpoints::{ControlHandle as _, Responder as _},
@@ -42,10 +42,10 @@ use {
 };
 
 {{!
-For FIDL tracing, the Rust bindings are assigned a bindings enum of 6. See
+For MIDL tracing, the Rust bindings are assigned a bindings enum of 6. See
 fidl-trace/trace_impl.cc, enum LogContext for more context.
 
-This constant will be unused in a build that has FIDL tracing disabled,
+This constant will be unused in a build that has MIDL tracing disabled,
 since this constant is used only within trace_duration! macros that will
 expand to no-ops. However, the constant needs to be present, since the
 constant is evaluated before the macro expansion.
@@ -54,7 +54,7 @@ The constant starts with an underscore to avoid clashing with FIDL
 declarations, which are not allowed to start with underscores.
 }}
 {{#if protocols}}
-const _FIDL_TRACE_BINDINGS_RUST: u32 = 6;
+const _MIDL_TRACE_BINDINGS_RUST: u32 = 6;
 {{/if}}
 
 {{#each bits}}

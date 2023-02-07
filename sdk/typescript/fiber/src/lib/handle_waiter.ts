@@ -1,10 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 
-import {
-    fx_port_wait,
-    fx_object_wait_async,
-    fx_port_create,
-} from "@meshx-org/fiber-sys"
+import { fx_port_wait, fx_object_wait_async, fx_port_create } from "@meshx-org/fiber-sys"
 import {
     u64,
     FX_INVALID_HANDLE,
@@ -94,9 +90,7 @@ class Executor {
 
     /// Registers a `PacketReceiver` with the executor and returns a registration.
     /// The `PacketReceiver` will be deregistered when the `Registration` is dropped.
-    public register_receiver<T extends PacketReceiver>(
-        receiver: T
-    ): ReceiverRegistration<T> {
+    public register_receiver<T extends PacketReceiver>(receiver: T): ReceiverRegistration<T> {
         const key = this.receivers.insert(receiver) as u64
         return { executor: this, key, receiver }
     }
@@ -113,11 +107,7 @@ export class HandleWaiter implements PacketReceiver {
     private handle: Handle | null = null
     private onRecieve: AsyncWaitCallback
 
-    constructor(
-        handle: Handle,
-        signals: fx_signals_t,
-        callback: AsyncWaitCallback
-    ) {
+    constructor(handle: Handle, signals: fx_signals_t, callback: AsyncWaitCallback) {
         this.handle = handle
 
         const registration = self.executor.register_receiver(this)

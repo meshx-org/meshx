@@ -1,9 +1,7 @@
 {
     "$schema": "http://json-schema.org/schema",
     "type": "object",
-    "required": [
-        "outDir"
-    ],
+    "required": ["outDir"],
     "properties": {
         "outDir": {
             "type": "string",

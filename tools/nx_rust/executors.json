@@ -3,7 +3,7 @@
         "echo": {
             "implementation": "./src/executors/echo/executor",
             "schema": "./src/executors/echo/schema.json",
-            "description": "Execute a Node application."
+            "description": "echo executor"
         },
         "build": {
             "implementation": "./src/executors/build/executor",

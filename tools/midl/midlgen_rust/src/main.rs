@@ -3,6 +3,8 @@ mod types;
 
 use handlebars::Handlebars;
 
+use clap::Parser;
+use midlgen::{BaseDeclaration, Location};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
@@ -11,13 +13,22 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 use types::*;
 
-use crate::helpers::{PrintfHelper, IfCondHelper};
+use crate::helpers::{IfCondHelper, PrintfHelper};
 
 fn compile(ir: midlgen::Root) -> Root {
     // TODO: add ir compilation
 
     let const1 = Const {
         base: midlgen::Const {
+            base: BaseDeclaration {
+                name: String::from("TEST_CONST"),
+                location: midlgen::Location {
+                    filename: String::from(""),
+                    line: 0,
+                    column: 0,
+                    length: 0,
+                },
+            },
             doc: Some(String::new()),
         },
         name: String::from("TEST_CONST"),
@@ -36,6 +47,15 @@ fn compile(ir: midlgen::Root) -> Root {
 
     let enum1 = Enum {
         base: midlgen::Enum {
+            base: BaseDeclaration {
+                name: String::from(""),
+                location: midlgen::Location {
+                    filename: String::from(""),
+                    line: 0,
+                    column: 0,
+                    length: 0,
+                },
+            },
             doc: None,
             member: None,
         },
@@ -69,7 +89,7 @@ fn compile(ir: midlgen::Root) -> Root {
             doc: None,
             methods: vec![],
         },
-        eci: midlgen::EncodedCompoundIdentifier,
+        eci: midlgen::EncodedCompoundIdentifier("".to_owned()),
         name: String::from("TestProtocol"),
         methods: vec![],
         protocol_name: String::from("TestProtocol"),
@@ -77,11 +97,20 @@ fn compile(ir: midlgen::Root) -> Root {
 
     let struct1 = Struct {
         base: midlgen::Struct {
+            base: BaseDeclaration {
+                name: "".to_owned(),
+                location: midlgen::Location {
+                    filename: String::from(""),
+                    line: 0,
+                    column: 0,
+                    length: 0,
+                },
+            },
             doc: Some(String::new()),
             member: HashMap::new(),
         },
         name: String::from("TestSctruct"),
-        eci: midlgen::EncodedCompoundIdentifier,
+        eci: midlgen::EncodedCompoundIdentifier("".to_owned()),
         derives: Derives(0),
         members: vec![struct_member1],
         padding_markers_v1: vec![],
@@ -198,11 +227,18 @@ impl Generator {
     }
 }
 
-fn main() -> Result<(), GeneratorError> {
-    let mut buffer = String::new();
-    std::io::stdin().read_line(&mut buffer).unwrap();
+#[derive(clap::Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    json: String,
+}
 
-    let root = serde_json::from_str::<midlgen::Root>(buffer.as_str())?;
+fn main() -> Result<(), GeneratorError> {
+    let args = Args::parse();
+    let contents = std::fs::read_to_string(args.json).unwrap();
+
+    let root = serde_json::from_str::<midlgen::Root>(contents.as_str())?;
 
     let generator = Generator::new();
     generator.generate_fidl(root, "./OUTPUT.rs".to_owned())?;

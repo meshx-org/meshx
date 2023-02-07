@@ -30,11 +30,7 @@ class MemberType {
 export const kMessageHeaderSize = 16
 export const kLargeMessageInfoSize = 16
 export const kLargeMessageVmoRights =
-    FX_RIGHT_GET_PROPERTY |
-    FX_RIGHT_INSPECT |
-    FX_RIGHT_READ |
-    FX_RIGHT_TRANSFER |
-    FX_RIGHT_WAIT
+    FX_RIGHT_GET_PROPERTY | FX_RIGHT_INSPECT | FX_RIGHT_READ | FX_RIGHT_TRANSFER | FX_RIGHT_WAIT
 
 export const kMessageTxidOffset = 0
 export const kMessageFlagOffset = 4
@@ -98,29 +94,19 @@ class BaseMessage {
     }
 
     parseWireFormat(): WireFormat {
-        if (
-            (this.data.getUint8(kMessageFlagOffset) & kWireFormatV2FlagMask) !=
-            0
-        ) {
+        if ((this.data.getUint8(kMessageFlagOffset) & kWireFormatV2FlagMask) != 0) {
             return WireFormat.v2
         }
 
-        throw new FidlError(
-            "unknown wire format",
-            FidlErrorCode.fidlUnsupportedWireFormat
-        )
+        throw new FidlError("unknown wire format", FidlErrorCode.fidlUnsupportedWireFormat)
     }
 
     get strictness(): CallStrictness {
-        return strictnessFromFlags(
-            this.data.getUint8(kMessageDynamicFlagOffset)
-        )
+        return strictnessFromFlags(this.data.getUint8(kMessageDynamicFlagOffset))
     }
 
     get overflowing(): CallOverflowing {
-        return overflowingFromFlags(
-            this.data.getUint8(kMessageDynamicFlagOffset)
-        )
+        return overflowingFromFlags(this.data.getUint8(kMessageDynamicFlagOffset))
     }
 
     isCompatible(): boolean {
@@ -177,9 +163,7 @@ export class IncomingMessage extends BaseMessage {
 
     static fromReadEtcResult(result: ReadEtcResult): IncomingMessage {
         if (result.status !== Status.OK) {
-            throw new Error(
-                `ony results with Status.OK can be used to create a message`
-            )
+            throw new Error(`ony results with Status.OK can be used to create a message`)
         }
 
         return new IncomingMessage(result.bytes!, result.handleInfos!)
@@ -222,12 +206,7 @@ export class OutgoingMessage extends BaseMessage {
 }
 
 /** Encodes a FIDL message that contains a single parameter. */
-export function encodeMessage<T>(
-    encoder: Encoder,
-    inlineSize: number,
-    ty: MemberType,
-    value: T
-): void {
+export function encodeMessage<T>(encoder: Encoder, inlineSize: number, ty: MemberType, value: T): void {
     encoder.alloc(inlineSize, 0)
     ty.encode(encoder, value, kMessageHeaderSize, 1)
 }
@@ -239,11 +218,7 @@ export function encodeMessage<T>(
  * MemberType.encode() must pass in a concrete type, rather than an element
  * popped from a List<FidlType>.
  */
-export function encodeMessageWithCallback(
-    encoder: Encoder,
-    inlineSize: number,
-    f: () => void
-): void {
+export function encodeMessageWithCallback(encoder: Encoder, inlineSize: number, f: () => void): void {
     encoder.alloc(inlineSize, 0)
     f()
 }
@@ -282,18 +257,10 @@ function validateDecoding(decoder: Decoder): void {
 }
 
 /** Decodes a FIDL message that contains a single parameter. */
-export function decodeMessage<T>(
-    message: IncomingMessage,
-    inlineSize: number,
-    typ: MemberType
-): T {
-    return decodeMessageWithCallback(
-        message,
-        inlineSize,
-        (decoder: Decoder, offset: number) => {
-            return typ.decode(decoder, offset, 1)
-        }
-    )
+export function decodeMessage<T>(message: IncomingMessage, inlineSize: number, typ: MemberType): T {
+    return decodeMessageWithCallback(message, inlineSize, (decoder: Decoder, offset: number) => {
+        return typ.decode(decoder, offset, 1)
+    })
 }
 
 /// Decodes a FIDL message with multiple parameters.  The callback parameter

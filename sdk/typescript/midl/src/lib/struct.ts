@@ -35,8 +35,4 @@ export abstract class Struct {
     }
 }
 
-export type StructDecode<T> = (
-    decoder: Decoder,
-    offset: number,
-    depth: number
-) => T
+export type StructDecode<T> = (decoder: Decoder, offset: number, depth: number) => T

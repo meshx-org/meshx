@@ -54,11 +54,7 @@ export abstract class HandleWrapperPair<T> {
         return this._status
     }
 
-    protected constructor(
-        status: Status | null,
-        first: T | null,
-        second: T | null
-    ) {
+    protected constructor(status: Status | null, first: T | null, second: T | null) {
         this._status = status
         this._first = first
         this._second = second

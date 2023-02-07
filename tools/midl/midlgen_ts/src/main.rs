@@ -1,5 +1,6 @@
 use handlebars::Handlebars;
 
+use clap::Parser;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::File;
@@ -24,12 +25,23 @@ pub enum GeneratorError {
     Unknown,
 }
 
-fn main() -> Result<(), GeneratorError> {
-    let mut buffer = String::new();
-    std::io::stdin().read_line(&mut buffer).unwrap();
+#[derive(clap::Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    json: String,
+}
 
-    let root = serde_json::from_str::<midlgen::Root>(buffer.as_str())?;
+fn main() -> Result<(), GeneratorError> {
+    let args = Args::parse();
+
+    let contents = std::fs::read_to_string(args.json).unwrap();
+    println!("Hello {}!", contents);
+
+    let root = serde_json::from_str::<midlgen::Root>(contents.as_str())?;
+    println!("{:?}", root);
     let root = ir::compile(root);
+   
 
     Ok(())
 }

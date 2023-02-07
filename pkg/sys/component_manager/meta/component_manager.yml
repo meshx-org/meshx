@@ -1,6 +1,6 @@
 program:
-  runner: native
-  registryKey: bin/component_manager
-  params:
-    - "--config"
-    - "/pkg/data/component_manager_realm_builder_config"
+    runner: native
+    registryKey: bin/component_manager
+    params:
+        - "--config"
+        - "/pkg/data/component_manager_realm_builder_config"

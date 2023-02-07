@@ -1,0 +1,17 @@
+{
+    "name": "tools/midl/midlgen_rust",
+    "root": "tools/midl/midlgen_rust",
+    "projectType": "application",
+    "implicitDependencies": ["tools/nx_rust"],
+    "targets": {
+        "build": {
+            "executor": "./dist/tools/nx_rust:build",
+            "dependsOn": ["^build"],
+            "inputs": ["{projectRoot}/**/*.rs"],
+            "outputs": ["{workspaceRoot}/dist/tools/midl/midlgen_rust"],
+            "options": {
+                "outDir": "./dist/tools/midl/midlgen_rust"
+            }
+        }
+    }
+}

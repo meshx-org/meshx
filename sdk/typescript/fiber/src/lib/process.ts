@@ -1,7 +1,7 @@
-import { fx_process_create, fx_process_start } from '@meshx-org/fiber-sys'
-import { fx_status_t } from '@meshx-org/fiber-types'
-import { HandleWrapper } from './handleWrapper'
-import { Handle } from './handle'
+import { fx_process_create, fx_process_start } from "@meshx-org/fiber-sys"
+import { fx_status_t } from "@meshx-org/fiber-types"
+import { HandleWrapper } from "./handleWrapper"
+import { Handle } from "./handle"
 
 export class Process extends HandleWrapper {
     // eslint-disable-next-line @typescript-eslint/no-empty-function

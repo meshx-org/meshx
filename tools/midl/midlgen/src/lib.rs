@@ -113,16 +113,16 @@ pub type DeclInfoMap = HashMap<String, ()>;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BaseDeclaration {
-    name: String,
-    location: Location,
+    pub name: String,
+    pub location: Location,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Location {
-    filename: String,
-    line: i32,
-    column: i32,
-    length: i32,
+    pub filename: String,
+    pub line: i32,
+    pub column: i32,
+    pub length: i32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -132,7 +132,6 @@ pub struct Type {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Root {
-    pub name: EncodedLibraryIdentifier,
     pub library: Library,
 
     pub r#const: Vec<Const>,

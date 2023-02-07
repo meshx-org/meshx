@@ -4,18 +4,8 @@
 // found in the LICENSE file.
 
 import { FidlError, FidlErrorCode } from "./errors"
-import {
-    IncomingMessage,
-    IncomingMessageSink,
-    OutgoingMessage,
-    OutgoingMessageSink,
-} from "./message"
-import {
-    Channel,
-    ChannelPair,
-    ChannelReader,
-    ChannelReaderError,
-} from "@meshx-org/fiber"
+import { IncomingMessage, IncomingMessageSink, OutgoingMessage, OutgoingMessageSink } from "./message"
+import { Channel, ChannelPair, ChannelReader, ChannelReaderError } from "@meshx-org/fiber"
 import { Status } from "@meshx-org/fiber-types"
 import { Completer } from "./completer"
 
@@ -311,26 +301,18 @@ export abstract class Binding<T> {
     ///
     /// This function is called by this object whenever a message arrives over a
     /// bound channel.
-    protected abstract handleMessage(
-        message: IncomingMessage,
-        respond: OutgoingMessageSink
-    ): void
+    protected abstract handleMessage(message: IncomingMessage, respond: OutgoingMessageSink): void
 
     private handleReadable(): void {
         const result = this._reader.channel!.queryAndReadEtc()
         if (result.bytes?.byteLength == 0) {
-            throw new FidlError(
-                `Unexpected empty message or error: ${result} from channel ${this._reader.channel}`
-            )
+            throw new FidlError(`Unexpected empty message or error: ${result} from channel ${this._reader.channel}`)
         }
         const message = IncomingMessage.fromReadEtcResult(result)
 
         if (!message.isCompatible()) {
             close()
-            throw new FidlError(
-                "Incompatible wire format",
-                FidlErrorCode.fidlUnknownMagic
-            )
+            throw new FidlError("Incompatible wire format", FidlErrorCode.fidlUnknownMagic)
         }
 
         this.handleMessage(message, this.sendMessage)
@@ -354,10 +336,7 @@ export abstract class Binding<T> {
             response.closeHandles()
             return
         }
-        this._reader.channel!.writeEtc(
-            response.data,
-            response.handleDispositions
-        )
+        this._reader.channel!.writeEtc(response.data, response.handleDispositions)
     }
 }
 
@@ -544,9 +523,7 @@ export class ProxyController<T> {
         this._callbackMap.clear()
         this._errorCompleter = new Completer<ProxyError>()
         if (!this._boundCompleter.isCompleted) {
-            this._boundCompleter.completeError(
-                `Proxy<${this.$interfaceName}> closed.`
-            )
+            this._boundCompleter.completeError(`Proxy<${this.$interfaceName}> closed.`)
         }
         this._boundCompleter = new Completer<null>()
         this._nextTxid = 1
@@ -598,14 +575,9 @@ export class ProxyController<T> {
             this.proxyError("The proxy is closed.")
             return
         }
-        const status = this._reader.channel!.writeEtc(
-            message.data,
-            message.handleDispositions
-        )
+        const status = this._reader.channel!.writeEtc(message.data, message.handleDispositions)
         if (status != Status.OK) {
-            this.proxyError(
-                `Failed to write to channel: ${this._reader.channel} (status: ${status})`
-            )
+            this.proxyError(`Failed to write to channel: ${this._reader.channel} (status: ${status})`)
         }
     }
 
@@ -613,27 +585,18 @@ export class ProxyController<T> {
     /// to handle the response.
     ///
     /// Used by subclasses of [Proxy<T>] to send encoded messages.
-    sendMessageWithResponse(
-        message: OutgoingMessage,
-        callback: () => void
-    ): void {
+    sendMessageWithResponse(message: OutgoingMessage, callback: () => void): void {
         if (!this._reader.isBound) {
             this.proxyError("The sender is closed.")
             return
         }
         const _kUserspaceTxidMask = 0x7fffffff
         let txid = this._nextTxid++ & _kUserspaceTxidMask
-        while (txid == 0 || this._callbackMap.has(txid))
-            txid = this._nextTxid++ & _kUserspaceTxidMask
+        while (txid == 0 || this._callbackMap.has(txid)) txid = this._nextTxid++ & _kUserspaceTxidMask
         message.txid = txid
-        const status = this._reader.channel!.writeEtc(
-            message.data,
-            message.handleDispositions
-        )
+        const status = this._reader.channel!.writeEtc(message.data, message.handleDispositions)
         if (status != Status.OK) {
-            this.proxyError(
-                "Failed to write to channel: ${_reader.channel} (status: $status)"
-            )
+            this.proxyError("Failed to write to channel: ${_reader.channel} (status: $status)")
             return
         }
         this._callbackMap.set(message.txid, callback)

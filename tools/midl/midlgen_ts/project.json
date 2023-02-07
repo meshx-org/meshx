@@ -1,0 +1,16 @@
+{
+    "name": "tools/midl/midlgen_ts",
+    "$schema": "node_modules/nx/schemas/project-schema.json",
+    "projectType": "application",
+    "implicitDependencies": ["tools/nx_rust"],
+    "targets": {
+        "build": {
+            "executor": "./dist/tools/nx_rust:build",
+            "dependsOn": ["^build"],
+            "outputs": ["{workspaceRoot}/dist/tools/midl/midlgen_ts"],
+            "options": {
+                "outDir": "./dist/tools/midl/midlgen_ts"
+            }
+        }
+    }
+}

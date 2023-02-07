@@ -7,6 +7,6 @@ export enum WireFormat {
     v2,
 }
 
-export const kWireFormatDefault = WireFormat.v2;
-export const kEnvelopeInlineMarker = 1;
-export const kEnvelopeOutOfLineMarker = 0;
+export const kWireFormatDefault = WireFormat.v2
+export const kEnvelopeInlineMarker = 1
+export const kEnvelopeOutOfLineMarker = 0

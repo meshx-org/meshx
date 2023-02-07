@@ -12,9 +12,9 @@ use midlgen::{EncodedLibraryIdentifier, Library, Root};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 use serde_json::Value;
+use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use std::process::{Command as Cmd, Stdio};
 
 #[macro_use]
 extern crate pest_derive;
@@ -87,7 +87,6 @@ fn parse_midl_file(value: Value) -> Root {
     println!("{} {}", uses_is_object, uses_is_array);
 
     Root {
-        name: EncodedLibraryIdentifier("".to_owned()),
         library: Library::from_idl(library_raw),
         r#const: vec![],
         r#enum: vec![],
@@ -96,25 +95,54 @@ fn parse_midl_file(value: Value) -> Root {
     }
 }
 
-static LIBRARY: &str = r#"
-library test.test
+static HCL: &str = r#"
+library {
+  name = "meshx.sys"
+}
 
-@doc(added = "test")
-const test :array(u8) = "test"
+use {
+  lib = meshx.sys
+  as  = sys
+}
 
-@db.test(added = "test")
-struct test {
-   test :u8 @test, /// this is a doc
-   test1 :u8
+protocol Launcher {
+  discoverable = true
+  doc          = <<-EOT
+  An interface for creating component instances.
+  Typically obtained via `Environment.GetLauncher`.
+  EOT
+
+  method CreateComponent {
+    doc = <<-EOT
+    Creates a new instance of the component described by `launch_info`.
+
+    The component instance is created in the `Environment`
+    associated with this `Launcher`. When creating the component,
+    the environment requests the environment services for this component from
+    its `EnvironmentHost`.
+
+    The `controller` can be used to control the lifecycle of the created
+    component instance. If an `ComponentController`'s interface is
+    requested, the component instance is killed when the interface is closed.
+    EOT
+
+    request {
+      method launch_info {
+        type = meshx.sys.LaunchInfo
+      }
+      method controller {
+        optional = true
+        type     = fx.server_end
+        of {
+          type = meshx.sys.ComponentController
+        }
+      }
+    }
+  }
 }
 "#;
 
 fn main() -> std::io::Result<()> {
-    let mut diagnotics = Diagnostics::new();
-    let pairs = MIDLParser::parse(parse::Rule::library, LIBRARY).unwrap();
-    let ast = parse(pairs, &mut diagnotics);
-    println!("{:?}", ast);
-
     let matches = cli().get_matches();
 
     match matches.subcommand() {
@@ -125,8 +153,14 @@ fn main() -> std::io::Result<()> {
                 .flatten()
                 .collect::<Vec<_>>();
 
-            let hcl_source = std::fs::read_to_string(paths[0])?;
-            let value = hcl::from_str(&hcl_source).unwrap();
+            let midl_source = std::fs::read_to_string(paths[0])?;
+
+            let mut diagnotics = Diagnostics::new();
+            let pairs = MIDLParser::parse(parse::Rule::library, &midl_source.as_str()).unwrap();
+            let ast = parse(pairs, &mut diagnotics);
+            println!("{:?}", ast);
+
+            let value = hcl::from_str(&HCL).unwrap();
 
             let ir = parse_midl_file(value);
 
@@ -135,20 +169,10 @@ fn main() -> std::io::Result<()> {
 
             let ir_str = serde_json::to_string(&ir)?;
 
-            let mut child = Cmd::new("midlgen_rust")
-                .stdin(Stdio::piped())
-                .stdout(Stdio::piped())
-                .spawn()
-                .expect("failed to execute child");
-
-            let child_stdin = child.stdin.as_mut().unwrap();
-            child_stdin.write_all(ir_str.as_bytes())?;
-
-            // Close stdin to finish and avoid indefinite blocking
-            drop(child_stdin);
-
-            let output = child.wait_with_output()?;
-            println!("Compling paths = {:?} output = {:?}", paths, output);
+            let mut file = File::create("./ir.json")?;
+            file.write_all(ir_str.as_bytes())?;
+            file.flush()?;
+            
 
             Ok(())
         }

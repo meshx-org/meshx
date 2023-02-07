@@ -1,32 +1,3 @@
-library {
-  name = "example"
-}
+library example.midl
 
-use {
-  name = test
-  as   = geo
-}
-
-struct Test {
-  member test { type = geo.Rect }
-
-  member matrix {
-    type = array
-    of { type = string }
-  }
-}
-
-protocol Test {
-  discoverable = true
-
-  method do_something {
-    doc = "Test event"
-    request {}
-    response {}
-    error {}
-  }
-
-  event on_event {
-    doc = "Test event"
-  }
-}
+const CONSTANT_TEST :u32 = 0

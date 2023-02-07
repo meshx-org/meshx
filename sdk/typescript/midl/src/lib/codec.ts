@@ -3,10 +3,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import { HandleDisposition, HandleInfo } from '@meshx-org/fiber'
+import { HandleDisposition, HandleInfo } from "@meshx-org/fiber"
 import { Status } from "@meshx-org/fiber-types"
 
-import { FidlError, FidlErrorCode, FidlRangeCheckError } from './errors'
+import { FidlError, FidlErrorCode, FidlRangeCheckError } from "./errors"
 import {
     CallStrictness,
     IncomingMessage,
@@ -20,8 +20,8 @@ import {
     kWireFormatV2FlagMask,
     OutgoingMessage,
     strictnessToFlags,
-} from './message'
-import { kEnvelopeInlineMarker, WireFormat } from './wireformat'
+} from "./message"
+import { kEnvelopeInlineMarker, WireFormat } from "./wireformat"
 
 const _kAlignment = 8
 const _kAlignmentMask = _kAlignment - 1
@@ -70,7 +70,7 @@ export class Encoder {
 
     alloc(size: number, nextOutOfLineDepth: number): number {
         if (nextOutOfLineDepth > _maxOutOfLineDepth) {
-            throw new FidlError('Exceeded maxOutOfLineDepth', FidlErrorCode.fidlExceededMaxOutOfLineDepth)
+            throw new FidlError("Exceeded maxOutOfLineDepth", FidlErrorCode.fidlExceededMaxOutOfLineDepth)
         }
         const offset = this.extent
         this.claimBytes(align(size))
@@ -199,12 +199,12 @@ export class Decoder {
 
     public claimBytes(size: number, nextOutOfLineDepth: number): number {
         if (nextOutOfLineDepth > _maxOutOfLineDepth) {
-            throw new FidlError('Exceeded maxOutOfLineDepth', FidlErrorCode.fidlExceededMaxOutOfLineDepth)
+            throw new FidlError("Exceeded maxOutOfLineDepth", FidlErrorCode.fidlExceededMaxOutOfLineDepth)
         }
         const result = this.nextOffset
         this.nextOffset += align(size)
         if (this.nextOffset > this.data.byteLength) {
-            throw new FidlError('Cannot access out of range memory', FidlErrorCode.fidlTooFewBytes)
+            throw new FidlError("Cannot access out of range memory", FidlErrorCode.fidlTooFewBytes)
         }
         return result
     }
@@ -223,7 +223,7 @@ export class Decoder {
 
     claimHandle(): HandleInfo {
         if (this.nextHandle >= this.handleInfos.length) {
-            throw new FidlError('Cannot access out of range handle', FidlErrorCode.fidlTooFewHandles)
+            throw new FidlError("Cannot access out of range handle", FidlErrorCode.fidlTooFewHandles)
         }
         return this.handleInfos[this.nextHandle++]
     }
@@ -235,7 +235,7 @@ export class Decoder {
             case 1:
                 return true
             default:
-                throw new FidlError('Invalid boolean', FidlErrorCode.fidlInvalidBoolean)
+                throw new FidlError("Invalid boolean", FidlErrorCode.fidlInvalidBoolean)
         }
     }
 
@@ -253,7 +253,7 @@ export class Decoder {
     checkPadding(offset: number, padding: number): void {
         for (let readAt = offset; readAt < offset + padding; readAt++) {
             if (this.data.getUint8(readAt) != 0) {
-                throw new FidlError('Non-zero padding at: $readAt', FidlErrorCode.fidlInvalidPaddingByte)
+                throw new FidlError("Non-zero padding at: $readAt", FidlErrorCode.fidlInvalidPaddingByte)
             }
         }
     }

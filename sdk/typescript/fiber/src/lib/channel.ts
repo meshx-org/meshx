@@ -51,16 +51,7 @@ export class Channel extends HandleWrapper {
         const actualHandles = new Ref(0)
 
         // Query the size of the next message.
-        let status = fx_channel_read(
-            this.handle.raw,
-            0,
-            null,
-            null,
-            0,
-            0,
-            actualBytes,
-            actualHandles
-        )
+        let status = fx_channel_read(this.handle.raw, 0, null, null, 0, 0, actualBytes, actualHandles)
 
         if (status != Status.ERR_BUFFER_TOO_SMALL) {
             // An empty message or an error.
@@ -107,14 +98,7 @@ export class Channel extends HandleWrapper {
             fx_handles.push(handle.raw)
         }
 
-        const status = fx_channel_write(
-            this.handle.raw,
-            0,
-            data!,
-            data!.byteLength,
-            fx_handles,
-            fx_handles.length
-        )
+        const status = fx_channel_write(this.handle.raw, 0, data!, data!.byteLength, fx_handles, fx_handles.length)
 
         // Handles are always consumed.
         for (let h of handles) {
@@ -125,10 +109,7 @@ export class Channel extends HandleWrapper {
         return status
     }
 
-    writeEtc(
-        data: DataView | undefined,
-        handleDispositions: HandleDisposition[] = []
-    ): Status {
+    writeEtc(data: DataView | undefined, handleDispositions: HandleDisposition[] = []): Status {
         if (!this.handle || !this.handle.isValid) return Status.ERR_BAD_HANDLE
 
         const fx_handle_dispositions: fx_handle_disposition_t[] = []
@@ -174,16 +155,7 @@ export class Channel extends HandleWrapper {
         const actual_handles = new Ref(0)
 
         // Query the size of the next message.
-        let status = fx_channel_read(
-            this.handle.raw,
-            0,
-            null,
-            null,
-            0,
-            0,
-            actual_bytes,
-            actual_handles
-        )
+        let status = fx_channel_read(this.handle.raw, 0, null, null, 0, 0, actual_bytes, actual_handles)
         if (status != Status.ERR_BUFFER_TOO_SMALL) {
             // An empty message or an error.
             return { status }
@@ -244,11 +216,7 @@ export class ChannelPair extends HandleWrapperPair<Channel> {
         return new ChannelPair(status, null, null)
     }
 
-    private constructor(
-        status: Status,
-        first: Channel | null,
-        second: Channel | null
-    ) {
+    private constructor(status: Status, first: Channel | null, second: Channel | null) {
         super(status, first, second)
     }
 }

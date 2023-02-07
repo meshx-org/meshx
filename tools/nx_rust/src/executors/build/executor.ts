@@ -1,32 +1,20 @@
-import { logger, ExecutorContext } from "@nrwl/devkit"
+import { logger, ExecutorContext, offsetFromRoot } from "@nrwl/devkit"
 import { spawn } from "child_process"
-import { resolve } from 'path'
+import { resolve } from "path"
 
 export interface BuildOptions {
     outDir: string
     cwd?: string
 }
 
-async function doBuild(
-    options: BuildOptions,
-    context: ExecutorContext
-): Promise<number | null> {
+async function doBuild(options: BuildOptions, context: ExecutorContext): Promise<number | null> {
     const outDir = resolve(context.root, options.outDir)
 
-    const projectRoot =
-        context.projectsConfigurations?.projects[context.projectName!].root
+    const projectRoot = context.projectsConfigurations?.projects[context.projectName!].root
 
-    const child = spawn(
-        `cargo`,
-        [
-            "build",
-            "-Z",
-            "unstable-options",
-            "--color=always",
-            `--out-dir=${outDir}`,
-        ],
-        { cwd: options.cwd ? options.cwd : projectRoot }
-    )
+    const child = spawn(`cargo`, ["build", "-Z", "unstable-options", "--color=always", `--out-dir=${outDir}`], {
+        cwd: options.cwd ? options.cwd : projectRoot,
+    })
 
     // You can also use a variable to save the output
     // for when the script closes later

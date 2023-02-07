@@ -1,0 +1,9 @@
+{
+    "executors": {
+        "build": {
+            "implementation": "./src/build/index",
+            "schema": "./src/build/schema.json",
+            "description": "Builds a MIDL library"
+        }
+    }
+}

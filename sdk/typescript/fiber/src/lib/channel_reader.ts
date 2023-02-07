@@ -42,7 +42,7 @@ export class ChannelReader {
     public onError: ChannelReaderErrorHandler | null = null
 
     get channel(): Channel {
-        if(!this._channel) throw new Error("no channel")
+        if (!this._channel) throw new Error("no channel")
         return this._channel
     }
 
@@ -62,7 +62,7 @@ export class ChannelReader {
         if (!this.isBound) {
             throw new FiberApiError("ChannelReader is not bound")
         }
-        if (! this._channel) {
+        if (!this._channel) {
             throw new FiberApiError("ChannelReader is not bound")
         }
 
@@ -113,11 +113,7 @@ export class ChannelReader {
         if (status != Status.OK) {
             close()
             this._errorSoon(
-                new ChannelReaderError(
-                    `Wait completed with status ${getStringForStatus(
-                        status
-                    )} (${status})`
-                )
+                new ChannelReaderError(`Wait completed with status ${getStringForStatus(status)} (${status})`)
             )
             return
         }
@@ -133,9 +129,7 @@ export class ChannelReader {
                 }
             } else if ((pending & Channel.PEER_CLOSED) != 0) {
                 close()
-                this._errorSoon(
-                    new ChannelReaderError("Peer unexpectedly closed")
-                )
+                this._errorSoon(new ChannelReaderError("Peer unexpectedly closed"))
             }
         } catch (e) {
             if (e instanceof Error) {
@@ -147,9 +141,7 @@ export class ChannelReader {
                 console.error(e)
 
                 close()
-                this._errorSoon(
-                    new ChannelReaderError((e as ChannelReaderError).message)
-                )
+                this._errorSoon(new ChannelReaderError((e as ChannelReaderError).message))
             }
         }
     }

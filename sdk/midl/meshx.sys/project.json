@@ -1,0 +1,17 @@
+{
+    "name": "sdk/midl/meshx.sys",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "implicitDependencies": ["tools/nx-midl"],
+    "targets": {
+        "build": {
+            "executor": "./dist/tools/nx-midl:build",
+            "dependsOn": ["^build"],
+            "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.sys", "./ir.json"],
+            "options": {
+                "outDir": "dist/sdk/midl/meshx.sys",
+                "path": "./launcher.midl"
+            }
+        }
+    }
+}

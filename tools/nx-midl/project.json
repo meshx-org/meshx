@@ -1,0 +1,63 @@
+{
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "name": "tools/nx-midl",
+    "sourceRoot": "tools/nx-midl/src",
+    "projectType": "library",
+    "implicitDependencies": ["tools/midl/midlc", "tools/midl/midlgen_ts", "tools/midl/midlgen_rust"],
+    "targets": {
+        "build": {
+            "executor": "@nrwl/js:tsc",
+            "outputs": ["{options.outputPath}"],
+            "inputs": [
+                "{workspaceRoot}/dist/tools/midl/midlgen_rust",
+                "{workspaceRoot}/dist/tools/midl/midlgen_ts",
+                "{workspaceRoot}/dist/tools/midl/midlc"
+            ],
+            "options": {
+                "outputPath": "dist/./tools/nx-midl",
+                "tsConfig": "tools/nx-midl/tsconfig.lib.json",
+                "packageJson": "tools/nx-midl/package.json",
+                "main": "tools/nx-midl/src/index.ts",
+                "assets": [
+                    {
+                        "input": "./tools/nx-midl/src",
+                        "glob": "**/!(*.ts)",
+                        "output": "./src"
+                    },
+                    {
+                        "input": "./tools/nx-midl/src",
+                        "glob": "**/*.d.ts",
+                        "output": "./src"
+                    },
+                    {
+                        "input": "./tools/nx-midl",
+                        "glob": "executors.json",
+                        "output": "."
+                    }
+                ]
+            }
+        },
+        "lint": {
+            "executor": "@nrwl/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": ["tools/nx-midl/**/*.ts"]
+            }
+        },
+        "test": {
+            "executor": "@nrwl/jest:jest",
+            "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+            "options": {
+                "jestConfig": "tools/nx-midl/jest.config.ts",
+                "passWithNoTests": true
+            },
+            "configurations": {
+                "ci": {
+                    "ci": true,
+                    "codeCoverage": true
+                }
+            }
+        }
+    },
+    "tags": []
+}

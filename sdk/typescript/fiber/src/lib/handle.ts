@@ -1,8 +1,4 @@
-import {
-    fx_handle_t,
-    fx_signals_t,
-    FX_INVALID_HANDLE,
-} from "@meshx-org/fiber-types"
+import { fx_handle_t, fx_signals_t, FX_INVALID_HANDLE } from "@meshx-org/fiber-types"
 import { fx_handle_close } from "@meshx-org/fiber-sys"
 import { AsyncWaitCallback, HandleWaiter } from "./handle_waiter"
 
@@ -41,10 +37,7 @@ export class Handle {
         throw new Error("Not implemented")
     }
 
-    public asyncWait(
-        signals: fx_signals_t,
-        callback: AsyncWaitCallback
-    ): HandleWaiter {
+    public asyncWait(signals: fx_signals_t, callback: AsyncWaitCallback): HandleWaiter {
         const waiter = new HandleWaiter(this, signals, callback)
         this.waiters.push(waiter)
         return waiter
