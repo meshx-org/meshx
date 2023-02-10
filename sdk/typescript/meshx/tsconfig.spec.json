@@ -2,7 +2,10 @@
     "extends": "./tsconfig.json",
     "compilerOptions": {
         "outDir": "../../dist/out-tsc",
-        "types": ["vitest/globals", "node"]
+        "types": [
+            "vitest/globals",
+            "node"
+        ]
     },
     "include": [
         "vite.config.ts",
@@ -14,6 +17,7 @@
         "src/**/*.spec.js",
         "src/**/*.test.jsx",
         "src/**/*.spec.jsx",
-        "src/**/*.d.ts"
+        "src/**/*.d.ts",
+        "src/test/index.spec.tsx"
     ]
 }

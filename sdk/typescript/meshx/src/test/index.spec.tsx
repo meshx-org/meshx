@@ -2,9 +2,12 @@
  * @vitest-environment jsdom
  */
 
-import { unstable_act as act } from "react"
+declare module "react" {
+    // eslint-disable-next-line no-var
+    var unstable_act: (cb: () => void) => Promise<void> | void
+}
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, unstable_act as act } from "react"
 import { WorkerReconciler, HostContext } from "../lib/hostConfig"
 
 const host: HostContext = {

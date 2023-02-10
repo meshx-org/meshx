@@ -1,4 +1,4 @@
-import { srcTypescriptKernel } from "../lib/src-typescript-kernel"
+import { srcTypescriptKernel } from "../lib"
 
 describe("srcTypescriptKernel", () => {
     it("should work", () => {
