@@ -16,28 +16,16 @@ async function doBuild(options: BuildOptions, context: ExecutorContext): Promise
         cwd: options.cwd ? options.cwd : projectRoot,
     })
 
-    // You can also use a variable to save the output
-    // for when the script closes later
-    let scriptOutput = ""
-
     child.stdout.setEncoding("utf8")
     child.stdout.on("data", (data) => {
         //Here is where the output goes
-
-        logger.log("stdout: " + data)
-
-        data = data.toString()
-        scriptOutput += data
+        logger.log(data)
     })
 
     child.stderr.setEncoding("utf8")
     child.stderr.on("data", (data) => {
         //Here is where the error output goes
-
-        logger.log("stderr: " + data)
-
-        data = data.toString()
-        scriptOutput += data
+        logger.error(data)
     })
 
     const exitCode = await new Promise<number | null>((resolve, reject) => {
@@ -60,11 +48,9 @@ export default async function buildExecutor(
     context: ExecutorContext
 ): Promise<{ success: boolean }> {
     logger.info(`Executing "cargo build"...`)
-    logger.info(`Options: ${JSON.stringify(options, null, 2)}`)
 
     try {
         const ret = await doBuild(options, context)
-        logger.info(`ret: ${ret}`)
 
         if (ret === 1) {
             return { success: false }

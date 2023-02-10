@@ -23,7 +23,7 @@ pub(crate) fn parse_constant_declaration(
 ) -> Result<ast::ConstDeclaration, ParserError> {
     let mut parts = pair.clone().into_inner();
 
-    let attribute_list = parts.next().unwrap().as_str();
+    let _attribute_list = parts.next().unwrap().as_str();
     let identifier = parts.next().unwrap();
     let ty = parts.next().unwrap().into_inner().next().unwrap();
     let constant = parts.next().unwrap();

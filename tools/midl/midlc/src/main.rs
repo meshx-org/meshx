@@ -7,11 +7,9 @@ mod diagnotics;
 mod error;
 mod parse;
 
-use clap::{arg, ArgAction, Command};
-use midlgen::{EncodedLibraryIdentifier, Library, Root};
-use pest::iterators::{Pair, Pairs};
+use clap::{arg, Command};
+use midlgen::Root;
 use pest::Parser;
-use serde_json::Value;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;

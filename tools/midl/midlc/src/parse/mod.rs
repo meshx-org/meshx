@@ -3,13 +3,10 @@ mod parse_const;
 mod parse_library;
 mod parse_type;
 mod parse_value;
-// mod parse_struct;
-// mod parse_attribute;
 
 use parse_const::parse_constant_declaration;
 use parse_library::parse_library_declaration;
 use parse_type::parse_type_constructor;
-use parse_value::parse_string_literal;
 
 use super::ast;
 use super::error::ParserError;

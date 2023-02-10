@@ -1,10 +1,7 @@
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
-use crate::error::ParserError;
 
 use super::ast;
 use super::helpers::Pair;
-use super::parse_identifier;
-use super::parse_type_constructor;
 use super::Rule;
 use super::ast::Span;
 

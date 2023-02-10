@@ -34,6 +34,7 @@ struct Args {
 
 fn main() -> Result<(), GeneratorError> {
     let args = Args::parse();
+    let contents = std::fs::read_to_string(args.json).unwrap();
 
     let root = serde_json::from_str::<midlgen::Root>(contents.as_str())?;
     println!("{:?}", root);

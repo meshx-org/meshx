@@ -1,5 +1,5 @@
 import { logger, ExecutorContext } from "@nrwl/devkit"
-import { exec, spawn } from "child_process"
+import { exec } from "child_process"
 import * as path from "path"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -25,8 +25,8 @@ async function buildIR(options: Options, context: ExecutorContext): Promise<void
             (err, stdout, stderr) => {
                 if (err) reject(err)
 
-                logger.log("stdout: " + stdout)
-                logger.log("stderr: " + stderr)
+                logger.log(stdout)
+                logger.log(stderr)
                 resolve()
             }
         )
