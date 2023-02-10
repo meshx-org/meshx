@@ -10,9 +10,7 @@
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,
         "jsx": "react-jsx",
-        "types": [
-            "vitest"
-        ],
+        "types": ["vitest"]
     },
     "files": [],
     "include": [],

@@ -2,5 +2,7 @@
 
 /dist
 /coverage
+/target
+/out
 
 **/*.hbs

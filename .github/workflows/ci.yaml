@@ -13,7 +13,7 @@ env:
 permissions:
     packages: write
     contents: read
-   
+
 jobs:
     main:
         runs-on: ubuntu-latest

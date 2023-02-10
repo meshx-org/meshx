@@ -4,6 +4,5 @@
     "type": "commonjs",
     "peerDependencies": {
         "@meshx-org/fiber-kernel": "*"
-        
     }
 }
