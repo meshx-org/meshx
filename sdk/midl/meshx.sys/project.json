@@ -10,7 +10,8 @@
             "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.sys", "./ir.json"],
             "options": {
                 "outDir": "dist/sdk/midl/meshx.sys",
-                "path": "./launcher.midl"
+                "path": "./launcher.midl",
+                "language": "ts"
             }
         }
     }

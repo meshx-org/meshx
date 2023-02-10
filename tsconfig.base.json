@@ -8,6 +8,7 @@
             "@meshx-org/fiber-kernel": ["dist/src/typescript/fiber-kernel/src/index.ts"],
             "@meshx-org/fiber-sys": ["src/typescript/fiber-sys/src/index.ts"],
             "@meshx-org/fiber-types": ["src/typescript/fiber-types/src/index.ts"],
+            "@meshx-org/meshx": ["sdk/typescript/meshx/src/index.ts"],
             "@meshx-org/midl": ["sdk/typescript/midl/src/index.ts"],
             "mylib": ["packages/mylib/src/index.ts"]
         }

@@ -4,6 +4,7 @@
     "required": ["path"],
     "properties": {
         "path": { "type": "string" },
+        "language": { "type": "string", "enum": ["ts", "rust"] },
         "outDir": { "type": "string" }
     }
 }

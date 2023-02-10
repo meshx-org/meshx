@@ -6,17 +6,19 @@ import * as path from "path"
 export interface Options {
     path: string
     outDir: string
+    language: "ts" | "rust"
     cwd?: string
     midlcPath?: string
 }
 
 async function buildIR(options: Options, context: ExecutorContext): Promise<void> {
     const outDir = path.resolve(context.root, options.outDir)
+
     const projectRoot = context.projectsConfigurations?.projects[context.projectName!].root
 
     return new Promise((resolve, reject) => {
         exec(
-            `${context.root}/dist/tools/midl/midlc/midlc compile --lang=ts ${options.path}`,
+            `${context.root}/dist/tools/midl/midlc/midlc compile ${options.path}`,
             {
                 cwd: options.cwd ? options.cwd : projectRoot,
             },
@@ -37,15 +39,17 @@ async function buildLibrary(options: Options, context: ExecutorContext): Promise
 
     return new Promise((resolve, reject) => {
         exec(
-            `${context.root}/dist/tools/midl/midlgen_rust/midlgen_rust --json ${path.resolve(cwd!, "ir.json")}`,
+            `${context.root}/dist/tools/midl/midlgen_${options.language}/midlgen_${
+                options.language
+            } --json ${path.resolve(cwd!, "ir.json")}`,
             {
                 cwd,
             },
             (err, stdout, stderr) => {
                 if (err) reject(err)
 
-                logger.log("stdout: " + stdout)
-                logger.log("stderr: " + stderr)
+                logger.log(stdout)
+                logger.log(stderr)
                 resolve()
             }
         )

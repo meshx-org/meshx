@@ -35,13 +35,13 @@ struct Args {
 fn main() -> Result<(), GeneratorError> {
     let args = Args::parse();
 
-    let contents = std::fs::read_to_string(args.json).unwrap();
-    println!("Hello {}!", contents);
-
     let root = serde_json::from_str::<midlgen::Root>(contents.as_str())?;
     println!("{:?}", root);
+
+    let generator = Generator::new();
+    generator.generate_fidl(root, "./OUTPUT.rs".to_owned())?;
+
     let root = ir::compile(root);
-   
 
     Ok(())
 }

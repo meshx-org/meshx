@@ -68,6 +68,9 @@ pub(crate) fn parse(pairs: Pairs<'_, Rule>, diagnostics: &mut Diagnostics) -> Re
         if let Rule::library = pair.as_rule() {
             for declaration_pair in pair.into_inner() {
                 match declaration_pair.as_rule() {
+                    Rule::struct_declaration => {
+                        println!("struct {:?}", declaration_pair);
+                    }
                     Rule::const_declaration => {
                         let const_declaration = parse_constant_declaration(&declaration_pair, diagnostics)?;
                         declarations.push(ast::Declaration::Const(const_declaration));

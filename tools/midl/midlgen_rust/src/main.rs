@@ -205,8 +205,6 @@ impl Generator {
 
         let result = self.execute_template(tmpl, data)?;
 
-        println!("{:?}", result);
-
         let mut file = File::create(filename)?;
         file.write_all(result.as_bytes())?;
 
