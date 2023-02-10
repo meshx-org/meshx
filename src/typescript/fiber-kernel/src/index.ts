@@ -1,1 +1,1 @@
-export * from "./lib/src-typescript-kernel"
+export * from "./lib"

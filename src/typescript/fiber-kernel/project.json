@@ -25,7 +25,7 @@
             "executor": "@nrwl/linter:eslint",
             "outputs": ["{options.outputFile}"],
             "options": {
-                "lintFilePatterns": ["src/typescript/kernel/**/*.ts"]
+                "lintFilePatterns": ["src/typescript/fiber-kernel/**/*.ts"]
             }
         },
         "test": {

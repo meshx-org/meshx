@@ -134,6 +134,7 @@ export enum fx_packet_type_t {
     FX_PKT_TYPE_SIGNAL_ONE = 1,
 }
 
+// eslint-disable-next-line @typescript-eslint/ban-types
 export type fx_packet_user_t = {}
 
 export type fx_packet_signal_t = {
