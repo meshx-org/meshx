@@ -3,6 +3,7 @@
     "version": "0.0.1",
     "type": "commonjs",
     "peerDependencies": {
-        "@meshx-org/fiber-kernel": "*"
+        "@meshx-org/fiber-kernel": "*",
+        "@meshx-org/fiber-sys": "*"
     }
 }
