@@ -1,0 +1,41 @@
+{
+    "name": "sdk/typescript/meshx",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "sdk/typescript/meshx/src",
+    "projectType": "library",
+    "targets": {
+        "build": {
+            "executor": "@nrwl/js:tsc",
+            "outputs": ["{options.outputPath}"],
+            "options": {
+                "outputPath": "dist/./sdk/typescript/meshx",
+                "main": "sdk/typescript/meshx/src/index.ts",
+                "tsConfig": "sdk/typescript/meshx/tsconfig.lib.json",
+                "assets": ["sdk/typescript/meshx/*.md"]
+            }
+        },
+        "publish": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "node tools/scripts/publish.mjs sdk-typescript-meshx {args.ver} {args.tag}"
+            },
+            "dependsOn": ["build"]
+        },
+        "lint": {
+            "executor": "@nrwl/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": ["sdk/typescript/meshx/**/*.ts"]
+            }
+        },
+        "test": {
+            "executor": "@nrwl/vite:test",
+            "outputs": ["coverage/sdk/typescript/meshx"],
+            "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../../coverage/sdk/typescript/meshx"
+            }
+        }
+    },
+    "tags": []
+}
