@@ -1,14 +1,9 @@
-use handlebars::Handlebars;
-
-use clap::Parser;
-use serde_json::Value;
-use std::collections::HashMap;
-use std::fs::File;
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use thiserror::Error;
-
 mod ir;
+mod types;
+
+use handlebars::Handlebars;
+use clap::Parser;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum GeneratorError {
@@ -32,6 +27,35 @@ struct Args {
     json: String,
 }
 
+struct Generator {
+    registry: Handlebars<'static>,
+}
+
+impl Generator {
+    fn new() -> Self {
+        let mut registry = Handlebars::new();
+        // let generate_source_tpl = include_str!("./templates/sourcefile.hbs");
+        let const_declaration_tpl = include_str!("./templates/const.hbs");
+        // let enum_declaration_tpl = include_str!("./templates/enum.hbs");
+        let struct_declaration_tpl = include_str!("./templates/struct.hbs");
+        // let protocol_declaration_tpl = include_str!("./templates/protocol.hbs");
+
+        registry
+            .register_partial("ConstDeclaration", const_declaration_tpl)
+            .unwrap();
+
+        registry
+            .register_partial("StructDeclaration", struct_declaration_tpl)
+            .unwrap();
+
+        Generator { registry }
+    }
+
+    fn generate_fidl(&self, _ir: midlgen::Root, _output_filename: String) -> Result<(), GeneratorError> {
+        Ok(())
+    }
+}
+
 fn main() -> Result<(), GeneratorError> {
     let args = Args::parse();
     let contents = std::fs::read_to_string(args.json).unwrap();
@@ -39,10 +63,10 @@ fn main() -> Result<(), GeneratorError> {
     let root = serde_json::from_str::<midlgen::Root>(contents.as_str())?;
     println!("{:?}", root);
 
+    // let root = ir::compile(root);
+
     let generator = Generator::new();
     generator.generate_fidl(root, "./OUTPUT.rs".to_owned())?;
-
-    let root = ir::compile(root);
 
     Ok(())
 }

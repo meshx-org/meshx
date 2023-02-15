@@ -12,11 +12,12 @@
 // This is the basic syntax of Pest grammar files:
 // https://pest.rs/book/grammars/syntax.html#cheat-sheet
 
-library              =  { SOI ~ NEWLINE* ~ declaration_list ~ EOI }
+library              =  { SOI ~ (library_declaration | import_declaration | const_declaration | struct_declaration | protocol_declaration | arbitrary_block | comment_block | empty_lines | CATCH_ALL)* ~ EOI }
 
 declaration_list     = _{ (declaration ~ NEWLINE+) * ~ declaration? }
-declaration          = _{ (library_declaration | const_declaration | struct_declaration/*layout_declaration*/ | protocol_declaration) }
+declaration          = _{ (library_declaration | import_declaration | const_declaration | struct_declaration/*layout_declaration*/ | protocol_declaration) }
 library_declaration  =  { LIBRARY_KEYWORD ~ compound_identifier }
+import_declaration   =  { IMPORT_KEYWORD ~ compound_identifier }
 
 const_declaration = { 
     block_attribute_list 
@@ -41,31 +42,38 @@ layout_declaration =  {
     ~ TYPE_KEYWORD 
     ~ identifier 
     ~ "=" 
-    ~ inline_layout 
+    ~ inline_layout
 }
 
 protocol_declaration  =  { 
-    block_attribute_list 
+    block_attribute_list
     ~ PROTOCOL_KEYWORD 
     ~ identifier 
-    ~ "{" 
-    ~ ( NEWLINE* ~ protocol_member ~ ";" ~ NEWLINE* )+ 
-    ~ "}" 
+    ~ BLOCK_OPEN
+    ~ (protocol_member | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)+
+    ~ BLOCK_CLOSE
 }
+
+// a block definition without a keyword. Is not valid. Just acts as a catch for the parser to display a nice error.
+arbitrary_block = { identifier ~ BLOCK_OPEN ~ ((!BLOCK_CLOSE ~ ANY) | NEWLINE)* ~ BLOCK_CLOSE }
 
 declaration_modifiers =  { STRICT_KEYWORD | FLEXIBLE_KEYWORD | RESOURCE_KEYWORD }
 
 protocol_member       =  { protocol_method | protocol_event | protocol_compose }
-protocol_method       =  { block_attribute_list ~ identifier ~ parameter_list ~ ( "->" ~ parameter_list ~ ( "error" ~ type_definition ) ) }
-protocol_event        =  { block_attribute_list ~ "->" ~ identifier ~ parameter_list }
+protocol_method       =  { identifier ~ parameter_list ~ ( "->" ~ parameter_list ~ ( "error" ~ type_definition )? )? }
+protocol_event        =  { "->" ~ identifier ~ parameter_list }
 protocol_compose      =  { COMPOSE_KEYWORD ~ compound_identifier }
 
-parameter_list        =   { "(" ~ layout_body ~ ")" }
+parameter_list        =   { "(" ~ inline_layout ~ ")" }
 
 layout                = _{ compound_identifier | inline_layout }
 layout_subtype        =  { type_definition }
 layout_kind           =  { "struct" | "bits" | "enum" | "union" | "table" }
-layout_body           =  { "{" ~ (value_layout | struct_layout | ordinal_layout) ~ "}" }
+layout_body           =  { 
+							BLOCK_OPEN 
+                            ~ (value_layout | struct_layout | ordinal_layout) 
+                            ~ BLOCK_CLOSE
+                         }
 
 value_layout          =  { ( NEWLINE* ~ value_layout_member ~ NEWLINE* )+ }
 value_layout_member   =  { identifier ~ "=" ~ constant ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
@@ -75,7 +83,13 @@ ordinal_layout        =  { ( NEWLINE* ~ ordinal_layout_member ~ NEWLINE* )+ }
 ordinal_layout_member =  { "#" ~ ordinal ~ (member_field | RESERVED_KEYWORD) ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
 
 member_field         =  { identifier ~ type_definition }
-inline_layout        =  { (block_attribute_list) ~ (declaration_modifiers)* ~ layout_kind ~ layout_subtype? ~ layout_body }
+inline_layout        =  { 
+							block_attribute_list
+                            ~ declaration_modifiers* 
+                            ~ layout_kind 
+                            ~ layout_subtype? 
+                            ~ layout_body 
+                        }
 
 layout_parameters    = !{ layout_parameter ~ ("," ~ layout_parameter ~ WHITESPACE* )*  }
 layout_parameter     = _{ type | constant }
@@ -130,7 +144,7 @@ ordinal                 =  { ASCII_NONZERO_DIGIT }
 // ######################################
 // shared building blocks
 // ######################################
-identifier              = @{ !KEYWORDS ~ ( "_" | ASCII_ALPHA ) ~ ASCII_ALPHANUMERIC* }
+identifier              = @{ !KEYWORDS ~ ("_" | ASCII_ALPHANUMERIC)* }
 compound_identifier     =  { identifier ~ ( "." ~ identifier )* }
 
 // the any part is to not crash on comments next to an open block, see test `parse_comments_without_crasing_or_loosing_info`
@@ -141,6 +155,7 @@ CATCH_ALL               = { (!NEWLINE ~ ANY)+ ~ NEWLINE? }
 BLOCK_LEVEL_CATCH_ALL   = { !BLOCK_CLOSE ~ CATCH_ALL }
 
 LIBRARY_KEYWORD  = _{ "library" }
+IMPORT_KEYWORD   = _{ "import" }
 ENUM_KEYWORD     = _{ "enum" }
 STRUCT_KEYWORD   = _{ "struct" }
 TABLE_KEYWORD    = _{ "table" }

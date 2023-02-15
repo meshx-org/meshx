@@ -16,4 +16,8 @@ impl DiagnosticsError {
     pub fn new_static(message: &'static str, span: Span) -> Self {
         Self::new(message, span)
     }
+
+    pub fn new_validation_error(message: &str, span: Span) -> Self {
+        Self::new(format!("Error validating: {message}"), span)
+    }
 }

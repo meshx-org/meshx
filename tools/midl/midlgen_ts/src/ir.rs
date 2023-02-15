@@ -1,43 +1,5 @@
-use midlgen::{CompoundIdentifier, Identifier};
+use crate::types::Root;
 
-struct StructMember;
-struct StructPadding;
-
-// Struct represents a struct declaration.
-struct Struct {
-    ir: midlgen::Struct,
-    doc_comments: Vec<String>,
-    name: String,
-    members: Vec<StructMember>,
-    paddings: Vec<StructPadding>,
-    type_symbol: String,
-    type_expr: String,
-    has_nullable_field: bool,
-    is_empty_struct: bool,
-}
-
-struct Import;
-struct Const;
-struct Enum;
-struct Bits;
-struct Protocol;
-struct Table;
-struct Union;
-
-// Root holds all of the declarations for a MIDL library.
-#[derive(Default)]
-pub struct Root {
-    library_name: String,
-    imports: Vec<Import>,
-    consts: Vec<Const>,
-    enums: Vec<Enum>,
-    bits: Vec<Bits>,
-    protocols: Vec<Protocol>,
-    structs: Vec<Struct>,
-    tables: Vec<Table>,
-    unions: Vec<Union>,
-    external_structs: Vec<Struct>,
-}
 
 struct Compiler {
     root: Root,

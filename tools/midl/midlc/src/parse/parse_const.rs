@@ -18,10 +18,10 @@ pub(crate) fn parse_constant(token: Pair<'_>, diagnostics: &mut Diagnostics) -> 
 }
 
 pub(crate) fn parse_constant_declaration(
-    pair: &Pair<'_>,
+    pair: Pair<'_>,
     diagnostics: &mut Diagnostics,
 ) -> Result<ast::ConstDeclaration, ParserError> {
-    let mut parts = pair.clone().into_inner();
+    let mut parts = pair.into_inner();
 
     let _attribute_list = parts.next().unwrap().as_str();
     let identifier = parts.next().unwrap();

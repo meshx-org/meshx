@@ -1,11 +1,11 @@
 [workspace]
 
 members = [
-    "crates/meshx",
-    "crates/fiber_rust",
-    "crates/fiber_sys",
-    "crates/fiber_types",
-    "crates/fiber_kernel",
+    "src/crates/meshx",
+    "src/crates/fiber_rust",
+    "src/crates/fiber_sys",
+    "src/crates/fiber_types",
+    "src/crates/fiber_kernel",
     "experiments/wasm_tcp",
     "experiments/wasm_host",
     "tools/midl/midlc",

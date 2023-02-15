@@ -4,14 +4,16 @@ mod comment;
 mod identifier;
 mod span;
 mod r#struct;
+mod protocol;
 mod traits;
 
 use comment::Comment;
-use r#struct::Struct;
 
 pub use ast::*;
 pub use attribute::Attribute;
 pub use identifier::{CompoundIdentifier, Identifier};
+pub use protocol::Protocol;
+pub use r#struct::{Struct, StructMember};
 pub use span::Span;
 pub use traits::{WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
 
@@ -20,6 +22,7 @@ pub enum Declaration {
     Library(LibraryDeclaration),
     Const(ConstDeclaration),
     Struct(Struct),
+    Protocol(Protocol),
 }
 
 /// AST representation of a MIDL schema.

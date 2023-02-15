@@ -1,16 +1,20 @@
 mod helpers;
 mod parse_const;
 mod parse_library;
+mod parse_protocol;
+mod parse_struct;
 mod parse_type;
 mod parse_value;
 
 use parse_const::parse_constant_declaration;
 use parse_library::parse_library_declaration;
+use parse_protocol::parse_protocol_declaration;
+use parse_struct::parse_struct_declaration;
 use parse_type::parse_type_constructor;
 
 use super::ast;
-use super::error::ParserError;
 use super::diagnotics::Diagnostics;
+use super::error::ParserError;
 
 use pest::iterators::{Pair, Pairs};
 
@@ -66,18 +70,22 @@ pub(crate) fn parse(pairs: Pairs<'_, Rule>, diagnostics: &mut Diagnostics) -> Re
             for declaration_pair in pair.into_inner() {
                 match declaration_pair.as_rule() {
                     Rule::struct_declaration => {
-                        println!("struct {:?}", declaration_pair);
+                        let struct_declaration = parse_struct_declaration(declaration_pair, diagnostics)?;
+                        declarations.push(ast::Declaration::Struct(struct_declaration));
                     }
                     Rule::const_declaration => {
-                        let const_declaration = parse_constant_declaration(&declaration_pair, diagnostics)?;
+                        let const_declaration = parse_constant_declaration(declaration_pair, diagnostics)?;
                         declarations.push(ast::Declaration::Const(const_declaration));
                     }
                     Rule::library_declaration => {
                         let declaration = parse_library_declaration(&declaration_pair)?;
                         declarations.push(ast::Declaration::Library(declaration));
                     }
+                    Rule::protocol_declaration => {
+                        let declaration = parse_protocol_declaration(declaration_pair, diagnostics)?;
+                        declarations.push(ast::Declaration::Protocol(declaration));
+                    }
                     Rule::layout_declaration => {}
-                    Rule::protocol_declaration => {}
                     _ => {}
                 }
             }

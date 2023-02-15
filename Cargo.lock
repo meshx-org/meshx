@@ -795,29 +795,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gtmpl"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b924c0ea1149cd5cc9b208b33a4acb036ffb4b39c10048569de20616988a2b4"
-dependencies = [
- "anyhow",
- "gtmpl_value",
- "lazy_static",
- "percent-encoding",
- "thiserror",
-]
-
-[[package]]
-name = "gtmpl_value"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d61bf6605eabca491ef6db6ed194e0aa82900ccc8bdea4c56ac277102152dd5"
-dependencies = [
- "anyhow",
- "thiserror",
-]
-
-[[package]]
 name = "h2"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1192,7 +1169,7 @@ dependencies = [
 name = "midlgen"
 version = "0.1.0"
 dependencies = [
- "gtmpl",
+ "handlebars",
  "serde",
  "serde_json",
 ]

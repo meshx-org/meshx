@@ -2,7 +2,7 @@ use super::{Attribute, Comment, Identifier, Span};
 
 /// A struct member declaration.
 #[derive(Debug, Clone)]
-pub struct Member;
+pub struct StructMember;
 
 /// A struct declaration.
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ pub struct Struct {
     ///   ^^^^^^^^^^^^^^
     /// }
     /// ```
-    pub(crate) members: Vec<Member>,
+    pub(crate) members: Vec<StructMember>,
 
     /// The attributes of this struct.
     ///
@@ -51,6 +51,6 @@ pub struct Struct {
     /// ```
     pub(crate) documentation: Option<Comment>,
 
-    /// The location of this model in the text representation.
+    /// The location of this struct in the text representation.
     pub(crate) span: Span,
 }
