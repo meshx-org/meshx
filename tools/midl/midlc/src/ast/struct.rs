@@ -1,4 +1,24 @@
-use super::{Attribute, Comment, Identifier, Span};
+use super::{Attribute, Comment, Identifier, Span, WithAttributes, WithIdentifier, WithSpan, WithDocumentation};
+
+/// An opaque identifier for a field in an AST model. Use the
+/// `model[field_id]` syntax to resolve the id to an `ast::Field`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct StructMemberId(pub(super) u32);
+
+impl StructMemberId {
+    /// Used for range bounds when iterating over BTreeMaps.
+    pub const MIN: StructMemberId = StructMemberId(0);
+    /// Used for range bounds when iterating over BTreeMaps.
+    pub const MAX: StructMemberId = StructMemberId(u32::MAX);
+}
+
+impl std::ops::Index<StructMemberId> for Struct {
+    type Output = StructMember;
+
+    fn index(&self, index: StructMemberId) -> &Self::Output {
+        &self.members[index.0 as usize]
+    }
+}
 
 /// A struct member declaration.
 #[derive(Debug, Clone)]
@@ -15,17 +35,18 @@ pub struct StructMember {
 #[derive(Debug, Clone)]
 pub struct Struct {
     /// The name of the struct.
+    /// NOTE: inline structs get their name automatically from the complier
     ///
     /// ```ignore
-    /// type Foo = struct { .. }
-    ///      ^^^
+    /// struct Foo { .. }
+    ///        ^^^
     /// ```
     pub(crate) name: Identifier,
 
     /// The members of the struct.
     ///
     /// ```ignore
-    /// type Foo = struct {
+    /// struct Foo {
     ///   id    :int    @id
     ///   ^^^^^^^^^^^^^^^^
     ///   member :string
@@ -39,7 +60,7 @@ pub struct Struct {
     /// ```ignore
     /// @db.map("Bar")
     /// ^^^^^^^^^^^^
-    /// type Foo = struct {
+    /// struct Foo {
     ///   id    :u32    @id
     ///   member :string
     /// }
@@ -51,7 +72,7 @@ pub struct Struct {
     /// ```ignore
     /// /// Lorem ipsum
     ///     ^^^^^^^^^^^
-    /// type Foo = struct {
+    /// struct Foo {
     ///   id    :u32   @id
     ///   field :string
     /// }
@@ -60,4 +81,37 @@ pub struct Struct {
 
     /// The location of this struct in the text representation.
     pub(crate) span: Span,
+}
+
+impl Struct {
+    pub fn iter_members(&self) -> impl ExactSizeIterator<Item = (StructMemberId, &StructMember)> + Clone {
+        self.members
+            .iter()
+            .enumerate()
+            .map(|(idx, field)| (StructMemberId(idx as u32), field))
+    }
+}
+
+impl WithIdentifier for Struct {
+    fn identifier(&self) -> &Identifier {
+        &self.name
+    }
+}
+
+impl WithSpan for Struct {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl WithAttributes for Struct {
+    fn attributes(&self) -> &[Attribute] {
+        &self.attributes
+    }
+}
+
+impl WithDocumentation for Struct {
+    fn documentation(&self) -> Option<&str> {
+        self.documentation.as_ref().map(|doc| doc.text.as_str())
+    }
 }

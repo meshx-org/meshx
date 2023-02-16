@@ -1,20 +1,21 @@
-use super::{Attribute, Comment, Identifier, CompoundIdentifier, Span};
+use super::{
+    Attribute, Comment, CompoundIdentifier, Identifier, Span, WithAttributes, WithDocumentation, WithIdentifier,
+    WithSpan,
+};
 
 #[derive(Debug)]
-struct RequestType {
-
-}
+struct RequestType {}
 
 #[derive(Debug)]
 pub struct ProtocolMethod {
     /// The name of the protocol method.
     ///
     /// ```ignore
-    /// protocol Foo { 
+    /// protocol Foo {
     ///     Bar()
     ///     ^^^
     /// }
-    /// 
+    ///
     /// ```
     pub(crate) name: Identifier,
 
@@ -32,7 +33,7 @@ pub struct ProtocolMethod {
     /// The identifier of the auto-generated method request type.
     ///
     /// ```ignore
-    /// protocol Foo { 
+    /// protocol Foo {
     ///     Bar(struct { ... })
     ///         ^^^^^^^^^^^^^^
     /// }
@@ -42,7 +43,7 @@ pub struct ProtocolMethod {
     /// The identifier of the auto-generated method response type.
     ///
     /// ```ignore
-    /// protocol Foo { 
+    /// protocol Foo {
     ///     Bar() -> (struct { ... })
     ///               ^^^^^^^^^^^^^^
     ///     // or
@@ -51,6 +52,16 @@ pub struct ProtocolMethod {
     /// }
     /// ```
     pub(crate) response_payload: Option<Identifier>,
+
+    /// The attributes of this protocol method.
+    ///
+    /// ```ignore
+    /// protocol Foo {
+    ///   Bar() @attr(true)
+    ///         ^^^^^^^^^^^
+    /// }
+    /// ```
+    pub attributes: Vec<Attribute>,
 
     /// The location of this protocol member in the text representation.
     pub(crate) span: Span,
@@ -110,4 +121,34 @@ pub struct Protocol {
 
     /// The location of this protocol in the text representation.
     pub(crate) span: Span,
+}
+
+impl Protocol {
+    pub fn iter_methods(&self) -> impl ExactSizeIterator<Item = (&ProtocolMethod)> + Clone {
+        self.methods.iter().enumerate().map(|(idx, method)| (method))
+    }
+}
+
+impl WithIdentifier for Protocol {
+    fn identifier(&self) -> &Identifier {
+        &self.name
+    }
+}
+
+impl WithSpan for Protocol {
+    fn span(&self) -> Span {
+        self.span
+    }
+}
+
+impl WithAttributes for Protocol {
+    fn attributes(&self) -> &[Attribute] {
+        &self.attributes
+    }
+}
+
+impl WithDocumentation for Protocol {
+    fn documentation(&self) -> Option<&str> {
+        self.documentation.as_ref().map(|doc| doc.text.as_str())
+    }
 }

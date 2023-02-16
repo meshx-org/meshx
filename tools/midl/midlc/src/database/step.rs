@@ -1,0 +1,3 @@
+trait Step {
+    fn run() {}
+}

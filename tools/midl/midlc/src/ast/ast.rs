@@ -36,17 +36,6 @@ impl Literal {
     }
 }
 
-/// Represents a constant value.
-#[derive(Debug)]
-pub struct Constant(pub Literal);
-
-#[derive(Debug)]
-pub struct ConstDeclaration {
-    pub name: Identifier,
-    pub ty: Type,
-    pub value: Constant,
-}
-
 #[derive(Debug)]
 pub struct LibraryDeclaration {
     pub name: CompoundIdentifier,

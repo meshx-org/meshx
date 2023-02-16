@@ -3,22 +3,27 @@
 #![deny(rust_2018_idioms, unsafe_code)]
 
 mod ast;
+mod database;
 mod diagnotics;
 mod error;
 mod parse;
+mod source_file;
 
 use clap::{arg, Command};
-use midlgen::Root;
-use pest::Parser;
+
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 
+use midlgen::ir;
+
 #[macro_use]
 extern crate pest_derive;
 
+use crate::database::ParserDatabase;
 use crate::diagnotics::Diagnostics;
 use crate::parse::{parse, MIDLParser};
+use crate::source_file::SourceFile;
 
 fn cli() -> Command {
     Command::new("git")
@@ -46,29 +51,13 @@ fn main() -> std::io::Result<()> {
                 .collect::<Vec<_>>();
 
             let midl_source = std::fs::read_to_string(paths[0])?;
+            let midl_source: SourceFile = midl_source.into();
 
-            let mut diagnotics = Diagnostics::new();
-            let pairs = MIDLParser::parse(parse::Rule::library, &midl_source.as_str()).unwrap();
-            // println!("{:?}", pairs);
+            let mut diagnostics = Diagnostics::new();
 
-            let ast = parse(pairs, &mut diagnotics);
-            println!("{:#?}", ast);
+            let db = ParserDatabase::new(midl_source, &mut diagnostics);
 
-            let ir = Root {
-                library: midlgen::Library {
-                    name: "S".to_owned(),
-                    doc: None,
-                },
-                r#const: vec![],
-                r#enum: vec![],
-                r#struct: vec![],
-                r#protocol: vec![],
-            };
-
-            // let value2: Root = serde_json::from_value(value.clone())?;
-            // println!("{:#?}", value2);
-
-            let ir_str = serde_json::to_string(&ir)?;
+            let ir_str = serde_json::to_string(&db.ir)?;
 
             let mut file = File::create("./ir.json")?;
             file.write_all(ir_str.as_bytes())?;

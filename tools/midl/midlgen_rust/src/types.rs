@@ -1,7 +1,6 @@
 use iota::iota;
 use serde::{Deserialize, Serialize};
-
-type EncodedCompoundIdentifier = midlgen::EncodedCompoundIdentifier;
+use midlgen::ir;
 
 #[derive(Serialize, Deserialize)]
 pub struct Derives(pub u16);
@@ -41,7 +40,7 @@ pub struct RustPaddingMarker {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Const {
-    pub base: midlgen::Const,
+    pub base: ir::Const,
     pub name: String,
     pub r#type: String,
     pub value: String,
@@ -49,7 +48,7 @@ pub struct Const {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Enum {
-    pub base: midlgen::Enum,
+    pub base: ir::Enum,
     pub name: String,
     pub r#type: String,
     pub members: Vec<EnumMember>,
@@ -61,15 +60,15 @@ pub struct Enum {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct EnumMember {
-    pub base: midlgen::EnumMember,
+    pub base: ir::EnumMember,
     pub name: String,
     pub value: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Struct {
-    pub base: midlgen::Struct,
-    pub eci: EncodedCompoundIdentifier,
+    pub base: ir::Struct,
+    pub eci: ir::EncodedCompoundIdentifier,
     pub derives: Derives,
     pub name: String,
     pub members: Vec<StructMember>,
@@ -88,8 +87,8 @@ pub struct Struct {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StructMember {
-    pub base: midlgen::StructMember,
-    pub og_type: midlgen::Type,
+    pub base: ir::StructMember,
+    pub og_type: ir::Type,
     pub r#type: String,
     pub name: String,
     pub offset_v1: i32,
@@ -103,7 +102,7 @@ pub struct StructMember {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultOkEntry {
-    pub og_type: midlgen::Type,
+    pub og_type: ir::Type,
     pub r#type: String,
     pub has_handle_metadata: bool,
     pub handle_wrapper_name: String,
@@ -113,13 +112,13 @@ pub struct ResultOkEntry {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CallResult {
     /// Compound identifier for the result type, used for lookups.
-    pub eci: EncodedCompoundIdentifier,
+    pub eci: ir::EncodedCompoundIdentifier,
     pub derives: Derives,
     /// Rust UpperCamelCase name for the result type used when generating or
     /// referencing it.
     pub name: String,
     pub ok: Vec<ResultOkEntry>,
-    pub err_og_type: Option<midlgen::Type>,
+    pub err_og_type: Option<ir::Type>,
     pub err_type: Option<String>,
     pub has_transport_error: bool,
 }
@@ -129,9 +128,9 @@ pub struct CallResult {
 pub struct Protocol {
     /// Raw JSON IR data about this protocol. Embedded to provide access to
     /// fields common to all bindings.
-    pub base: midlgen::Protocol,
+    pub base: ir::Protocol,
     /// Compound identifier referring to this protocol.
-    pub eci: EncodedCompoundIdentifier,
+    pub eci: ir::EncodedCompoundIdentifier,
     /// Name of the protocol as a Rust CamelCase identifier. Since only protocols
     /// from the same library are included, this will never be qualified, so it
     /// is just the CamelCase name of the protocol.
@@ -174,7 +173,7 @@ pub struct Overflowable {
 pub struct Method {
     /// Raw JSON IR data about this method. Embedded to provide access to fields
     /// common to all bindings.
-    pub base: midlgen::Method,
+    pub base: ir::Method,
     /// Name of the method converted to snake_case. Used when generating
     /// rust-methods associated with this method, such as proxy methods and
     /// encoder methods.
@@ -210,7 +209,7 @@ pub struct Method {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Parameter {
     /// The raw fidlgen type of the parameter.
-    pub og_type: midlgen::Type,
+    pub og_type: ir::Type,
     /// String representing the type to use for this parameter when handling it
     /// by-value.
     pub r#type: String,

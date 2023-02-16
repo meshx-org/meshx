@@ -38,6 +38,11 @@ impl Diagnostics {
     pub fn push_warning(&mut self, warning: DiagnosticsWarning) {
         self.warnings.push(warning)
     }
+
+    /// Returns true, if there is at least one error in this collection.
+    pub fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
 }
 
 impl From<DiagnosticsError> for Diagnostics {

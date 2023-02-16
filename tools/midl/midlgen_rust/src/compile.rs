@@ -1,16 +1,18 @@
-use midlgen::{BaseDeclaration};
+use crate::types::*;
+use ir::BaseDeclaration;
+use midlgen::ir;
 use serde_json::Value;
 use std::collections::HashMap;
-use crate::types::*;
 
-pub fn compile(ir: midlgen::Root) -> Root {
+pub fn compile(ir: midlgen::ir::Root) -> Root {
     // TODO: add ir compilation
 
     let const1 = Const {
-        base: midlgen::Const {
+        base: ir::Const {
             base: BaseDeclaration {
                 name: String::from("TEST_CONST"),
-                location: midlgen::Location {
+                attributes: vec![],
+                location: ir::Location {
                     filename: String::from(""),
                     line: 0,
                     column: 0,
@@ -25,7 +27,7 @@ pub fn compile(ir: midlgen::Root) -> Root {
     };
 
     let enum_member1 = EnumMember {
-        base: midlgen::EnumMember {
+        base: ir::EnumMember {
             doc: None,
             value: Value::Null,
         },
@@ -34,10 +36,11 @@ pub fn compile(ir: midlgen::Root) -> Root {
     };
 
     let enum1 = Enum {
-        base: midlgen::Enum {
+        base: ir::Enum {
             base: BaseDeclaration {
                 name: String::from(""),
-                location: midlgen::Location {
+                attributes: vec![],
+                location: ir::Location {
                     filename: String::from(""),
                     line: 0,
                     column: 0,
@@ -55,12 +58,12 @@ pub fn compile(ir: midlgen::Root) -> Root {
     };
 
     let struct_member1 = StructMember {
-        base: midlgen::StructMember {
+        base: ir::StructMember {
             doc: None,
             r#type: String::from("uint32"),
             of: None,
         },
-        og_type: midlgen::Type {},
+        og_type: ir::Type {},
         r#type: String::from("u32"),
         name: String::from("test_member"),
         offset_v1: 0,
@@ -73,21 +76,22 @@ pub fn compile(ir: midlgen::Root) -> Root {
     };
 
     let protocol1 = Protocol {
-        base: midlgen::Protocol {
+        base: ir::Protocol {
             doc: None,
             methods: vec![],
         },
-        eci: midlgen::EncodedCompoundIdentifier("".to_owned()),
+        eci: ir::EncodedCompoundIdentifier("".to_owned()),
         name: String::from("TestProtocol"),
         methods: vec![],
         protocol_name: String::from("TestProtocol"),
     };
 
     let struct1 = Struct {
-        base: midlgen::Struct {
+        base: ir::Struct {
             base: BaseDeclaration {
                 name: "".to_owned(),
-                location: midlgen::Location {
+                attributes: vec![],
+                location: ir::Location {
                     filename: String::from(""),
                     line: 0,
                     column: 0,
@@ -98,7 +102,7 @@ pub fn compile(ir: midlgen::Root) -> Root {
             member: HashMap::new(),
         },
         name: String::from("TestSctruct"),
-        eci: midlgen::EncodedCompoundIdentifier("".to_owned()),
+        eci: ir::EncodedCompoundIdentifier("".to_owned()),
         derives: Derives(0),
         members: vec![struct_member1],
         padding_markers_v1: vec![],

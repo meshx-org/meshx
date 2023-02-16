@@ -21,16 +21,20 @@ pub(crate) fn parse_constant_declaration(
     pair: Pair<'_>,
     diagnostics: &mut Diagnostics,
 ) -> Result<ast::ConstDeclaration, ParserError> {
+    let pair_span = pair.as_span();
     let mut parts = pair.into_inner();
 
     let _attribute_list = parts.next().unwrap().as_str();
     let identifier = parts.next().unwrap();
     let ty = parts.next().unwrap().into_inner().next().unwrap();
     let constant = parts.next().unwrap();
+    let mut attributes: Vec<ast::Attribute> = Vec::new();
 
     Ok(ast::ConstDeclaration {
         name: parse_identifier(&identifier)?,
         ty: parse_type_constructor(&ty)?,
         value: parse_constant(constant.clone(), diagnostics)?,
+        attributes,
+        span: ast::Span::from(pair_span),
     })
 }

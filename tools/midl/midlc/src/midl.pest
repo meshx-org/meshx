@@ -30,8 +30,9 @@ const_declaration = {
 
 struct_declaration =  { 
     block_attribute_list
+    ~ declaration_modifiers* 
     ~ (STRUCT_KEYWORD | TABLE_KEYWORD) 
-    ~ identifier  
+    ~ identifier?
     ~ BLOCK_OPEN
     ~ (struct_layout_member | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)* 
     ~ BLOCK_CLOSE
@@ -65,11 +66,10 @@ protocol_result       =  { "->" ~ parameter_list ~ ( "error" ~ type_definition )
 protocol_event        =  { "->" ~ identifier ~ parameter_list }
 protocol_compose      =  { COMPOSE_KEYWORD ~ compound_identifier }
 
-parameter_list        =   { "(" ~ inline_layout ~ ")" }
+parameter_list        =   { "(" ~ (struct_declaration | identifier ) ~ ")" }
 
 layout                = _{ compound_identifier | inline_layout }
 layout_subtype        =  { type_definition }
-layout_kind           =  { "struct" | "bits" | "enum" | "union" | "table" }
 layout_body           =  { 
 							BLOCK_OPEN 
                             ~ (value_layout | struct_layout | ordinal_layout) 
@@ -87,7 +87,7 @@ member_field         =  { identifier ~ type_definition }
 inline_layout        =  { 
 							block_attribute_list
                             ~ declaration_modifiers* 
-                            ~ layout_kind 
+                            ~ (STRUCT_KEYWORD | TABLE_KEYWORD | ENUM_KEYWORD | UNION_KEYWORD | BITS_KEYWORD)
                             ~ layout_subtype? 
                             ~ layout_body 
                         }
@@ -145,7 +145,7 @@ ordinal                 =  { ASCII_NONZERO_DIGIT }
 // ######################################
 // shared building blocks
 // ######################################
-identifier              = @{ !KEYWORDS ~ ("_" | ASCII_ALPHANUMERIC)* }
+identifier              = @{ !KEYWORDS ~ ("_" | ASCII_ALPHANUMERIC)+ }
 compound_identifier     =  { identifier ~ ( "." ~ identifier )* }
 
 // the any part is to not crash on comments next to an open block, see test `parse_comments_without_crasing_or_loosing_info`

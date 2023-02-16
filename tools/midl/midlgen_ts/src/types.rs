@@ -1,4 +1,4 @@
-use midlgen::{CompoundIdentifier, Identifier};
+use midlgen::ir;
 
 #[derive(Default, Debug)]
 pub struct Import;
@@ -23,7 +23,7 @@ pub struct StructPadding;
 // Struct represents a struct declaration.
 #[derive(Debug)]
 pub struct Struct {
-    ir: midlgen::Struct,
+    ir: ir::Struct,
     doc_comments: Vec<String>,
     name: String,
     members: Vec<StructMember>,

@@ -1,6 +1,7 @@
 use super::helpers::parsing_catch_all;
 use super::{helpers::Pair, Rule};
 
+use crate::ast::Identifier;
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
 use crate::{ast, error::ParserError};
 use crate::parse::parse_comments::{parse_comment_block, parse_trailing_comment};
@@ -45,12 +46,13 @@ fn parse_struct_member(
 
 pub(crate) fn parse_struct_declaration(
     pair: Pair<'_>,
+    initial_name: Option<ast::Identifier>,
     diagnostics: &mut Diagnostics,
 ) -> Result<ast::Struct, ParserError> {
     let pair_span = pair.as_span();
 
-    let mut name: Option<ast::Identifier> = None;
-    // let mut attributes: Vec<Attribute> = Vec::new();
+    let mut name: Option<ast::Identifier> = initial_name;
+    let mut attributes: Vec<ast::Attribute> = Vec::new();
     let mut members: Vec<ast::StructMember> = Vec::new();
     let mut pending_field_comment: Option<Pair<'_>> = None;
 
@@ -60,6 +62,7 @@ pub(crate) fn parse_struct_declaration(
             Rule::identifier => name = Some(current.into()),
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */},
             Rule::struct_layout_member => {},
+            Rule::declaration_modifiers => {},
             /*Rule::member_field => match parse_field(
                 &name.as_ref().unwrap().value,
                 "model",
@@ -83,7 +86,7 @@ pub(crate) fn parse_struct_declaration(
         Some(name) => Ok(ast::Struct {
             name,
             members,
-            attributes: vec![],
+            attributes,
             documentation: None,
             span: ast::Span::from(pair_span),
         }),

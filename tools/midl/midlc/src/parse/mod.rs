@@ -1,16 +1,16 @@
 mod helpers;
 mod parse_comments;
 mod parse_const;
-mod parse_library;
 mod parse_import;
+mod parse_library;
 mod parse_protocol;
 mod parse_struct;
 mod parse_type;
 mod parse_value;
 
 use parse_const::parse_constant_declaration;
-use parse_library::parse_library_declaration;
 use parse_import::parse_import_declaration;
+use parse_library::parse_library_declaration;
 use parse_protocol::parse_protocol_declaration;
 use parse_struct::parse_struct_declaration;
 use parse_type::parse_type_constructor;
@@ -18,6 +18,7 @@ use parse_type::parse_type_constructor;
 use super::ast;
 use super::diagnotics::Diagnostics;
 use super::error::ParserError;
+use pest::Parser;
 
 use pest::iterators::{Pair, Pairs};
 
@@ -64,7 +65,9 @@ pub(crate) fn parse_compound_identifier(
     Ok(ast::CompoundIdentifier(identifiers))
 }
 
-pub(crate) fn parse(pairs: Pairs<'_, Rule>, diagnostics: &mut Diagnostics) -> Result<ast::SchamaAST, ParserError> {
+pub(crate) fn parse(midl_source: &str, diagnostics: &mut Diagnostics) -> Result<ast::SchamaAST, ParserError> {
+    let pairs = MIDLParser::parse(Rule::library, &midl_source).unwrap();
+
     let mut declarations = vec![];
 
     // initial parsing
@@ -73,7 +76,7 @@ pub(crate) fn parse(pairs: Pairs<'_, Rule>, diagnostics: &mut Diagnostics) -> Re
             for declaration_pair in pair.into_inner() {
                 match declaration_pair.as_rule() {
                     Rule::struct_declaration => {
-                        let struct_declaration = parse_struct_declaration(declaration_pair, diagnostics)?;
+                        let struct_declaration = parse_struct_declaration(declaration_pair, None, diagnostics)?;
                         declarations.push(ast::Declaration::Struct(struct_declaration));
                     }
                     Rule::const_declaration => {
@@ -85,8 +88,10 @@ pub(crate) fn parse(pairs: Pairs<'_, Rule>, diagnostics: &mut Diagnostics) -> Re
                         declarations.push(ast::Declaration::Library(library_declaration));
                     }
                     Rule::protocol_declaration => {
-                        let (protocol_declaration, _) = parse_protocol_declaration(declaration_pair, diagnostics)?;
-                        declarations.push(ast::Declaration::Protocol(protocol_declaration));
+                        let (protocol, mut decls) = parse_protocol_declaration(declaration_pair, diagnostics)?;
+
+                        declarations.push(ast::Declaration::Protocol(protocol));
+                        declarations.append(&mut decls);
                     }
                     Rule::import_declaration => {
                         let declaration = parse_import_declaration(&declaration_pair)?;

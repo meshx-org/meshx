@@ -1,9 +1,10 @@
-mod ir;
+mod compile;
 mod types;
 
 use handlebars::Handlebars;
 use clap::Parser;
 use thiserror::Error;
+use midlgen::ir;
 
 #[derive(Error, Debug)]
 pub enum GeneratorError {
@@ -51,7 +52,7 @@ impl Generator {
         Generator { registry }
     }
 
-    fn generate_fidl(&self, _ir: midlgen::Root, _output_filename: String) -> Result<(), GeneratorError> {
+    fn generate_fidl(&self, _ir: ir::Root, _output_filename: String) -> Result<(), GeneratorError> {
         Ok(())
     }
 }
@@ -60,7 +61,7 @@ fn main() -> Result<(), GeneratorError> {
     let args = Args::parse();
     let contents = std::fs::read_to_string(args.json).unwrap();
 
-    let root = serde_json::from_str::<midlgen::Root>(contents.as_str())?;
+    let root = serde_json::from_str::<ir::Root>(contents.as_str())?;
     println!("{:?}", root);
 
     // let root = ir::compile(root);

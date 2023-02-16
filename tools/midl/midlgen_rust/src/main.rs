@@ -1,15 +1,16 @@
-mod ir;
+mod compile;
 mod types;
 
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 use clap::Parser;
 use handlebars::Handlebars;
 
 use thiserror::Error;
 
+use midlgen::ir;
 use midlgen::helpers::{IfCondHelper, PrintfHelper};
 
 #[derive(Error, Debug)]
@@ -69,8 +70,8 @@ impl Generator {
         Generator { registry }
     }
 
-    fn generate_fidl(&self, ir: midlgen::Root, output_filename: String) -> Result<(), GeneratorError> {
-        let tree = ir::compile(ir);
+    fn generate_fidl(&self, ir: ir::Root, output_filename: String) -> Result<(), GeneratorError> {
+        let tree = compile::compile(ir);
         return self.generate_file(output_filename, "GenerateSourceFile", tree);
     }
 
@@ -112,7 +113,7 @@ fn main() -> Result<(), GeneratorError> {
     let args = Args::parse();
     let contents = std::fs::read_to_string(args.json).unwrap();
 
-    let root = serde_json::from_str::<midlgen::Root>(contents.as_str())?;
+    let root = serde_json::from_str::<ir::Root>(contents.as_str())?;
 
     let generator = Generator::new();
     generator.generate_fidl(root, "./OUTPUT.rs".to_owned())?;
