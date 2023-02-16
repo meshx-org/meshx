@@ -2,7 +2,14 @@ use super::{Attribute, Comment, Identifier, Span};
 
 /// A struct member declaration.
 #[derive(Debug, Clone)]
-pub struct StructMember;
+pub struct StructMember {
+    pub(crate) name: Identifier,
+
+    pub(crate) documentation: Option<Comment>,
+
+    /// The location of this struct in the text representation.
+    pub(crate) span: Span,
+}
 
 /// A struct declaration.
 #[derive(Debug, Clone)]

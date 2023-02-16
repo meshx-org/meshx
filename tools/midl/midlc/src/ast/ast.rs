@@ -52,6 +52,11 @@ pub struct LibraryDeclaration {
     pub name: CompoundIdentifier,
 }
 
+#[derive(Debug)]
+pub struct ImportDeclaration {
+    pub name: CompoundIdentifier,
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum PrimitiveSubtype {
     Bool,

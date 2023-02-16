@@ -45,6 +45,7 @@ import zx
 
 @discoverable
 protocol View {
+    compose test.Test
   /// Updates the View's configuration.
   ///
   /// To prevent triggering UI changes shortly after a client starts up, the

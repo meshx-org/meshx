@@ -1,6 +1,8 @@
 mod helpers;
+mod parse_comments;
 mod parse_const;
 mod parse_library;
+mod parse_import;
 mod parse_protocol;
 mod parse_struct;
 mod parse_type;
@@ -8,6 +10,7 @@ mod parse_value;
 
 use parse_const::parse_constant_declaration;
 use parse_library::parse_library_declaration;
+use parse_import::parse_import_declaration;
 use parse_protocol::parse_protocol_declaration;
 use parse_struct::parse_struct_declaration;
 use parse_type::parse_type_constructor;
@@ -78,12 +81,16 @@ pub(crate) fn parse(pairs: Pairs<'_, Rule>, diagnostics: &mut Diagnostics) -> Re
                         declarations.push(ast::Declaration::Const(const_declaration));
                     }
                     Rule::library_declaration => {
-                        let declaration = parse_library_declaration(&declaration_pair)?;
-                        declarations.push(ast::Declaration::Library(declaration));
+                        let library_declaration = parse_library_declaration(&declaration_pair)?;
+                        declarations.push(ast::Declaration::Library(library_declaration));
                     }
                     Rule::protocol_declaration => {
-                        let declaration = parse_protocol_declaration(declaration_pair, diagnostics)?;
-                        declarations.push(ast::Declaration::Protocol(declaration));
+                        let (protocol_declaration, _) = parse_protocol_declaration(declaration_pair, diagnostics)?;
+                        declarations.push(ast::Declaration::Protocol(protocol_declaration));
+                    }
+                    Rule::import_declaration => {
+                        let declaration = parse_import_declaration(&declaration_pair)?;
+                        declarations.push(ast::Declaration::Import(declaration));
                     }
                     Rule::layout_declaration => {}
                     _ => {}

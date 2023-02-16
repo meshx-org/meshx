@@ -7,12 +7,12 @@ mod r#struct;
 mod protocol;
 mod traits;
 
-use comment::Comment;
-
 pub use ast::*;
+
 pub use attribute::Attribute;
+pub use comment::Comment;
 pub use identifier::{CompoundIdentifier, Identifier};
-pub use protocol::Protocol;
+pub use protocol::{Protocol, ProtocolMethod};
 pub use r#struct::{Struct, StructMember};
 pub use span::Span;
 pub use traits::{WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
@@ -20,6 +20,7 @@ pub use traits::{WithAttributes, WithDocumentation, WithIdentifier, WithName, Wi
 #[derive(Debug)]
 pub enum Declaration {
     Library(LibraryDeclaration),
+    Import(ImportDeclaration),
     Const(ConstDeclaration),
     Struct(Struct),
     Protocol(Protocol),

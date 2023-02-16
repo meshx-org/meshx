@@ -20,4 +20,16 @@ impl DiagnosticsError {
     pub fn new_validation_error(message: &str, span: Span) -> Self {
         Self::new(format!("Error validating: {message}"), span)
     }
+
+    pub fn new_protocol_validation_error(
+        message: &str,
+        block_type: &'static str,
+        protocol_name: &str,
+        span: Span,
+    ) -> DiagnosticsError {
+        Self::new(
+            format!("Error validating {block_type} \"{protocol_name}\": {message}"),
+            span,
+        )
+    }
 }

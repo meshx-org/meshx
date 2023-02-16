@@ -49,10 +49,10 @@ fn main() -> std::io::Result<()> {
 
             let mut diagnotics = Diagnostics::new();
             let pairs = MIDLParser::parse(parse::Rule::library, &midl_source.as_str()).unwrap();
-            println!("{:?}", pairs);
+            // println!("{:?}", pairs);
 
             let ast = parse(pairs, &mut diagnotics);
-            println!("{:?}", ast);
+            println!("{:#?}", ast);
 
             let ir = Root {
                 library: midlgen::Library {

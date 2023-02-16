@@ -3,6 +3,45 @@ use super::{helpers::Pair, Rule};
 
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
 use crate::{ast, error::ParserError};
+use crate::parse::parse_comments::{parse_comment_block, parse_trailing_comment};
+
+fn parse_struct_member(
+    pair: Pair<'_>,
+    block_comment: Option<Pair<'_>>,
+    diagnostics: &mut Diagnostics,
+) -> Result<ast::StructMember, ParserError> {
+    let pair_span = pair.as_span();
+    let mut name: Option<ast::Identifier> = None;
+    let mut attributes: Vec<ast::Attribute> = Vec::new();
+    let mut comment: Option<ast::Comment> = block_comment.and_then(parse_comment_block);
+
+    for current in pair.into_inner() {
+        match current.as_rule() {
+            Rule::identifier => name = Some(current.into()),
+            // Rule::field_type => field_type = Some(parse_field_type(current, diagnostics)?),
+            // Rule::field_attribute => attributes.push(parse_attribute(current, diagnostics)),
+            Rule::trailing_comment => {
+                comment = match (comment, parse_trailing_comment(current)) {
+                    (c, None) | (None, c) => c,
+                    (Some(existing), Some(new)) => Some(ast::Comment {
+                        text: [existing.text, new.text].join("\n"),
+                    }),
+                };
+            }
+            _ => parsing_catch_all(&current, "field"),
+        }
+    }
+
+    match name {
+        Some(name) => Ok(ast::StructMember {
+            name,
+            documentation: None,
+            span: ast::Span::from(pair_span),
+        }),
+        _ => Err(ParserError::UnexpectedToken),
+    }
+}
+
 
 pub(crate) fn parse_struct_declaration(
     pair: Pair<'_>,

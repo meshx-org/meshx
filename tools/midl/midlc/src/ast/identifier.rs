@@ -22,4 +22,16 @@ impl<T: pest::RuleType> From<pest::iterators::Pair<'_, T>> for Identifier {
 }
 
 #[derive(Debug)]
-pub struct CompoundIdentifier (pub Vec<Identifier>);
+pub struct CompoundIdentifier(pub Vec<Identifier>);
+
+impl<T: pest::RuleType> From<pest::iterators::Pair<'_, T>> for CompoundIdentifier {
+    fn from(pair: pest::iterators::Pair<'_, T>) -> Self {
+        let ids = pair
+            .into_inner()
+            .into_iter()
+            .map(|id| id.into())
+            .collect::<Vec<Identifier>>();
+        
+        CompoundIdentifier(ids)
+    }
+}
