@@ -1,5 +1,6 @@
 use crate::ast::Library;
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
+use crate::source_file::SourceId;
 
 use super::libraries::Libraries;
 use super::references::References;
@@ -18,7 +19,7 @@ use super::references::References;
 /// See `visit_attributes()`.
 pub(crate) struct Context<'lib, 'db> {
     pub(crate) ast: &'db Library,
-    
+
     pub(crate) all_libraries: &'lib Libraries<'lib>,
 
     pub(crate) diagnostics: &'db mut Diagnostics,
@@ -26,7 +27,7 @@ pub(crate) struct Context<'lib, 'db> {
 }
 
 impl<'lib, 'db> Context<'lib, 'db> {
-    pub(super) fn new (
+    pub(super) fn new(
         ast: &'db Library,
         all_libraries: &'lib Libraries<'lib>,
         references: &'db mut References,
@@ -37,6 +38,33 @@ impl<'lib, 'db> Context<'lib, 'db> {
             diagnostics,
             all_libraries,
             references,
+        }
+    }
+
+    pub(super) fn push_error(&mut self, error: DiagnosticsError) {
+        self.diagnostics.push_error(error)
+    }
+}
+
+/// Parsing context. This is an implementation detail of ParserDatabase. It
+/// contains the database itself, as well as context that is discarded after
+/// parsing is done.
+pub(crate) struct ParsingContext<'lib, 'db> {
+    pub(crate) all_libraries: &'lib Libraries<'lib>,
+    pub(crate) diagnostics: &'db mut Diagnostics,
+    pub(crate) source_id: SourceId,
+}
+
+impl<'lib, 'db> ParsingContext<'lib, 'db> {
+    pub(super) fn new(
+        all_libraries: &'lib Libraries<'lib>,
+        diagnostics: &'db mut Diagnostics,
+        source_id: SourceId,
+    ) -> Self {
+        ParsingContext {
+            source_id,
+            diagnostics,
+            all_libraries,
         }
     }
 

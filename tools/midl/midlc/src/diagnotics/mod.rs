@@ -1,15 +1,17 @@
 mod error;
+mod pretty_print;
+mod warning;
 
-pub use error::DiagnosticsError;
+pub(crate) use error::DiagnosticsError;
+pub(crate) use warning::DiagnosticsWarning;
 
-#[derive(Debug)]
-pub(crate) struct DiagnosticsWarning;
+use crate::source_file::SourceFile;
 
 /// Represents a list of validation or parser errors and warnings.
 ///
 /// This is used to accumulate multiple errors and warnings during validation.
 /// It is used to not error out early and instead show multiple errors at once.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct Diagnostics {
     errors: Vec<DiagnosticsError>,
     warnings: Vec<DiagnosticsWarning>,

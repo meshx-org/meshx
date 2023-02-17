@@ -1,17 +1,20 @@
 use super::helpers::parsing_catch_all;
+use super::parse_identifier;
 use super::parse_type::parse_type_constructor;
 use super::{helpers::Pair, Rule};
 
 use crate::ast;
+use crate::database::ParsingContext;
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
 use crate::parse::parse_comments::{parse_comment_block, parse_trailing_comment};
+use crate::source_file::SourceId;
 
 fn parse_struct_member(
     struct_name: &str,
     container_type: &'static str,
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
-    diagnostics: &mut Diagnostics,
+    ctx: &mut ParsingContext<'_, '_>,
 ) -> Result<ast::StructMember, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::struct_layout_member);
 
@@ -23,8 +26,8 @@ fn parse_struct_member(
 
     for current in pair.into_inner() {
         match current.as_rule() {
-            Rule::identifier => name = Some(current.into()),
-            Rule::type_definition => member_type = Some(parse_type_constructor(current, diagnostics)?),
+            Rule::identifier => name = Some(parse_identifier(&current, ctx)),
+            Rule::type_definition => member_type = Some(parse_type_constructor(current, ctx)?),
             Rule::inline_attribute_list => {}
             Rule::trailing_comment => {
                 comment = match (comment, parse_trailing_comment(current)) {
@@ -43,7 +46,7 @@ fn parse_struct_member(
             name,
             documentation: None,
             member_type,
-            span: ast::Span::from(pair_span),
+            span: ast::Span::from_pest(pair_span, ctx.source_id),
         }),
         _ => panic!("Encountered impossible struct member declaration during parsing"),
     }
@@ -52,7 +55,7 @@ fn parse_struct_member(
 pub(crate) fn parse_struct_declaration(
     pair: Pair<'_>,
     initial_name: Option<ast::Identifier>,
-    diagnostics: &mut Diagnostics,
+    ctx: &mut ParsingContext<'_, '_>,
 ) -> Result<ast::Struct, DiagnosticsError> {
     let pair_span = pair.as_span();
 
@@ -64,7 +67,7 @@ pub(crate) fn parse_struct_declaration(
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
-            Rule::identifier => name = Some(current.into()),
+            Rule::identifier => name = Some(parse_identifier(&current, ctx)),
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::struct_layout_member => {
                 match parse_struct_member(
@@ -72,29 +75,19 @@ pub(crate) fn parse_struct_declaration(
                     "struct",
                     current,
                     pending_field_comment.take(),
-                    diagnostics,
+                    ctx,
                 ) {
                     Ok(member) => {
                         members.push(member);
                     }
-                    Err(err) => diagnostics.push_error(err),
+                    Err(err) => ctx.diagnostics.push_error(err),
                 }
             }
             Rule::declaration_modifiers => {}
-            /*Rule::member_field => match parse_field(
-                &name.as_ref().unwrap().value,
-                "model",
-                current,
-                pending_field_comment.take(),
-                diagnostics,
-            ) {
-                Ok(field) => members.push(field),
-                Err(err) => diagnostics.push_error(err),
-            },*/
             Rule::comment_block => pending_field_comment = Some(current),
-            Rule::BLOCK_LEVEL_CATCH_ALL => diagnostics.push_error(DiagnosticsError::new_validation_error(
+            Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(
                 "This line is not a valid field or attribute definition.",
-                current.as_span().into(),
+                ast::Span::from_pest(current.as_span(), ctx.source_id),
             )),
             _ => parsing_catch_all(&current, "struct"),
         }
@@ -106,7 +99,7 @@ pub(crate) fn parse_struct_declaration(
             members,
             attributes,
             documentation: None,
-            span: ast::Span::from(pair_span),
+            span: ast::Span::from_pest(pair_span, ctx.source_id),
         }),
         _ => panic!("Encountered impossible struct declaration during parsing",),
     }

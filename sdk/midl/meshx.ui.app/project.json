@@ -10,7 +10,7 @@
             "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.ui.app", "./ir.json"],
             "options": {
                 "outDir": "dist/sdk/midl/meshx.ui.app",
-                "path": "./view.midl",
+                "srcs": ["./view.midl", "./view_provider.midl"],
                 "language": "ts"
             }
         }

@@ -1,58 +1,59 @@
-use std::sync::Arc;
-
 /// A MIDL schema document.
 #[derive(Debug, Clone)]
-pub struct SourceFile {
-    contents: Contents,
+pub(crate) struct SourceFile<'src> {
+    filename: &'src str,
+    contents: String,
 }
 
-impl SourceFile {
-    pub fn new_static(content: &'static str) -> Self {
-        Self {
-            contents: Contents::Static(content),
-        }
-    }
-
-    pub fn new_allocated(s: Arc<str>) -> Self {
-        Self {
-            contents: Contents::Allocated(s),
-        }
+impl<'src> SourceFile<'src> {
+    pub fn new(filename: &'src str, contents: String) -> Self {
+        Self { filename, contents }
     }
 
     pub fn as_str(&self) -> &str {
-        match self.contents {
-            Contents::Static(s) => s,
-            Contents::Allocated(ref s) => s,
-        }
+        self.contents.as_str()
+    }
+
+    pub fn filename(&self) -> &str {
+        self.filename
     }
 }
 
-impl From<&str> for SourceFile {
-    fn from(s: &str) -> Self {
-        Self::new_allocated(Arc::from(s.to_owned().into_boxed_str()))
+pub(crate) struct SourceFiles<'files> {
+    files: Vec<SourceFile<'files>>,
+}
+
+impl<'files> From<Vec<SourceFile<'files>>> for SourceFiles<'files> {
+    fn from(files: Vec<SourceFile<'files>>) -> Self {
+        Self { files }
     }
 }
 
-impl From<Box<str>> for SourceFile {
-    fn from(s: Box<str>) -> Self {
-        Self::new_allocated(Arc::from(s))
+impl<'files> SourceFiles<'files> {
+    pub(crate) fn add(&mut self, filename: &'files str, contents: String) {
+        self.files.push(SourceFile::new(filename, contents));
+    }
+
+    pub(crate) fn get(&self, filename: &str) -> Option<&SourceFile<'_>> {
+        self.files.iter().find(|f| f.filename == filename)
+    }
+
+    /// Enumerate over all source files in this collection.
+    pub(crate) fn iter_sources(&self) -> impl Iterator<Item = (SourceId, &SourceFile<'_>)> {
+        self.files
+            .iter()
+            .enumerate()
+            .map(|(file_idx, file)| (SourceId(file_idx), file))
     }
 }
 
-impl From<Arc<str>> for SourceFile {
-    fn from(s: Arc<str>) -> Self {
-        Self::new_allocated(s)
-    }
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SourceId(pub usize);
 
-impl From<String> for SourceFile {
-    fn from(s: String) -> Self {
-        Self::new_allocated(Arc::from(s.into_boxed_str()))
-    }
-}
+impl<'files> std::ops::Index<SourceId> for SourceFiles<'files> {
+    type Output = SourceFile<'files>;
 
-#[derive(Debug, Clone)]
-enum Contents {
-    Static(&'static str),
-    Allocated(Arc<str>),
+    fn index(&self, index: SourceId) -> &Self::Output {
+        &self.files[index.0]
+    }
 }

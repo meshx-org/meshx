@@ -15,43 +15,49 @@ use parse_protocol::parse_protocol_declaration;
 use parse_struct::parse_struct_declaration;
 use parse_type::parse_type_constructor;
 
-use crate::database::Context;
-
 use super::ast;
-use super::diagnotics::Diagnostics;
-
-use pest::Parser;
+use crate::database::ParsingContext;
+use crate::source_file::SourceId;
 
 use pest::iterators::Pair;
+use pest::Parser;
 
 #[derive(Parser)]
 #[grammar = "midl.pest"]
 pub struct MIDLParser;
 
-pub(crate) fn parse_identifier(pair: &Pair<'_, Rule>) -> ast::Identifier {
+pub(crate) fn parse_identifier(pair: &Pair<'_, Rule>, ctx: &mut ParsingContext<'_, '_>) -> ast::Identifier {
     debug_assert!(pair.as_rule() == Rule::identifier);
+    let pair_span = pair.as_span();
 
     ast::Identifier {
         value: pair.as_str().to_string(),
-        span: ast::Span::from(pair.as_span()),
+        span: ast::Span::from_pest(pair_span, ctx.source_id),
     }
 }
 
-pub(crate) fn parse_compound_identifier(pair: &Pair<'_, Rule>) -> ast::CompoundIdentifier {
+pub(crate) fn parse_compound_identifier(
+    pair: &Pair<'_, Rule>,
+    ctx: &mut ParsingContext<'_, '_>,
+) -> ast::CompoundIdentifier {
     debug_assert!(pair.as_rule() == Rule::compound_identifier);
+    let pair_span = pair.as_span();
 
     let mut components = vec![];
 
     for identifier_pair in pair.clone().into_inner() {
         if let Rule::identifier = identifier_pair.as_rule() {
-            components.push(parse_identifier(&identifier_pair))
+            components.push(parse_identifier(&identifier_pair, ctx))
         }
     }
 
-    ast::CompoundIdentifier { components }
+    ast::CompoundIdentifier {
+        components,
+        span: ast::Span::from_pest(pair_span, ctx.source_id),
+    }
 }
 
-pub(crate) fn parse_source(midl_source: &str, ctx: &mut Context<'_, '_>) -> ast::Library {
+pub(crate) fn parse_source(midl_source: &str, ctx: &mut ParsingContext<'_, '_>) -> ast::Library {
     let pairs = MIDLParser::parse(Rule::library, &midl_source).unwrap();
 
     let mut name: Option<ast::CompoundIdentifier> = None;
@@ -64,7 +70,7 @@ pub(crate) fn parse_source(midl_source: &str, ctx: &mut Context<'_, '_>) -> ast:
             for declaration_pair in pair.into_inner() {
                 match declaration_pair.as_rule() {
                     Rule::struct_declaration => {
-                        let struct_declaration = parse_struct_declaration(declaration_pair, None, ctx.diagnostics);
+                        let struct_declaration = parse_struct_declaration(declaration_pair, None, ctx);
                         match struct_declaration {
                             Ok(decl) => declarations.insert(ast::Declaration::Struct(decl)),
                             Err(err) => ctx.diagnostics.push_error(err),
@@ -78,7 +84,7 @@ pub(crate) fn parse_source(midl_source: &str, ctx: &mut Context<'_, '_>) -> ast:
                         }
                     }
                     Rule::protocol_declaration => {
-                        let result = parse_protocol_declaration(declaration_pair, ctx.diagnostics);
+                        let result = parse_protocol_declaration(declaration_pair, ctx);
                         match result {
                             Ok((protocol, mut decls)) => {
                                 declarations.insert(ast::Declaration::Protocol(protocol));
@@ -88,7 +94,7 @@ pub(crate) fn parse_source(midl_source: &str, ctx: &mut Context<'_, '_>) -> ast:
                         }
                     }
                     Rule::library_declaration => {
-                        let library_name = parse_library_declaration(&declaration_pair);
+                        let library_name = parse_library_declaration(&declaration_pair, ctx);
                         name = Some(library_name)
                     }
                     Rule::import_declaration => {

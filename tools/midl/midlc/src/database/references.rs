@@ -35,11 +35,11 @@ pub(super) fn run_resolve_step<'db>(ctx: &'db mut Context<'db, '_>) {
 
     for (decl_id, decl) in ctx.ast.iter_decls() {
         match (decl_id, decl) {
-            (ast::TopId::Struct(struct_id), ast::Declaration::Struct(ast_struct)) => {
+            (ast::DeclarationId::Struct(struct_id), ast::Declaration::Struct(ast_struct)) => {
                 visit_struct(struct_id, ast_struct, ctx)
             }
-            (ast::TopId::Protocol(_), ast::Declaration::Protocol(proto)) => visit_protocol(proto, ctx),
-            (ast::TopId::Const(_), ast::Declaration::Const(constant)) => visit_const(constant, ctx),
+            (ast::DeclarationId::Protocol(_), ast::Declaration::Protocol(proto)) => visit_protocol(proto, ctx),
+            (ast::DeclarationId::Const(_), ast::Declaration::Const(constant)) => visit_const(constant, ctx),
             (_, ast::Declaration::Import(_)) => (),
             _ => unreachable!(),
         }

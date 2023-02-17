@@ -31,16 +31,13 @@ mod libraries;
 mod names;
 mod references;
 
-use std::cell::RefCell;
-
-use crate::source_file::SourceFile;
-use crate::{ast, diagnotics::Diagnostics};
 use midlgen::ir;
 
-pub(crate) use context::Context;
-pub(crate) use libraries::Libraries;
+use crate::source_file::{SourceFile, SourceId};
+use crate::{ast, diagnotics::Diagnostics};
 
-use self::references::References;
+pub(crate) use context::{Context, ParsingContext};
+pub(crate) use libraries::Libraries;
 
 /// gathered during schema validation. Each validation step enriches the
 /// database with information that can be used to work with the schema, without
@@ -67,13 +64,12 @@ pub(crate) struct ParserDatabase<'lib> {
     // types: Types,
     // relations: Relations,
     pub(crate) all_libraries: Libraries<'lib>,
-    pub(crate) files: Vec<SourceFile>,
     pub(crate) ir: midlgen::ir::Root,
 }
 
 impl<'lib> ParserDatabase<'lib> {
     /// See the docs on [ParserDatabase](/struct.ParserDatabase.html).
-    pub(crate) fn new(files: Vec<SourceFile>) -> Self {
+    pub(crate) fn new() -> Self {
         let mut all_libraries = Libraries::new();
 
         let ir = ir::Root {
@@ -117,50 +113,24 @@ impl<'lib> ParserDatabase<'lib> {
 
         */
 
-        ParserDatabase {
-            ir,
-            files,
-            
-            all_libraries,
-        }
+        ParserDatabase { ir, all_libraries }
     }
 
     pub fn get_ir(&'lib self) -> &ir::Root {
         &self.ir
     }
 
-    pub fn compile(&'lib self, diagnostics: &mut Diagnostics) {
-        let root_library = ast::Library::new_root();
-        let mut references = Default::default();
-        //let mut interner = Default::default();
-        //let mut names = Default::default();
-        //let mut types = Default::default();
+    pub fn parse_file(&'lib self, source_id: SourceId, source: &SourceFile<'_>) -> Diagnostics {
+        let mut diagnostics = Diagnostics::new();
+        let mut ctx = ParsingContext::new(&self.all_libraries, &mut diagnostics, source_id);
+        let ast = crate::parse_source(source.as_str(), &mut ctx);
+        println!("ast: {:#?}", ast);
 
-        for file in self.files.iter() {
-            let mut ctx = Context::new(&root_library, &self.all_libraries, &mut references, diagnostics);
-
-            let ast = crate::parse_source(file.as_str(), &mut ctx);
-            println!("{:#?}", ast);
-
-            ctx.ast = &ast;
-
-            // First pass: resolve names.
-            names::verify_names(&mut ctx);
-
-            // Return early on name resolution errors.
-            if ctx.diagnostics.has_errors() {
-                return; // TODO: print errors
-            }
-        }
+        diagnostics
     }
 
-    /// The total number of enums in the schema. This is O(1).
-    pub fn enums_count(&self) -> usize {
-        0 // self.ir.enum_declarations.len()
-    }
-
-    /// The total number of models in the schema. This is O(1).
-    pub fn struct_count(&self) -> usize {
-        0 // self.ir.struct_declarations.len()
+    pub fn compile(&'lib self) -> Diagnostics {
+        let mut diagnostics = Diagnostics::new();
+        diagnostics
     }
 }

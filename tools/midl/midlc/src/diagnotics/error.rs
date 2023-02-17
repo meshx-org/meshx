@@ -1,8 +1,12 @@
+use colored::{ColoredString, Colorize};
+
 use crate::ast::Span;
 use std::borrow::Cow;
 
+use super::pretty_print::{pretty_print, DiagnosticColorer};
+
 #[derive(Debug, Clone)]
-pub struct DiagnosticsError {
+pub(crate) struct DiagnosticsError {
     span: Span,
     message: Cow<'static, str>,
 }
@@ -35,5 +39,36 @@ impl DiagnosticsError {
             format!("Error validating {block_type} \"{protocol_name}\": {message}"),
             span,
         )
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    pub fn pretty_print(&self, f: &mut dyn std::io::Write, file_name: &str, text: &str) -> std::io::Result<()> {
+        pretty_print(
+            f,
+            file_name,
+            text,
+            self.span(),
+            self.message.as_ref(),
+            &DatamodelErrorColorer {},
+        )
+    }
+}
+
+struct DatamodelErrorColorer {}
+
+impl DiagnosticColorer for DatamodelErrorColorer {
+    fn title(&self) -> &'static str {
+        "error"
+    }
+
+    fn primary_color(&self, token: &'_ str) -> ColoredString {
+        token.bright_red()
     }
 }

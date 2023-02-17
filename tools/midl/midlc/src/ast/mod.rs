@@ -29,6 +29,7 @@ pub enum Declaration {
     Const(Const),
     Struct(Struct),
     Protocol(Protocol),
+    Builtin(Builtin),
 }
 
 //#[derive(Debug)]
@@ -37,11 +38,59 @@ pub enum Declaration {
 //    NewType(NewType)
 //}
 
+#[derive(Debug)]
+enum BuiltinIdentity {
+    bool,
+    i8,
+    i16,
+    i32,
+    i64,
+    u8,
+    u16,
+    u32,
+    u64,
+    float32,
+    float64,
+    string,
+    array,
+    vector,
+    r#box,
+    client_end,
+    server_end,
+    optional,
+    byte,
+    transport_err,
+    MAX,
+    HEAD,
+}
+
+#[derive(Debug)]
+struct Name;
+
+impl Name {
+    fn new_intrinsic(library: &Library, name: &str) -> Self {
+        Self {}
+    }
+}
+
+#[derive(Debug)]
+pub struct Builtin {
+    identity: BuiltinIdentity,
+    name: Name,
+}
+
+impl Builtin {
+    fn new(identity: BuiltinIdentity, name: Name) -> Self {
+        Self { identity, name }
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Declarations {
     pub structs: Vec<Declaration>,
     pub protocols: Vec<Declaration>,
     pub contants: Vec<Declaration>,
+    pub builtins: Vec<Declaration>,
 
     pub imports: Vec<Declaration>,
 }
@@ -53,6 +102,7 @@ impl Declarations {
             .chain(self.protocols.iter())
             .chain(self.contants.iter())
             .chain(self.imports.iter())
+            .chain(self.builtins.iter())
     }
 
     pub fn insert(&mut self, decl: Declaration) {
@@ -61,6 +111,7 @@ impl Declarations {
             Declaration::Protocol(_) => self.protocols.push(decl),
             Declaration::Const(_) => self.contants.push(decl),
             Declaration::Import(_) => self.imports.push(decl),
+            Declaration::Builtin(_) => self.builtins.push(decl),
         }
     }
 }
@@ -108,17 +159,71 @@ pub struct Library {
 }
 
 impl Library {
-    pub fn new_root() -> Self {
+    pub fn new(name: CompoundIdentifier) -> Self {
         Library {
-            name: CompoundIdentifier { components: vec![] },
-            dependencies: Dependencies::default(),
-            declarations: Declarations::default(),
-            declaration_order: Vec::new(),
+            name,
+            declarations: Default::default(),
+            declaration_order: Default::default(),
+            dependencies: Default::default(),
         }
     }
 
+    pub fn new_root() -> Self {
+        let span = Span::empty();
+
+        // TODO(fxbug.dev/67858): Because this library doesn't get compiled, we have
+        // to simulate what AvailabilityStep would do (set the platform, inherit the
+        // availabilities). Perhaps we could make the root library less special and
+        // compile it as well. That would require addressing circularity issues.
+        let mut library = Library::new(CompoundIdentifier {
+            components: vec![Identifier {
+                value: "".to_owned(),
+                span,
+            }],
+            span,
+        });
+
+        let mut insert = |name: &str, id: BuiltinIdentity| {
+            let decl = Builtin::new(id, Name::new_intrinsic(&library, name));
+            library.declarations.insert(Declaration::Builtin(decl));
+        };
+
+        // An assertion in Declarations::Insert ensures that these insertions
+        // stays in sync with the order of Builtin::Identity.
+        insert("bool", BuiltinIdentity::bool);
+        insert("int8", BuiltinIdentity::i8);
+        insert("int16", BuiltinIdentity::i16);
+        insert("int32", BuiltinIdentity::i32);
+        insert("int64", BuiltinIdentity::i64);
+        insert("uint8", BuiltinIdentity::u8);
+        insert("uint16", BuiltinIdentity::u16);
+        insert("uint32", BuiltinIdentity::u32);
+        insert("uint64", BuiltinIdentity::u64);
+        insert("float32", BuiltinIdentity::float32);
+        insert("float64", BuiltinIdentity::float64);
+        insert("string", BuiltinIdentity::string);
+        insert("box", BuiltinIdentity::r#box);
+        insert("array", BuiltinIdentity::array);
+        insert("vector", BuiltinIdentity::vector);
+        insert("client_end", BuiltinIdentity::client_end);
+        insert("server_end", BuiltinIdentity::server_end);
+        insert("byte", BuiltinIdentity::byte);
+        insert("TransportErr", BuiltinIdentity::transport_err);
+        insert("optional", BuiltinIdentity::optional);
+        insert("MAX", BuiltinIdentity::MAX);
+        insert("HEAD", BuiltinIdentity::HEAD);
+
+        // Simulate narrowing availabilities to maintain the invariant that they
+        // always reach kNarrowed (except for the availability of `library`).
+        // library->TraverseElements([](Element* element) {
+        //     element->availability.Narrow(VersionRange(Version::Head(), Version::PosInf()));
+        // });
+
+        return library;
+    }
+
     /// Iterate over all the top-level items in the library.
-    pub fn iter_decls(&self) -> impl Iterator<Item = (TopId, &Declaration)> {
+    pub fn iter_decls(&self) -> impl Iterator<Item = (DeclarationId, &Declaration)> {
         self.declarations
             .iter()
             .enumerate()
@@ -126,26 +231,30 @@ impl Library {
     }
 }
 
-/// An opaque identifier for a generator block in a schema AST.
+/// An opaque identifier for a generator block in a library.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ConstId(u32);
 
-/// An opaque identifier for a generator block in a schema AST.
+/// An opaque identifier for a builtin in a library.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BuiltinId(u32);
+
+/// An opaque identifier for a generator block in a library.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct StructId(u32);
 
-/// An opaque identifier for a generator block in a schema AST.
+/// An opaque identifier for a generator block in a library.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ProtocolId(u32);
 
-/// An opaque identifier for a datasource blèck in a schema AST.
+/// An opaque identifier for a datasource blèck in a library.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ImportId(u32);
 
-/// An identifier for a top-level item in a schema AST. Use the `schema[top_id]`
+/// An identifier for a top-level item in a library. Use the `schema[top_id]`
 /// syntax to resolve the id to an `ast::Top`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum TopId {
+pub enum DeclarationId {
     /// A composite type
     Import(ImportId),
     /// An enum declaration
@@ -154,26 +263,30 @@ pub enum TopId {
     Protocol(ProtocolId),
     /// A datasource block
     Struct(StructId),
+    /// A datasource block
+    Builtin(BuiltinId),
 }
 
-impl std::ops::Index<TopId> for Declarations {
+impl std::ops::Index<DeclarationId> for Declarations {
     type Output = Declaration;
 
-    fn index(&self, index: TopId) -> &Self::Output {
+    fn index(&self, index: DeclarationId) -> &Self::Output {
         match index {
-            TopId::Protocol(ProtocolId(idx)) => &self.protocols[idx as usize],
-            TopId::Struct(StructId(idx)) => &self.structs[idx as usize],
-            TopId::Const(ConstId(idx)) => &self.contants[idx as usize],
-            TopId::Import(ImportId(idx)) => &self.imports[idx as usize],
+            DeclarationId::Protocol(ProtocolId(idx)) => &self.protocols[idx as usize],
+            DeclarationId::Struct(StructId(idx)) => &self.structs[idx as usize],
+            DeclarationId::Const(ConstId(idx)) => &self.contants[idx as usize],
+            DeclarationId::Import(ImportId(idx)) => &self.imports[idx as usize],
+            DeclarationId::Builtin(BuiltinId(idx)) => &self.builtins[idx as usize],
         }
     }
 }
 
-fn top_idx_to_top_id(top_idx: usize, decl: &Declaration) -> TopId {
+fn top_idx_to_top_id(top_idx: usize, decl: &Declaration) -> DeclarationId {
     match decl {
-        Declaration::Protocol(_) => TopId::Protocol(ProtocolId(top_idx as u32)),
-        Declaration::Struct(_) => TopId::Struct(StructId(top_idx as u32)),
-        Declaration::Const(_) => TopId::Const(ConstId(top_idx as u32)),
-        Declaration::Import(_) => TopId::Import(ImportId(top_idx as u32)),
+        Declaration::Protocol(_) => DeclarationId::Protocol(ProtocolId(top_idx as u32)),
+        Declaration::Struct(_) => DeclarationId::Struct(StructId(top_idx as u32)),
+        Declaration::Const(_) => DeclarationId::Const(ConstId(top_idx as u32)),
+        Declaration::Import(_) => DeclarationId::Import(ImportId(top_idx as u32)),
+        Declaration::Builtin(_) => DeclarationId::Builtin(BuiltinId(top_idx as u32)),
     }
 }

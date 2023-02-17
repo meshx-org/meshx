@@ -1,18 +1,21 @@
 use super::helpers::parsing_catch_all;
 
 use super::{helpers::Pair, Rule};
+use super::{parse_compound_identifier, parse_identifier};
 
-use crate::ast;
+use crate::ast::{self, Span};
 use crate::ast::{CompoundIdentifier, Declaration, ProtocolMethod};
+use crate::database::ParsingContext;
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
 use crate::parse::parse_comments::{parse_comment_block, parse_trailing_comment};
 use crate::parse::parse_struct::parse_struct_declaration;
+use crate::source_file::SourceId;
 
 fn parse_parameter_list(
     pair: Pair<'_>,
     parameter_name: &str,
     declarations: &mut Vec<Declaration>,
-    diagnostics: &mut Diagnostics,
+    ctx: &mut ParsingContext<'_, '_>,
 ) -> Result<(), DiagnosticsError> {
     assert!(pair.as_rule() == Rule::parameter_list);
 
@@ -26,7 +29,7 @@ fn parse_parameter_list(
                         value: String::from(parameter_name),
                         span: ast::Span::empty(),
                     }),
-                    diagnostics,
+                    ctx,
                 )
                 .unwrap();
                 declarations.push(ast::Declaration::Struct(struct_declaration));
@@ -44,7 +47,7 @@ fn parse_protocol_method(
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
     declarations: &mut Vec<Declaration>,
-    diagnostics: &mut Diagnostics,
+    ctx: &mut ParsingContext<'_, '_>,
 ) -> Result<(ast::ProtocolMethod, Vec<ast::Declaration>), DiagnosticsError> {
     let pair_span = pair.as_span();
     let mut name: Option<ast::Identifier> = None;
@@ -53,13 +56,13 @@ fn parse_protocol_method(
 
     for current in pair.into_inner() {
         match current.as_rule() {
-            Rule::identifier => name = Some(current.into()),
+            Rule::identifier => name = Some(parse_identifier(&current, ctx)),
             Rule::parameter_list => {
                 parse_parameter_list(
                     current,
                     format!("{}{}", protocol_name, "Request").as_str(),
                     declarations,
-                    diagnostics,
+                    ctx,
                 )?;
             }
             Rule::trailing_comment => {
@@ -82,7 +85,7 @@ fn parse_protocol_method(
                 attributes,
                 request_payload: None,
                 response_payload: None,
-                span: ast::Span::from(pair_span),
+                span: ast::Span::from_pest(pair_span, ctx.source_id),
             },
             Vec::new(),
         )),
@@ -92,7 +95,7 @@ fn parse_protocol_method(
 
 pub(crate) fn parse_protocol_declaration(
     pair: Pair<'_>,
-    diagnostics: &mut Diagnostics,
+    ctx: &mut ParsingContext<'_, '_>,
 ) -> Result<(ast::Protocol, Vec<ast::Declaration>), DiagnosticsError> {
     let pair_span = pair.as_span();
 
@@ -106,7 +109,7 @@ pub(crate) fn parse_protocol_declaration(
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::PROTOCOL_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
-            Rule::identifier => name = Some(current.into()),
+            Rule::identifier => name = Some(parse_identifier(&current, ctx)),
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::protocol_method => match parse_protocol_method(
                 &name.as_ref().unwrap().value,
@@ -114,23 +117,23 @@ pub(crate) fn parse_protocol_declaration(
                 current,
                 pending_field_comment.take(),
                 &mut declarations,
-                diagnostics,
+                ctx,
             ) {
                 Ok((method, mut decls)) => {
                     methods.push(method);
                     declarations.append(&mut decls);
                 }
-                Err(err) => diagnostics.push_error(err),
+                Err(err) => ctx.diagnostics.push_error(err),
             },
             Rule::protocol_event => {}
             Rule::protocol_compose => match current.into_inner().next() {
-                Some(id) => composes.push(id.into()),
+                Some(id_pair) => composes.push(parse_compound_identifier(&id_pair, ctx)),
                 None => panic!("Expected a compound identifier."),
             },
             Rule::comment_block => pending_field_comment = Some(current),
-            Rule::BLOCK_LEVEL_CATCH_ALL => diagnostics.push_error(DiagnosticsError::new_validation_error(
+            Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(
                 "This line is not a valid field or attribute definition.",
-                current.as_span().into(),
+                Span::from_pest(current.as_span(), ctx.source_id),
             )),
             _ => parsing_catch_all(&current, "protocol"),
         }
@@ -144,7 +147,7 @@ pub(crate) fn parse_protocol_declaration(
                 composes,
                 attributes,
                 documentation: None,
-                span: ast::Span::from(pair_span),
+                span: ast::Span::from_pest(pair_span, ctx.source_id),
             },
             declarations,
         )),

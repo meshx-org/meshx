@@ -1,19 +1,19 @@
-use crate::database::Context;
-use crate::diagnotics::{Diagnostics, DiagnosticsError};
+use crate::database::ParsingContext;
+use crate::diagnotics::DiagnosticsError;
 
 use super::ast;
+use super::ast::Span;
 use super::helpers::Pair;
 use super::Rule;
-use super::ast::Span;
 
-pub(crate) fn parse_literal(token: Pair<'_>, ctx: &mut Context<'_, '_>) -> ast::Literal {
+pub(crate) fn parse_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_, '_>) -> ast::Literal {
     assert!(token.as_rule() == Rule::literal);
 
     let value_token = token.into_inner().next().unwrap();
 
     match value_token.as_rule() {
         Rule::string_literal => {
-            let span: Span = value_token.as_span().into();
+            let span = Span::from_pest(value_token.as_span(), ctx.source_id);
             let value = parse_string_literal(value_token, ctx);
             ast::Literal::StringValue(value, span)
         }
@@ -21,7 +21,7 @@ pub(crate) fn parse_literal(token: Pair<'_>, ctx: &mut Context<'_, '_>) -> ast::
     }
 }
 
-pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut Context<'_, '_>) -> String {
+pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_, '_>) -> String {
     assert!(token.as_rule() == Rule::string_literal);
 
     let contents = token.clone().into_inner().next().unwrap();
@@ -61,11 +61,8 @@ pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut Context<'_, '_>) -
                     out.push('\t');
                 }
                 (_, 'u') => {
-                    let (advance, char) = try_parse_unicode_codepoint(
-                        &contents_str[start..],
-                        contents.as_span().start() + start,
-                        ctx.diagnostics,
-                    );
+                    let (advance, char) =
+                        try_parse_unicode_codepoint(&contents_str[start..], contents.as_span().start() + start, ctx);
 
                     if let Some(char) = char {
                         out.push(char);
@@ -76,7 +73,8 @@ pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut Context<'_, '_>) -
                     }
                 }
                 (_, c) => {
-                    let mut final_span: Span = contents.as_span().into();
+                    let span = contents.as_span();
+                    let mut final_span = Span::from_pest(span, ctx.source_id);
                     final_span.start += start;
                     final_span.end = final_span.start + 1 + c.len_utf8();
                     ctx.diagnostics.push_error(DiagnosticsError::new_static(
@@ -98,19 +96,21 @@ pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut Context<'_, '_>) -
 fn try_parse_unicode_codepoint(
     slice: &str,
     slice_offset: usize,
-    diagnostics: &mut Diagnostics,
+    ctx: &mut ParsingContext<'_, '_>,
 ) -> (usize, Option<char>) {
     let unicode_sequence_error = |consumed| {
-        let span = crate::ast::Span {
-            start: slice_offset,
-            end: (slice_offset + slice.len()).min(slice_offset + consumed),
-        };
+        let span = ast::Span::new(
+            slice_offset,
+            (slice_offset + slice.len()).min(slice_offset + consumed),
+            ctx.source_id,
+        );
+
         DiagnosticsError::new_static("Invalid unicode escape sequence.", span)
     };
 
     match parse_codepoint(slice) {
         (consumed, None) => {
-            diagnostics.push_error(unicode_sequence_error(consumed.max(2)));
+            ctx.diagnostics.push_error(unicode_sequence_error(consumed.max(2)));
             (consumed, None)
         }
         (consumed_first_codepoint, Some(first_codepoint)) => {
@@ -124,7 +124,8 @@ fn try_parse_unicode_codepoint(
             // UTF-16 surrogate pair.
             match parse_codepoint(&slice[6..]) {
                 (_, None) => {
-                    diagnostics.push_error(unicode_sequence_error(consumed_first_codepoint));
+                    ctx.diagnostics
+                        .push_error(unicode_sequence_error(consumed_first_codepoint));
                     (consumed_first_codepoint, None)
                 }
                 (consumed_second_codepoint, Some(second_codepoint)) => {
@@ -132,7 +133,7 @@ fn try_parse_unicode_codepoint(
                     let char = match char::decode_utf16([first_codepoint, second_codepoint].into_iter()).next() {
                         Some(Ok(c)) => Some(c),
                         _ => {
-                            diagnostics.push_error(unicode_sequence_error(
+                            ctx.diagnostics.push_error(unicode_sequence_error(
                                 consumed_first_codepoint + consumed_second_codepoint,
                             ));
                             None

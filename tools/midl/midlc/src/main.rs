@@ -18,10 +18,10 @@ use std::path::PathBuf;
 #[macro_use]
 extern crate pest_derive;
 
-use crate::database::{Libraries, ParserDatabase};
+use crate::database::ParserDatabase;
 use crate::diagnotics::Diagnostics;
 use crate::parse::parse_source;
-use crate::source_file::SourceFile;
+use crate::source_file::{SourceFile, SourceFiles};
 
 fn cli() -> Command {
     Command::new("git")
@@ -48,21 +48,50 @@ fn main() -> std::io::Result<()> {
                 .flatten()
                 .collect::<Vec<_>>();
 
-            let sources = paths
+            let files: Vec<SourceFile<'_>> = paths
                 .iter()
                 .map(|path| {
-                    let midl_source: SourceFile = std::fs::read_to_string(path).unwrap().into();
+                    let contents = std::fs::read_to_string(path).unwrap();
+                    let filename = path.file_name().unwrap().to_str().unwrap();
+                    let midl_source = SourceFile::new(filename, contents);
                     midl_source
                 })
-                .collect::<Vec<_>>();
+                .collect();
 
-            println!("Compiling {:?} files", sources);
+            println!("Compiling {:?} files", files);
 
-            let mut diagnostics = Diagnostics::new();
+            let source_files = SourceFiles::from(files);
+            let db = ParserDatabase::new();
+            let mut success = true;
 
-            let mut db = ParserDatabase::new(sources);
+            source_files.iter_sources().for_each(|(source_id, source)| {
+                println!("Parsing {:?}", source.filename());
+                let diagnostics = db.parse_file(source_id, source);
 
-            db.compile(&mut diagnostics);
+                if diagnostics.has_errors() {
+                    success = false;
+                    diagnostics.errors().iter().for_each(|e| {
+                        let source = &source_files[e.span().source];
+                        let mut stdout = Box::new(std::io::stdout()) as Box<dyn Write>;
+                        e.pretty_print(&mut stdout, source.filename(), source.as_str()).unwrap();
+                    });
+                }
+            });
+
+            let diagnostics = db.compile();
+
+            if diagnostics.has_errors() {
+                success = false;
+                diagnostics.errors().iter().for_each(|e| {
+                    let source = &source_files[e.span().source];
+                    let mut stdout = Box::new(std::io::stdout()) as Box<dyn Write>;
+                    e.pretty_print(&mut stdout, source.filename(), source.as_str()).unwrap();
+                });
+            }
+
+            if !success {
+                return Err(std::io::Error::new(std::io::ErrorKind::Other, "Compilation failed"));
+            }
 
             let ir_str = serde_json::to_string(db.get_ir())?;
 

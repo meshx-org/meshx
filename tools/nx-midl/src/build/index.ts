@@ -4,7 +4,7 @@ import * as path from "path"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Options {
-    path: string
+    srcs: string[]
     outDir: string
     language: "ts" | "rust"
     cwd?: string
@@ -18,8 +18,11 @@ async function buildIR(options: Options, context: ExecutorContext): Promise<void
 
     return new Promise((resolve, reject) => {
         exec(
-            `${context.root}/dist/tools/midl/midlc/midlc compile ${options.path}`,
+            `${context.root}/dist/tools/midl/midlc/midlc compile ${options.srcs.join(" ")}`,
             {
+                env: {
+                    CLICOLOR_FORCE: "1",
+                },
                 cwd: options.cwd ? options.cwd : projectRoot,
             },
             (err, stdout, stderr) => {

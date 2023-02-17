@@ -28,28 +28,8 @@ impl WithSpan for Identifier {
     }
 }
 
-impl<T: pest::RuleType> From<pest::iterators::Pair<'_, T>> for Identifier {
-    fn from(pair: pest::iterators::Pair<'_, T>) -> Self {
-        Identifier {
-            value: pair.as_str().to_owned(),
-            span: pair.as_span().into(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CompoundIdentifier {
     pub components: Vec<Identifier>,
-}
-
-impl<T: pest::RuleType> From<pest::iterators::Pair<'_, T>> for CompoundIdentifier {
-    fn from(pair: pest::iterators::Pair<'_, T>) -> Self {
-        let components = pair
-            .into_inner()
-            .into_iter()
-            .map(|id| id.into())
-            .collect::<Vec<Identifier>>();
-
-        CompoundIdentifier { components }
-    }
+    pub span: Span,
 }
