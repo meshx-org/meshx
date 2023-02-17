@@ -11,4 +11,4 @@ fiber_kernel = {version = "0.1.0", path = "../fiber_kernel"}
 fiber_rust = {version = "0.1.0", path = "../fiber_rust"}
 phf = {version = "0.11", features = ["macros"]}
 log="0.4.17"
-env_logger="0.9.1"
+env_logger="0.10.0"
