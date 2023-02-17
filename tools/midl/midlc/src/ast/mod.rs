@@ -129,7 +129,7 @@ impl Dependencies {
     // Registers a dependency to a library. The registration name is |maybe_alias|
     // if provided, otherwise the library's name. Afterwards, Dependencies::Lookup
     // will return |dep_library| given the registration name.
-    fn register(span: &Span, dep_library: &Library, maybe_alias: Identifier) -> RegisterResult {
+    pub fn register(&self, span: &Span, dep_library: &Library, alias: Option<Identifier>) -> RegisterResult {
         // let filename = span.source_file().filename();
         RegisterResult::Success
     }
@@ -143,9 +143,9 @@ impl Dependencies {
 /// The AST is not validated, also fields and attributes are not resolved. Every node is
 /// annotated with its location in the text representation.
 /// Basically, the AST is an object oriented representation of the midl's text.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Library {
-    pub name: CompoundIdentifier,
+    pub name: Option<CompoundIdentifier>,
 
     pub dependencies: Dependencies,
 
@@ -159,15 +159,6 @@ pub struct Library {
 }
 
 impl Library {
-    pub fn new(name: CompoundIdentifier) -> Self {
-        Library {
-            name,
-            declarations: Default::default(),
-            declaration_order: Default::default(),
-            dependencies: Default::default(),
-        }
-    }
-
     pub fn new_root() -> Self {
         let span = Span::empty();
 
@@ -175,7 +166,8 @@ impl Library {
         // to simulate what AvailabilityStep would do (set the platform, inherit the
         // availabilities). Perhaps we could make the root library less special and
         // compile it as well. That would require addressing circularity issues.
-        let mut library = Library::new(CompoundIdentifier {
+        let mut library = Library::default();
+        library.name = Some(CompoundIdentifier {
             components: vec![Identifier {
                 value: "".to_owned(),
                 span,

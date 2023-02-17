@@ -32,11 +32,13 @@ mod names;
 mod references;
 
 use midlgen::ir;
+use pest::Parser;
 
+use crate::parse::{MIDLParser, Rule};
 use crate::source_file::{SourceFile, SourceId};
 use crate::{ast, diagnotics::Diagnostics};
 
-pub(crate) use context::{Context, ParsingContext};
+pub(crate) use context::ParsingContext;
 pub(crate) use libraries::Libraries;
 
 /// gathered during schema validation. Each validation step enriches the
@@ -121,9 +123,13 @@ impl<'lib> ParserDatabase<'lib> {
     }
 
     pub fn parse_file(&'lib self, source_id: SourceId, source: &SourceFile<'_>) -> Diagnostics {
+        let library = ast::Library::default();
         let mut diagnostics = Diagnostics::new();
-        let mut ctx = ParsingContext::new(&self.all_libraries, &mut diagnostics, source_id);
-        let ast = crate::parse_source(source.as_str(), &mut ctx);
+        let mut ctx = ParsingContext::new(library, &self.all_libraries, &mut diagnostics, source_id);
+
+        let pairs = MIDLParser::parse(Rule::library, source.as_str()).unwrap();
+
+        let ast = crate::parse_source(pairs, &mut ctx);
         println!("ast: {:#?}", ast);
 
         diagnostics

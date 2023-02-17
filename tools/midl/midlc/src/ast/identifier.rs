@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{hash::Hasher, ops::Deref};
 
 use super::{Span, WithSpan};
 
@@ -6,6 +6,12 @@ use super::{Span, WithSpan};
 pub struct Identifier {
     pub value: String,
     pub span: Span,
+}
+
+impl std::hash::Hash for Identifier {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+    }
 }
 
 impl PartialEq for Identifier {
@@ -32,4 +38,10 @@ impl WithSpan for Identifier {
 pub struct CompoundIdentifier {
     pub components: Vec<Identifier>,
     pub span: Span,
+}
+
+impl std::hash::Hash for CompoundIdentifier {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.components.hash(state);
+    }
 }

@@ -39,9 +39,9 @@ pub(crate) fn pretty_print(
 
     writeln!(
         f,
-        "{}: {}",
-        colorer.primary_color(colorer.title()).bold(),
-        description.bold()
+        "{} {}",
+        colorer.primary_color(colorer.title()).on_red().bold(),
+        description.bold().bright_red()
     )?;
     writeln!(f, "  {arrow}  {file_path}")?;
     writeln!(f, "{}", format_line_number(0))?;
@@ -55,6 +55,7 @@ pub(crate) fn pretty_print(
         offending,
         suffix
     )?;
+
     if offending.len() == 0 {
         let spacing = " ".repeat(start_in_line);
         writeln!(
@@ -64,6 +65,17 @@ pub(crate) fn pretty_print(
             spacing,
             colorer.primary_color("^ Unexpected token.").bold()
         )?;
+    } else {
+        // let spacing = " ".repeat(prefix.len());
+        // let offending = "^".repeat(offending.len()).red();
+        //  writeln!(
+        //     f,
+        //     "{}{}{} {}",
+        //     format_line_number(0),
+        //     spacing,
+        //     offending,
+        //     "this is not good".red().bold()
+        // )?;
     }
 
     for line_number in start_line_number + 2..end_line_number + 2 {

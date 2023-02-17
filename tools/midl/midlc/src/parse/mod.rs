@@ -7,6 +7,7 @@ mod parse_protocol;
 mod parse_struct;
 mod parse_type;
 mod parse_value;
+mod parser;
 
 use parse_const::parse_constant_declaration;
 use parse_import::parse_import;
@@ -14,17 +15,12 @@ use parse_library::parse_library_declaration;
 use parse_protocol::parse_protocol_declaration;
 use parse_struct::parse_struct_declaration;
 use parse_type::parse_type_constructor;
+pub use parser::{MIDLParser, Rule};
 
 use super::ast;
 use crate::database::ParsingContext;
-use crate::source_file::SourceId;
 
-use pest::iterators::Pair;
-use pest::Parser;
-
-#[derive(Parser)]
-#[grammar = "midl.pest"]
-pub struct MIDLParser;
+use pest::iterators::{Pair, Pairs};
 
 pub(crate) fn parse_identifier(pair: &Pair<'_, Rule>, ctx: &mut ParsingContext<'_, '_>) -> ast::Identifier {
     debug_assert!(pair.as_rule() == Rule::identifier);
@@ -57,9 +53,7 @@ pub(crate) fn parse_compound_identifier(
     }
 }
 
-pub(crate) fn parse_source(midl_source: &str, ctx: &mut ParsingContext<'_, '_>) -> ast::Library {
-    let pairs = MIDLParser::parse(Rule::library, &midl_source).unwrap();
-
+pub(crate) fn parse_source(pairs: Pairs<'_, Rule>, ctx: &mut ParsingContext<'_, '_>) -> ast::Library {
     let mut name: Option<ast::CompoundIdentifier> = None;
     let mut declarations = ast::Declarations::default();
     let dependencies = ast::Dependencies::default();
@@ -98,7 +92,7 @@ pub(crate) fn parse_source(midl_source: &str, ctx: &mut ParsingContext<'_, '_>) 
                         name = Some(library_name)
                     }
                     Rule::import_declaration => {
-                        parse_import(&declaration_pair, ctx.diagnostics);
+                        parse_import(&declaration_pair, ctx);
                     }
                     Rule::layout_declaration => {}
                     _ => {}
@@ -111,7 +105,7 @@ pub(crate) fn parse_source(midl_source: &str, ctx: &mut ParsingContext<'_, '_>) 
 
     match name {
         Some(name) => ast::Library {
-            name,
+            name: Some(name),
             declarations,
             dependencies,
             declaration_order: vec![],

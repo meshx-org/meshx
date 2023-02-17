@@ -62,9 +62,9 @@ arbitrary_block = { identifier ~ BLOCK_OPEN ~ ((!BLOCK_CLOSE ~ ANY) | NEWLINE)* 
 declaration_modifiers =  { STRICT_KEYWORD | FLEXIBLE_KEYWORD | RESOURCE_KEYWORD }
 
 protocol_member       = _{ protocol_method | protocol_event | protocol_compose }
-protocol_method       =  { identifier ~ parameter_list ~ protocol_result? }
+protocol_method       =  { block_attribute_list ~ identifier ~ parameter_list ~ protocol_result? }
 protocol_result       =  { "->" ~ parameter_list ~ ( "error" ~ type_definition )? }
-protocol_event        =  { "->" ~ identifier ~ parameter_list }
+protocol_event        =  { block_attribute_list ~ "->" ~ identifier ~ parameter_list }
 protocol_compose      =  { COMPOSE_KEYWORD ~ compound_identifier }
 
 parameter_list        =   { "(" ~ (struct_declaration | identifier ) ~ ")" }

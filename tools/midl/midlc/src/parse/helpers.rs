@@ -1,4 +1,4 @@
-use super::Rule;
+use super::parser::Rule;
 
 pub type Pair<'a> = pest::iterators::Pair<'a, Rule>;
 

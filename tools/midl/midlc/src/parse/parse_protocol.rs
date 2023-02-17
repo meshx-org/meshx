@@ -57,6 +57,9 @@ fn parse_protocol_method(
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::identifier => name = Some(parse_identifier(&current, ctx)),
+            Rule::block_attribute_list => {
+                /*attributes.push(parse_attribute(current, diagnostics))*/
+            }
             Rule::parameter_list => {
                 parse_parameter_list(
                     current,

@@ -1,65 +1,73 @@
-use crate::ast::WithSpan;
-use crate::diagnotics::{Diagnostics, DiagnosticsError};
+use crate::database::ParsingContext;
+use crate::diagnotics::DiagnosticsError;
 
-use super::helpers::Pair;
-use super::{ast, parse_compound_identifier};
+use super::{ast, parse_compound_identifier, parse_identifier};
+use super::{helpers::Pair, Rule};
 
-pub(crate) fn parse_import(using_directive: &Pair<'_>, diagnostics: &mut Diagnostics) {
-}
+pub(crate) fn parse_import(using_directive: &Pair<'_>, ctx: &mut ParsingContext<'_, '_>) {
+    let pair_span = using_directive.as_span();
+    let mut using_path: Option<ast::CompoundIdentifier> = None;
+    let mut import_alias: Option<ast::Identifier> = None;
 
-/* pub(crate) fn parse_import(using_directive: &Pair<'_>, diagnostics: &mut Diagnostics) {
-    let span = using_directive.as_span();
-    let using_path = using_directive.clone().into_inner().next().unwrap();
-    let using_path = parse_compound_identifier(&using_path);
-    let alias = using_directive
-        .clone()
-        .into_inner()
-        .next()
-        .map(|pair| pair.as_str().to_string());
-
-    let library_name: Vec<ast::Identifier>;
-    for component in using_path.components.into_iter() {
-        library_name.push(component);
+    for current in using_directive.clone().into_inner() {
+        match current.as_rule() {
+            Rule::compound_identifier => {
+                using_path = Some(parse_compound_identifier(&current, ctx));
+            }
+            Rule::import_alias => {
+                let identifier = current.into_inner().next().unwrap();
+                import_alias = Some(parse_identifier(&identifier, ctx));
+            }
+            _ => panic!("Unexpected rule: {:?}", current.as_rule()),
+        }
     }
 
-    let dep_library = all_libraries.lookup(library_name);
+    let using_path = using_path.expect("using_path is None");
+
+    let dep_library = ctx.all_libraries.lookup(using_path.clone());
     if dep_library.is_none() {
-        diagnostics.push_error(DiagnosticsError::new_static(
-            format!("ErrUnknownLibrary: {:?}", library_name).as_str(),
-            using_path.components[0].span(),
+        let span = using_path.span;
+        ctx.diagnostics.push_error(DiagnosticsError::new_unknown_library(
+            format!("{:?}", using_path).as_str(),
+            span,
         ));
         return;
     }
 
-    let result = library.dependencies.register(span, dep_library, alias);
+    let result = ctx.library.dependencies.register(
+        &ast::Span::from_pest(pair_span, ctx.source_id),
+        dep_library.unwrap(),
+        import_alias.clone(),
+    );
 
-    match (result) {
+    match result {
         ast::RegisterResult::Success => {}
 
         ast::RegisterResult::Duplicate => {
-            diagnostics.push_error(DiagnosticsError::new_static(
-                format!("ErrDuplicateLibraryImport: {:?}", library_name).as_str(),
-                ast::Span::from(span),
+            ctx.diagnostics.push_error(DiagnosticsError::new_duplicate_import(
+                format!("ErrDuplicateLibraryImport: {:?}", using_path).as_str(),
+                ast::Span::from_pest(pair_span, ctx.source_id),
             ));
             return;
         }
 
         ast::RegisterResult::Collision => {
-            if alias.is_some() {
-                diagnostics.push_error(DiagnosticsError::new_static(
-                    format!("ErrConflictingLibraryImportAlias: {:?}", library_name).as_str(),
-                    ast::Span::from(span),
-                ));
+            if import_alias.is_some() {
+                ctx.diagnostics
+                    .push_error(DiagnosticsError::new_conflicting_aliased_import(
+                        format!("ErrConflictingLibraryImportAlias: {:?}", using_path).as_str(),
+                        ast::Span::from_pest(pair_span, ctx.source_id),
+                    ));
 
                 return;
             }
 
-            diagnostics.push_error(DiagnosticsError::new_static(
-                format!("ErrConflictingLibraryImport: {:?}", library_name).as_str(),
-                ast::Span::from(span),
+            ctx.diagnostics.push_error(DiagnosticsError::new_conflicting_import(
+                format!("ErrConflictingLibraryImport: {:?}", using_path).as_str(),
+                ast::Span::from_pest(pair_span, ctx.source_id),
             ));
 
             return;
         }
     }
-}*/
+}

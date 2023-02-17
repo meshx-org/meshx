@@ -1,6 +1,7 @@
 //! The MIDL Schema AST.
 
 #![deny(rust_2018_idioms, unsafe_code)]
+#![feature(map_try_insert)]
 
 mod ast;
 mod database;
@@ -66,6 +67,9 @@ fn main() -> std::io::Result<()> {
 
             source_files.iter_sources().for_each(|(source_id, source)| {
                 println!("Parsing {:?}", source.filename());
+
+
+
                 let diagnostics = db.parse_file(source_id, source);
 
                 if diagnostics.has_errors() {

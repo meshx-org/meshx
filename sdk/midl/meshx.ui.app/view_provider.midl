@@ -1,11 +1,11 @@
 // Copyright 2018 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-library fuchsia.ui.app;
+library fuchsia.ui.app
 
-import meshx.sys;
-import meshx.ui.views;
-import fx;
+import meshx.sys
+import meshx.ui.views
+import fx
 
 /// ViewProvider is the standard mechanism for two modules to each obtain half
 /// of a shared eventpair token. The shared token is a capability allowing the
@@ -37,11 +37,11 @@ protocol ViewProvider {
     ///
     /// Modules can use these mechanisms to establish a distributed,
     /// inter-process scene graph.
-    @transitional
+    @transitional(true)
     CreateView(resource struct {
-        token :fx.handle:EVENTPAIR
-        incoming_services :server_end<meshx.sys.ServiceProvider, optional>
-        outgoing_services :client_end<meshx.sys.ServiceProvider, optional>
+        token fx.handle(EVENTPAIR)
+        incoming_services server_end(meshx.sys.ServiceProvider, optional)
+        outgoing_services client_end(meshx.sys.ServiceProvider, optional)
     })
 
     /// Creates a new View under the control of the ViewProvider.
@@ -57,11 +57,11 @@ protocol ViewProvider {
     ///
     /// `view_ref_control` must not have the ZX_RIGHT_DUPLICATE set, or view creation
     /// will fail.
-    @transitional
+    @transitional(true)
     CreateViewWithViewRef(resource struct {
-      token :fx.handle:EVENTPAIR
-      view_ref_control :meshx.ui.views.ViewRefControl
-      view_ref :meshx.ui.views.ViewRef
+      token fx.handle.EVENTPAIR
+      view_ref_control meshx.ui.views.ViewRefControl
+      view_ref meshx.ui.views.ViewRef
     })
 
     /// Creates a new View under the control of the ViewProvider.
@@ -71,9 +71,9 @@ protocol ViewProvider {
     // TODO(fxbug.dev/81959): use "resource table" syntax when it becomes available, thus getting
     // rid of the need for CreateView2Args.  Hopefully this will be done by the time we want to
     // rename CreateView2() to CreateView(), once the latter is deleted.
-    @transitional
+    @transitional(true)
     CreateView2(resource struct {
-      args :CreateView2Args
+      args CreateView2Args
     })
 }
 
@@ -81,5 +81,5 @@ protocol ViewProvider {
 resource table CreateView2Args {
     /// Non-optional.  This token can be provided to Flatland to attach the client's child view
     /// to the parent's viewport.
-    @1 view_creation_token :meshx.ui.views.ViewCreationToken
+    // @1 view_creation_token meshx.ui.views.ViewCreationToken
 }

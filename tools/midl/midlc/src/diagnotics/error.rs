@@ -21,6 +21,22 @@ impl DiagnosticsError {
         Self::new(message, span)
     }
 
+    pub fn new_unknown_library(message: &str, span: Span) -> Self {
+        Self::new(format!("UnknownLibrary: {message}"), span)
+    }
+
+    pub fn new_duplicate_import(message: &str, span: Span) -> Self {
+        Self::new(format!("Error importing: {message}"), span)
+    }
+
+    pub fn new_conflicting_aliased_import(message: &str, span: Span) -> Self {
+        Self::new(format!("Error importing: {message}"), span)
+    }
+
+    pub fn new_conflicting_import(message: &str, span: Span) -> Self {
+        Self::new(format!("Error importing: {message}"), span)
+    }
+
     pub fn new_validation_error(message: &str, span: Span) -> Self {
         Self::new(format!("Error validating: {message}"), span)
     }
@@ -65,10 +81,10 @@ struct DatamodelErrorColorer {}
 
 impl DiagnosticColorer for DatamodelErrorColorer {
     fn title(&self) -> &'static str {
-        "error"
+        " ERROR(0001) "
     }
 
     fn primary_color(&self, token: &'_ str) -> ColoredString {
-        token.bright_red()
+        token.red()
     }
 }

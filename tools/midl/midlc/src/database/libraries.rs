@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 use crate::ast;
 
@@ -12,7 +12,7 @@ pub(crate) struct Typespace;
 #[derive(Debug)]
 pub(crate) struct Libraries<'lib> {
     // typespace: Rc<Typespace>,
-    libraries: Vec<ast::Library>,
+    libraries: Vec<Box<ast::Library>>,
 
     // root_library: &'lib ast::Library,
     libraries_by_name: HashMap<ast::CompoundIdentifier, &'lib ast::Library>,
@@ -28,8 +28,23 @@ impl<'lib> Libraries<'lib> {
     }
 
     /// Insert |library|. It must only depend on already-inserted libraries.
-    pub(crate) fn insert(library: Box<ast::Library>) -> bool {
-        false
+    pub(crate) fn insert(&'lib mut self, library: Box<ast::Library>) -> bool {
+        if library.name.is_none() {
+            return false;
+        }
+
+        let library_name = library.name.clone().unwrap();
+
+        let multiple_entry = self.libraries_by_name.contains_key(&library_name);
+        if multiple_entry {
+            return false; // Fail(ErrMultipleLibrariesWithSameName, library.arbitrary_name_span, library.name);
+        }
+
+        self.libraries.push(library);
+        let library = self.libraries.last().unwrap();
+        self.libraries_by_name.insert(library_name, library);
+
+        return true;
     }
 
     /// Lookup a library by its |library_name|, or returns null if none is found.
