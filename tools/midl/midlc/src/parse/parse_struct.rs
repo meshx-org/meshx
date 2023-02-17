@@ -1,26 +1,31 @@
 use super::helpers::parsing_catch_all;
+use super::parse_type::parse_type_constructor;
 use super::{helpers::Pair, Rule};
 
-use crate::ast::Identifier;
+use crate::ast;
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
-use crate::{ast, error::ParserError};
 use crate::parse::parse_comments::{parse_comment_block, parse_trailing_comment};
 
 fn parse_struct_member(
+    struct_name: &str,
+    container_type: &'static str,
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
     diagnostics: &mut Diagnostics,
-) -> Result<ast::StructMember, ParserError> {
+) -> Result<ast::StructMember, DiagnosticsError> {
+    debug_assert!(pair.as_rule() == Rule::struct_layout_member);
+
     let pair_span = pair.as_span();
     let mut name: Option<ast::Identifier> = None;
     let mut attributes: Vec<ast::Attribute> = Vec::new();
     let mut comment: Option<ast::Comment> = block_comment.and_then(parse_comment_block);
+    let mut member_type: Option<ast::Type> = None;
 
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::identifier => name = Some(current.into()),
-            // Rule::field_type => field_type = Some(parse_field_type(current, diagnostics)?),
-            // Rule::field_attribute => attributes.push(parse_attribute(current, diagnostics)),
+            Rule::type_definition => member_type = Some(parse_type_constructor(current, diagnostics)?),
+            Rule::inline_attribute_list => {}
             Rule::trailing_comment => {
                 comment = match (comment, parse_trailing_comment(current)) {
                     (c, None) | (None, c) => c,
@@ -29,26 +34,26 @@ fn parse_struct_member(
                     }),
                 };
             }
-            _ => parsing_catch_all(&current, "field"),
+            _ => parsing_catch_all(&current, "struct member"),
         }
     }
 
-    match name {
-        Some(name) => Ok(ast::StructMember {
+    match (name, member_type) {
+        (Some(name), Some(member_type)) => Ok(ast::StructMember {
             name,
             documentation: None,
+            member_type,
             span: ast::Span::from(pair_span),
         }),
-        _ => Err(ParserError::UnexpectedToken),
+        _ => panic!("Encountered impossible struct member declaration during parsing"),
     }
 }
-
 
 pub(crate) fn parse_struct_declaration(
     pair: Pair<'_>,
     initial_name: Option<ast::Identifier>,
     diagnostics: &mut Diagnostics,
-) -> Result<ast::Struct, ParserError> {
+) -> Result<ast::Struct, DiagnosticsError> {
     let pair_span = pair.as_span();
 
     let mut name: Option<ast::Identifier> = initial_name;
@@ -60,9 +65,22 @@ pub(crate) fn parse_struct_declaration(
         match current.as_rule() {
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
             Rule::identifier => name = Some(current.into()),
-            Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */},
-            Rule::struct_layout_member => {},
-            Rule::declaration_modifiers => {},
+            Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
+            Rule::struct_layout_member => {
+                match parse_struct_member(
+                    &name.as_ref().unwrap().value,
+                    "struct",
+                    current,
+                    pending_field_comment.take(),
+                    diagnostics,
+                ) {
+                    Ok(member) => {
+                        members.push(member);
+                    }
+                    Err(err) => diagnostics.push_error(err),
+                }
+            }
+            Rule::declaration_modifiers => {}
             /*Rule::member_field => match parse_field(
                 &name.as_ref().unwrap().value,
                 "model",
@@ -90,7 +108,7 @@ pub(crate) fn parse_struct_declaration(
             documentation: None,
             span: ast::Span::from(pair_span),
         }),
-        _ => Err(ParserError::UnexpectedToken),
+        _ => panic!("Encountered impossible struct declaration during parsing",),
     }
 }
 

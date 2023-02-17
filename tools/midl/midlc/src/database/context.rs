@@ -1,7 +1,8 @@
-use crate::ast::SchamaAST;
+use crate::ast::Library;
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
 
-use super::references::{self, References};
+use super::libraries::Libraries;
+use super::references::References;
 
 /// Validation context. This is an implementation detail of ParserDatabase. It
 /// contains the database itself, as well as context that is discarded after
@@ -15,16 +16,28 @@ use super::references::{self, References};
 /// are not valid, multiple arguments with the same name are not valid, etc.
 ///
 /// See `visit_attributes()`.
-pub(crate) struct Context<'db> {
-    pub(crate) ast: &'db SchamaAST,
-    pub(crate) diagnostics: &'db mut Diagnostics,
+pub(crate) struct Context<'lib, 'db> {
+    pub(crate) ast: &'db Library,
+    
+    pub(crate) all_libraries: &'lib Libraries<'lib>,
 
+    pub(crate) diagnostics: &'db mut Diagnostics,
     pub(crate) references: &'db mut References,
 }
 
-impl<'db> Context<'db> {
-    pub(super) fn new(ast: &'db SchamaAST, references: &'db mut References, diagnostics: &'db mut Diagnostics) -> Self {
-        Context { ast, diagnostics, references }
+impl<'lib, 'db> Context<'lib, 'db> {
+    pub(super) fn new (
+        ast: &'db Library,
+        all_libraries: &'lib Libraries<'lib>,
+        references: &'db mut References,
+        diagnostics: &'db mut Diagnostics,
+    ) -> Self {
+        Context {
+            ast,
+            diagnostics,
+            all_libraries,
+            references,
+        }
     }
 
     pub(super) fn push_error(&mut self, error: DiagnosticsError) {

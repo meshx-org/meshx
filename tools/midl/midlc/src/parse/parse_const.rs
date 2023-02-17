@@ -1,5 +1,7 @@
+use crate::database::Context;
 use crate::diagnotics::Diagnostics;
-use crate::error::ParserError;
+use crate::diagnotics::DiagnosticsError;
+ 
 use crate::parse::parse_value::parse_literal;
 
 use super::ast;
@@ -8,19 +10,19 @@ use super::parse_identifier;
 use super::parse_type_constructor;
 use super::Rule;
 
-pub(crate) fn parse_constant(token: Pair<'_>, diagnostics: &mut Diagnostics) -> Result<ast::Constant, ParserError> {
+pub(crate) fn parse_constant(token: Pair<'_>, ctx: &mut Context<'_, '_>) -> ast::Constant {
     assert!(token.as_rule() == Rule::constant);
 
     let literal_token = token.into_inner().next().unwrap();
-    let value = parse_literal(literal_token, diagnostics);
+    let value = parse_literal(literal_token, ctx);
 
-    Ok(ast::Constant(value))
+    ast::Constant(value)
 }
 
 pub(crate) fn parse_constant_declaration(
     pair: Pair<'_>,
-    diagnostics: &mut Diagnostics,
-) -> Result<ast::ConstDeclaration, ParserError> {
+    ctx: &mut Context<'_, '_>,
+) -> Result<ast::Const, DiagnosticsError> {
     let pair_span = pair.as_span();
     let mut parts = pair.into_inner();
 
@@ -30,11 +32,12 @@ pub(crate) fn parse_constant_declaration(
     let constant = parts.next().unwrap();
     let mut attributes: Vec<ast::Attribute> = Vec::new();
 
-    Ok(ast::ConstDeclaration {
-        name: parse_identifier(&identifier)?,
-        ty: parse_type_constructor(&ty)?,
-        value: parse_constant(constant.clone(), diagnostics)?,
+    Ok(ast::Const {
+        name: parse_identifier(&identifier),
+        ty: parse_type_constructor(ty, ctx.diagnostics)?,
+        value: parse_constant(constant.clone(), ctx),
         attributes,
+        documentation: None,
         span: ast::Span::from(pair_span),
     })
 }

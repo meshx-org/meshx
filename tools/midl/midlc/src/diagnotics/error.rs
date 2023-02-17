@@ -21,6 +21,10 @@ impl DiagnosticsError {
         Self::new(format!("Error validating: {message}"), span)
     }
 
+    pub fn new_import_error(message: &str, span: Span) -> Self {
+        Self::new(format!("Error validating: {message}"), span)
+    }
+
     pub fn new_protocol_validation_error(
         message: &str,
         block_type: &'static str,

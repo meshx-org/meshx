@@ -27,13 +27,20 @@
 //!   provided. These usually require a datamodel connector to be defined./// ParserDatabase is a container for a Schema AST, together with information
 
 mod context;
+mod libraries;
 mod names;
 mod references;
 
+use std::cell::RefCell;
+
 use crate::source_file::SourceFile;
-use crate::{ast, diagnotics::Diagnostics, source_file};
-use context::Context;
+use crate::{ast, diagnotics::Diagnostics};
 use midlgen::ir;
+
+pub(crate) use context::Context;
+pub(crate) use libraries::Libraries;
+
+use self::references::References;
 
 /// gathered during schema validation. Each validation step enriches the
 /// database with information that can be used to work with the schema, without
@@ -54,21 +61,20 @@ use midlgen::ir;
 /// - Global validations are then performed on the mostly validated schema.
 ///   Currently only index name collisions.
 
-pub (crate) struct ParserDatabase {
-    ast: ast::SchamaAST,
-    file: SourceFile,
+pub(crate) struct ParserDatabase<'lib> {
     // interner: interner::StringInterner,
     // names: Names,
     // types: Types,
     // relations: Relations,
-    pub (crate) ir: midlgen::ir::Root,
+    pub(crate) all_libraries: Libraries<'lib>,
+    pub(crate) files: Vec<SourceFile>,
+    pub(crate) ir: midlgen::ir::Root,
 }
 
-impl ParserDatabase {
+impl<'lib> ParserDatabase<'lib> {
     /// See the docs on [ParserDatabase](/struct.ParserDatabase.html).
-    pub(crate) fn new(file: SourceFile, diagnostics: &mut Diagnostics) -> Self {
-        let ast = crate::parse(file.as_str(), diagnostics).unwrap();
-        println!("{:#?}", ast);
+    pub(crate) fn new(files: Vec<SourceFile>) -> Self {
+        let mut all_libraries = Libraries::new();
 
         let ir = ir::Root {
             name: "S".to_owned(),
@@ -84,20 +90,6 @@ impl ParserDatabase {
             bits_declarations: vec![],
         };
         // println!("ir: {:?}", ir);
-
-        //let mut interner = Default::default();
-        //let mut names = Default::default();
-        //let mut types = Default::default();
-        let mut references = Default::default();
-        let mut ctx = Context::new(&ast, &mut references, diagnostics);
-
-        // First pass: resolve names.
-        names::verify_names(&mut ctx);
-
-        // Return early on name resolution errors.
-        if ctx.diagnostics.has_errors() {
-            return ParserDatabase { ast, file, ir };
-        }
 
         /*
         // Second pass: resolve top-level items and field types.
@@ -125,12 +117,41 @@ impl ParserDatabase {
 
         */
 
-        ParserDatabase { ast, file, ir }
+        ParserDatabase {
+            ir,
+            files,
+            
+            all_libraries,
+        }
     }
 
-    /// The parsed AST.
-    pub fn ast(&self) -> &ast::SchamaAST {
-        &self.ast
+    pub fn get_ir(&'lib self) -> &ir::Root {
+        &self.ir
+    }
+
+    pub fn compile(&'lib self, diagnostics: &mut Diagnostics) {
+        let root_library = ast::Library::new_root();
+        let mut references = Default::default();
+        //let mut interner = Default::default();
+        //let mut names = Default::default();
+        //let mut types = Default::default();
+
+        for file in self.files.iter() {
+            let mut ctx = Context::new(&root_library, &self.all_libraries, &mut references, diagnostics);
+
+            let ast = crate::parse_source(file.as_str(), &mut ctx);
+            println!("{:#?}", ast);
+
+            ctx.ast = &ast;
+
+            // First pass: resolve names.
+            names::verify_names(&mut ctx);
+
+            // Return early on name resolution errors.
+            if ctx.diagnostics.has_errors() {
+                return; // TODO: print errors
+            }
+        }
     }
 
     /// The total number of enums in the schema. This is O(1).
@@ -141,10 +162,5 @@ impl ParserDatabase {
     /// The total number of models in the schema. This is O(1).
     pub fn struct_count(&self) -> usize {
         0 // self.ir.struct_declarations.len()
-    }
-
-    /// The source file contents.
-    pub fn source(&self) -> &str {
-        self.file.as_str()
     }
 }

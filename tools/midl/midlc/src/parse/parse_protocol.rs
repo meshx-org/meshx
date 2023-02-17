@@ -2,11 +2,11 @@ use super::helpers::parsing_catch_all;
 
 use super::{helpers::Pair, Rule};
 
-use crate::ast::{CompoundIdentifier, Declaration, ProtocolMethod, Span};
+use crate::ast;
+use crate::ast::{CompoundIdentifier, Declaration, ProtocolMethod};
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
 use crate::parse::parse_comments::{parse_comment_block, parse_trailing_comment};
 use crate::parse::parse_struct::parse_struct_declaration;
-use crate::{ast, error::ParserError};
 
 fn parse_parameter_list(
     pair: Pair<'_>,
@@ -86,19 +86,14 @@ fn parse_protocol_method(
             },
             Vec::new(),
         )),
-        _ => Err(DiagnosticsError::new_protocol_validation_error(
-            "This protocol method declaration is invalid. It is missing a name.",
-            container_type,
-            protocol_name,
-            pair_span.into(),
-        )),
+        _ => panic!("Encountered impossible protocol method declaration during parsing"),
     }
 }
 
 pub(crate) fn parse_protocol_declaration(
     pair: Pair<'_>,
     diagnostics: &mut Diagnostics,
-) -> Result<(ast::Protocol, Vec<ast::Declaration>), ParserError> {
+) -> Result<(ast::Protocol, Vec<ast::Declaration>), DiagnosticsError> {
     let pair_span = pair.as_span();
 
     let mut name: Option<ast::Identifier> = None;
@@ -115,7 +110,7 @@ pub(crate) fn parse_protocol_declaration(
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::protocol_method => match parse_protocol_method(
                 &name.as_ref().unwrap().value,
-                "struct",
+                "protocol",
                 current,
                 pending_field_comment.take(),
                 &mut declarations,
@@ -130,7 +125,7 @@ pub(crate) fn parse_protocol_declaration(
             Rule::protocol_event => {}
             Rule::protocol_compose => match current.into_inner().next() {
                 Some(id) => composes.push(id.into()),
-                None => return Err(ParserError::UnexpectedToken),
+                None => panic!("Expected a compound identifier."),
             },
             Rule::comment_block => pending_field_comment = Some(current),
             Rule::BLOCK_LEVEL_CATCH_ALL => diagnostics.push_error(DiagnosticsError::new_validation_error(
@@ -153,6 +148,6 @@ pub(crate) fn parse_protocol_declaration(
             },
             declarations,
         )),
-        _ => Err(ParserError::UnexpectedToken),
+        _ => panic!("Encountered impossible protocol declaration during parsing",),
     }
 }

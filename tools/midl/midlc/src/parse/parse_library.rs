@@ -1,14 +1,9 @@
+use super::ast;
 use super::helpers::Pair;
 use super::parse_compound_identifier;
-use super::ast;
-use super::ParserError;
 
-// pub(crate) fn parse_library_declaration(pair: Pair<'_>, diagnostics: &mut Diagnostics) -> Top {}
-
-pub(crate) fn parse_library_declaration(pair: &Pair<'_>) -> Result<ast::LibraryDeclaration, ParserError> {
+pub(crate) fn parse_library_declaration(pair: &Pair<'_>) -> ast::CompoundIdentifier {
     let name = pair.clone().into_inner().next().unwrap();
 
-    Ok(ast::LibraryDeclaration {
-        name: parse_compound_identifier(&name)?,
-    })
+    parse_compound_identifier(&name)
 }

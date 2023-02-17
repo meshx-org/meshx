@@ -6,7 +6,7 @@ use super::helpers::Pair;
 use super::Rule;
 use super::ast::Span;
 
-pub(crate) fn parse_literal(token: Pair<'_>, ctx: &mut Context<'_, '_>) -> ast::Literal {
+pub(crate) fn parse_literal(token: Pair<'_>, ctx: &mut Context<'_>) -> ast::Literal {
     assert!(token.as_rule() == Rule::literal);
 
     let value_token = token.into_inner().next().unwrap();
@@ -21,7 +21,7 @@ pub(crate) fn parse_literal(token: Pair<'_>, ctx: &mut Context<'_, '_>) -> ast::
     }
 }
 
-pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut Context<'_, '_>) -> String {
+pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut Context<'_>) -> String {
     assert!(token.as_rule() == Rule::string_literal);
 
     let contents = token.clone().into_inner().next().unwrap();

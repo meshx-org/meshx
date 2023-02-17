@@ -1,7 +1,4 @@
-use std::str::FromStr;
-
-use super::{CompoundIdentifier, Identifier, Span};
-use crate::error::ParserError;
+use super::{CompoundIdentifier, Span};
 
 /// Represents arbitrary values.
 #[derive(Debug, Clone)]
@@ -45,70 +42,3 @@ pub struct LibraryDeclaration {
 pub struct ImportDeclaration {
     pub name: CompoundIdentifier,
 }
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub enum PrimitiveSubtype {
-    Bool,
-    Int8,
-    Int16,
-    Int32,
-    Int64,
-    Uint8,
-    Uint16,
-    Uint32,
-    Uint64,
-    Float32,
-    Float64,
-}
-
-impl FromStr for PrimitiveSubtype {
-    type Err = ParserError;
-
-    fn from_str(input: &str) -> Result<PrimitiveSubtype, Self::Err> {
-        match input {
-            "bool" => Ok(PrimitiveSubtype::Bool),
-            "u8" => Ok(PrimitiveSubtype::Uint8),
-            "u16" => Ok(PrimitiveSubtype::Uint16),
-            "u32" => Ok(PrimitiveSubtype::Uint32),
-            "u64" => Ok(PrimitiveSubtype::Uint64),
-            "i8" => Ok(PrimitiveSubtype::Int8),
-            "i16" => Ok(PrimitiveSubtype::Int16),
-            "i32" => Ok(PrimitiveSubtype::Int32),
-            "i64" => Ok(PrimitiveSubtype::Int64),
-            _ => Err(ParserError::UnknownPrimitiveType),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Type {
-    Array {
-        element_type: Box<Type>,
-    },
-    Vector {
-        element_type: Box<Type>,
-    },
-    String {
-        nullable: bool,
-    },
-    Request {
-        nullable: bool,
-        subtype: String, // "test.handles/DriverProtocol",
-    },
-    Primitive {
-        nullable: bool,
-        subtype: PrimitiveSubtype,
-    },
-    Identifier {
-        identifier: String, // "test.handlesintypes/obj_type"
-        nullable: bool,
-    },
-    Handle {
-        nullable: bool,
-        resource_identifier: String,
-        subtype: String,
-        rights: u32,
-    },
-}
-
-

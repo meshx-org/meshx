@@ -1,4 +1,4 @@
-use super::{Attribute, Comment, Identifier, Span, WithAttributes, WithIdentifier, WithSpan, WithDocumentation};
+use super::{Attribute, Comment, Identifier, Span, WithAttributes, WithIdentifier, WithSpan, WithDocumentation, Type};
 
 /// An opaque identifier for a field in an AST model. Use the
 /// `model[field_id]` syntax to resolve the id to an `ast::Field`.
@@ -24,6 +24,8 @@ impl std::ops::Index<StructMemberId> for Struct {
 #[derive(Debug, Clone)]
 pub struct StructMember {
     pub(crate) name: Identifier,
+
+   pub(crate) member_type: Type,
 
     pub(crate) documentation: Option<Comment>,
 

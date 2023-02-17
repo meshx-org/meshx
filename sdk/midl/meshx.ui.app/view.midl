@@ -1,7 +1,7 @@
 // Copyright 2019 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-library fuchsia.ui.app
+library meshx.ui.app
 
 import fx
 
@@ -46,23 +46,24 @@ import fx
 @discoverable
 protocol View {
     compose test.Test
-  /// Updates the View's configuration.
-  ///
-  /// To prevent triggering UI changes shortly after a client starts up, the
-  /// View's client should set the configuration prior to calling
-  /// `AttachView()` unless the default is adequate.
-  ///
-  /// May be called again at any time to modify the view's configuration.
-  SetConfig(struct {
-    config :ViewConfig
-  })
+    
+    /// Updates the View's configuration.
+    ///
+    /// To prevent triggering UI changes shortly after a client starts up, the
+    /// View's client should set the configuration prior to calling
+    /// `AttachView()` unless the default is adequate.
+    ///
+    /// May be called again at any time to modify the view's configuration.
+    SetConfig(struct {
+        config ViewConfig
+    })
 
-  /// Attaches the View to Scenic's scene graph. Must only be called once per
-  /// `View` lifetime.
-  ///
-  /// The View's implementation should pass the `view_token` to Scenic
-  /// using a `fuchsia.ui.view.CreateViewCmd`.
-  Attach(resource struct {
-    view_token :fx.handle(EVENTPAIR)
-  })
+    /// Attaches the View to Scenic's scene graph. Must only be called once per
+    /// `View` lifetime.
+    ///
+    /// The View's implementation should pass the `view_token` to Scenic
+    /// using a `fuchsia.ui.view.CreateViewCmd`.
+    Attach(resource struct {
+        view_token fx.handle(EVENTPAIR)
+    })
 }

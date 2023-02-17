@@ -17,7 +17,8 @@ library              =  { SOI ~ (library_declaration | import_declaration | cons
 declaration_list     = _{ (declaration ~ NEWLINE+) * ~ declaration? }
 declaration          = _{ (library_declaration | import_declaration | const_declaration | struct_declaration/*layout_declaration*/ | protocol_declaration) }
 library_declaration  =  { LIBRARY_KEYWORD ~ compound_identifier }
-import_declaration   =  { IMPORT_KEYWORD ~ compound_identifier }
+import_declaration   =  { IMPORT_KEYWORD ~ compound_identifier ~ import_alias? }
+import_alias         =  { AS_KEYWORD ~ identifier }
 
 const_declaration = { 
     block_attribute_list 
@@ -83,7 +84,7 @@ struct_layout_member  =  { member_field ~ inline_attribute_list ~ trailing_comma
 ordinal_layout        =  { ( NEWLINE* ~ ordinal_layout_member ~ NEWLINE* )+ }
 ordinal_layout_member =  { "#" ~ ordinal ~ (member_field | RESERVED_KEYWORD) ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
 
-member_field         =  { identifier ~ type_definition }
+member_field         = _{ identifier ~ type_definition }
 inline_layout        =  { 
 							block_attribute_list
                             ~ declaration_modifiers* 
@@ -101,7 +102,7 @@ vector_type          =  { "vector" ~ ("(" ~ layout_parameters ~ ")") }
 string_type          =  { "string" ~ ("(" ~ layout_parameters ~ ")")? }
 primitive_type       =  { "bool" | "f32" | "f64" | "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" }
 type                 = _{ string_type | primitive_type | vector_type | array_type | compound_identifier }
-type_definition      = ${ ":" ~ type }
+type_definition      = ${ type }
 
 // ######################################
 // Comments and Documentation Comments
@@ -157,6 +158,7 @@ BLOCK_LEVEL_CATCH_ALL   = { !BLOCK_CLOSE ~ CATCH_ALL }
 
 LIBRARY_KEYWORD  = _{ "library" }
 IMPORT_KEYWORD   = _{ "import" }
+AS_KEYWORD       = _{ "as" }
 ENUM_KEYWORD     = _{ "enum" }
 STRUCT_KEYWORD   = _{ "struct" }
 TABLE_KEYWORD    = _{ "table" }

@@ -12,7 +12,7 @@ use super::context::Context;
 /// - Datasources
 /// - Model fields for each model
 /// - Enum variants for each enum
-pub(super) fn verify_names(ctx: &mut Context<'_>) {
+pub(super) fn verify_names(ctx: &mut Context<'_, '_>) {
     for (decl_id, decl) in ctx.ast.iter_decls() {
         // assert_is_not_a_reserved_scalar_type(decl.identifier(), ctx);
 
@@ -26,7 +26,7 @@ pub(super) fn verify_names(ctx: &mut Context<'_>) {
             (_, ast::Declaration::Const(ast_const)) => {
                 validate_identifier(ast_const.identifier(), "Const", ctx);
             }
-            (_, ast::Declaration::Import(_)) | (_, ast::Declaration::Library(_)) => (),
+            (_, ast::Declaration::Import(_)) => (),
             _ => unreachable!(),
         };
 
@@ -34,7 +34,7 @@ pub(super) fn verify_names(ctx: &mut Context<'_>) {
     }
 }
 
-fn validate_identifier(ident: &ast::Identifier, schema_item: &str, ctx: &mut Context<'_>) {
+fn validate_identifier(ident: &ast::Identifier, schema_item: &str, ctx: &mut Context<'_, '_>) {
     if ident.value.is_empty() {
         ctx.push_error(DiagnosticsError::new_validation_error(
             &format!("The name of a {schema_item} must not be empty."),

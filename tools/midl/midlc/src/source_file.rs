@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-/// A Prisma schema document.
+/// A MIDL schema document.
 #[derive(Debug, Clone)]
 pub struct SourceFile {
     contents: Contents,

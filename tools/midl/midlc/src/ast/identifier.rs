@@ -1,9 +1,25 @@
+use std::ops::Deref;
+
 use super::{Span, WithSpan};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Identifier {
     pub value: String,
     pub span: Span,
+}
+
+impl PartialEq for Identifier {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+impl Deref for Identifier {
+    type Target = Identifier;
+
+    fn deref(&self) -> &Self::Target {
+        &self
+    }
 }
 
 impl WithSpan for Identifier {
@@ -21,17 +37,19 @@ impl<T: pest::RuleType> From<pest::iterators::Pair<'_, T>> for Identifier {
     }
 }
 
-#[derive(Debug)]
-pub struct CompoundIdentifier(pub Vec<Identifier>);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompoundIdentifier {
+    pub components: Vec<Identifier>,
+}
 
 impl<T: pest::RuleType> From<pest::iterators::Pair<'_, T>> for CompoundIdentifier {
     fn from(pair: pest::iterators::Pair<'_, T>) -> Self {
-        let ids = pair
+        let components = pair
             .into_inner()
             .into_iter()
             .map(|id| id.into())
             .collect::<Vec<Identifier>>();
-        
-        CompoundIdentifier(ids)
+
+        CompoundIdentifier { components }
     }
 }

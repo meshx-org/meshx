@@ -1,6 +1,6 @@
 use super::helpers::parsing_catch_all;
 use super::{helpers::Pair, Rule};
-use crate::{ast, error::ParserError};
+use crate::ast;
 
 pub(crate) fn parse_comment_block(token: Pair<'_>) -> Option<ast::Comment> {
     debug_assert!(token.as_rule() == Rule::comment_block);
