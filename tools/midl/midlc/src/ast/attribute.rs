@@ -1,5 +1,4 @@
 use super::{Identifier, Span, WithIdentifier, WithSpan};
-use std::ops::Index;
 
 /// An attribute (following `@`) on a struct, struct member, enum, enum value or constant
 /// field.

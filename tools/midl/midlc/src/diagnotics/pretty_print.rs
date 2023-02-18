@@ -85,6 +85,21 @@ pub(crate) fn pretty_print(
     writeln!(f, "{}", format_line_number(0))
 }
 
+/// Given the datamodel text representation, pretty prints an error or warning, including
+/// the offending portion of the source code, for human-friendly reading.
+pub(crate) fn pretty_print_error_text(
+    f: &mut dyn std::io::Write,
+    description: &str,
+    colorer: &'static dyn DiagnosticColorer,
+) -> std::io::Result<()> {
+    writeln!(
+        f,
+        "{} {}",
+        colorer.primary_color(colorer.title()).bold(),
+        description.bold()
+    )
+}
+
 fn format_line_number_with_line(line_number: usize, lines: &[&str]) -> colored::ColoredString {
     if line_number > 0 && line_number <= lines.len() {
         colored::ColoredString::from(format!("{}{}", format_line_number(line_number), lines[line_number - 1]).as_str())

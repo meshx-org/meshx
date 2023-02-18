@@ -1,3 +1,5 @@
+use std::path::Path;
+
 /// A MIDL schema document.
 #[derive(Debug, Clone)]
 pub(crate) struct SourceFile<'src> {
@@ -6,8 +8,16 @@ pub(crate) struct SourceFile<'src> {
 }
 
 impl<'src> SourceFile<'src> {
-    pub fn new(filename: &'src str, contents: String) -> Self {
-        Self { filename, contents }
+    pub fn new(path: &'src Path) -> Result<Self, std::io::Error> {
+        let contents = std::fs::read_to_string(path);
+
+        match contents {
+            Ok(contents) => Ok(Self {
+                filename: path.file_name().unwrap().to_str().unwrap(),
+                contents,
+            }),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn as_str(&self) -> &str {
@@ -19,8 +29,9 @@ impl<'src> SourceFile<'src> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct SourceFiles<'files> {
-    files: Vec<SourceFile<'files>>,
+    pub files: Vec<SourceFile<'files>>,
 }
 
 impl<'files> From<Vec<SourceFile<'files>>> for SourceFiles<'files> {
@@ -30,16 +41,12 @@ impl<'files> From<Vec<SourceFile<'files>>> for SourceFiles<'files> {
 }
 
 impl<'files> SourceFiles<'files> {
-    pub(crate) fn add(&mut self, filename: &'files str, contents: String) {
-        self.files.push(SourceFile::new(filename, contents));
-    }
-
     pub(crate) fn get(&self, filename: &str) -> Option<&SourceFile<'_>> {
         self.files.iter().find(|f| f.filename == filename)
     }
 
     /// Enumerate over all source files in this collection.
-    pub(crate) fn iter_sources(&self) -> impl Iterator<Item = (SourceId, &SourceFile<'_>)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (SourceId, &SourceFile<'_>)> {
         self.files
             .iter()
             .enumerate()

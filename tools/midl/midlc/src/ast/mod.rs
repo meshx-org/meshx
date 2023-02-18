@@ -10,6 +10,8 @@ mod r#struct;
 mod traits;
 mod type_constructor;
 
+use std::{rc::Rc, sync::Mutex};
+
 pub use ast::*;
 
 pub use attribute::Attribute;
@@ -129,7 +131,7 @@ impl Dependencies {
     // Registers a dependency to a library. The registration name is |maybe_alias|
     // if provided, otherwise the library's name. Afterwards, Dependencies::Lookup
     // will return |dep_library| given the registration name.
-    pub fn register(&self, span: &Span, dep_library: &Library, alias: Option<Identifier>) -> RegisterResult {
+    pub fn register(&self, span: &Span, dep_library: Rc<Mutex<Library>>, alias: Option<Identifier>) -> RegisterResult {
         // let filename = span.source_file().filename();
         RegisterResult::Success
     }
@@ -156,6 +158,8 @@ pub struct Library {
     // Contains the same decls as `declarations`, but in a topologically sorted
     // order, i.e. later decls only depend on earlier ones. Populated by SortStep.
     pub declaration_order: Vec<Declaration>,
+
+    pub arbitrary_name_span: Option<Span>,
 }
 
 impl Library {

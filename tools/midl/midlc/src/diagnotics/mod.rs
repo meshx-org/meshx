@@ -3,9 +3,8 @@ mod pretty_print;
 mod warning;
 
 pub(crate) use error::DiagnosticsError;
+pub(crate) use pretty_print::{pretty_print_error_text, DiagnosticColorer};
 pub(crate) use warning::DiagnosticsWarning;
-
-use crate::source_file::SourceFile;
 
 /// Represents a list of validation or parser errors and warnings.
 ///

@@ -1,3 +1,0 @@
-library example.midl
-
-const CONSTANT_TEST :u32 = 0

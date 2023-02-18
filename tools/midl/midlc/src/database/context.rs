@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use std::sync::Mutex;
+
 use crate::ast;
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
 use crate::source_file::SourceId;
@@ -20,7 +23,7 @@ use super::references::References;
 pub(crate) struct Context<'lib, 'db> {
     pub(crate) ast: &'db ast::Library,
 
-    pub(crate) all_libraries: &'lib Libraries<'lib>,
+    pub(crate) all_libraries: &'lib Libraries,
 
     pub(crate) diagnostics: &'db mut Diagnostics,
     pub(crate) references: &'db mut References,
@@ -29,7 +32,7 @@ pub(crate) struct Context<'lib, 'db> {
 impl<'lib, 'db> Context<'lib, 'db> {
     pub(super) fn new(
         ast: &'db ast::Library,
-        all_libraries: &'lib Libraries<'lib>,
+        all_libraries: &'lib Libraries,
         references: &'db mut References,
         diagnostics: &'db mut Diagnostics,
     ) -> Self {
@@ -49,17 +52,17 @@ impl<'lib, 'db> Context<'lib, 'db> {
 /// Parsing context. This is an implementation detail of ParserDatabase. It
 /// contains the database itself, as well as source context that is discarded after
 /// parsing is done.
-pub(crate) struct ParsingContext<'lib, 'db> {
-    pub(crate) library: ast::Library,
-    pub(crate) all_libraries: &'lib Libraries<'lib>,
+pub(crate) struct ParsingContext<'db> {
+    pub(crate) library: Rc<Mutex<ast::Library>>,
+    pub(crate) all_libraries: Rc<Mutex<Libraries>>,
     pub(crate) diagnostics: &'db mut Diagnostics,
     pub(crate) source_id: SourceId,
 }
 
-impl<'lib, 'db> ParsingContext<'lib, 'db> {
+impl<'db> ParsingContext<'db> {
     pub(super) fn new(
-        library: ast::Library,
-        all_libraries: &'lib Libraries<'lib>,
+        library: Rc<Mutex<ast::Library>>,
+        all_libraries: Rc<Mutex<Libraries>>,
         diagnostics: &'db mut Diagnostics,
         source_id: SourceId,
     ) -> Self {

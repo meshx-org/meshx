@@ -1,9 +1,7 @@
 use std::str::FromStr;
 
 use crate::database::ParsingContext;
-use crate::diagnotics::Diagnostics;
 use crate::diagnotics::DiagnosticsError;
-use crate::source_file::SourceId;
 use ast::Reference;
 
 use super::ast;
@@ -13,7 +11,7 @@ use super::Rule;
 
 pub(crate) fn get_collection_subtype(
     pair: &Pair<'_>,
-    ctx: &mut ParsingContext<'_, '_>,
+    ctx: &mut ParsingContext<  '_>,
 ) -> Result<ast::Type, DiagnosticsError> {
     let pair_span = pair.as_span();
     let layout_parameters = pair.clone().into_inner().next();
@@ -34,7 +32,7 @@ pub(crate) fn get_collection_subtype(
 
 pub(crate) fn parse_type_constructor(
     pair: Pair<'_>,
-    ctx: &mut ParsingContext<'_, '_>,
+    ctx: &mut ParsingContext<  '_>,
 ) -> Result<ast::Type, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::type_definition);
 

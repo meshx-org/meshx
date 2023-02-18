@@ -6,7 +6,7 @@ use super::ast::Span;
 use super::helpers::Pair;
 use super::Rule;
 
-pub(crate) fn parse_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_, '_>) -> ast::Literal {
+pub(crate) fn parse_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_>) -> ast::Literal {
     assert!(token.as_rule() == Rule::literal);
 
     let value_token = token.into_inner().next().unwrap();
@@ -21,7 +21,7 @@ pub(crate) fn parse_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_, '_>) -
     }
 }
 
-pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_, '_>) -> String {
+pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_>) -> String {
     assert!(token.as_rule() == Rule::string_literal);
 
     let contents = token.clone().into_inner().next().unwrap();
@@ -96,7 +96,7 @@ pub(crate) fn parse_string_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_,
 fn try_parse_unicode_codepoint(
     slice: &str,
     slice_offset: usize,
-    ctx: &mut ParsingContext<'_, '_>,
+    ctx: &mut ParsingContext<'_>,
 ) -> (usize, Option<char>) {
     let unicode_sequence_error = |consumed| {
         let span = ast::Span::new(

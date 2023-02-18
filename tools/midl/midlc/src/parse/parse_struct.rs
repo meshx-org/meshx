@@ -5,22 +5,19 @@ use super::{helpers::Pair, Rule};
 
 use crate::ast;
 use crate::database::ParsingContext;
-use crate::diagnotics::{Diagnostics, DiagnosticsError};
+use crate::diagnotics::DiagnosticsError;
 use crate::parse::parse_comments::{parse_comment_block, parse_trailing_comment};
-use crate::source_file::SourceId;
 
 fn parse_struct_member(
-    struct_name: &str,
-    container_type: &'static str,
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
-    ctx: &mut ParsingContext<'_, '_>,
+    ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::StructMember, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::struct_layout_member);
 
     let pair_span = pair.as_span();
     let mut name: Option<ast::Identifier> = None;
-    let mut attributes: Vec<ast::Attribute> = Vec::new();
+    let attributes: Vec<ast::Attribute> = Vec::new();
     let mut comment: Option<ast::Comment> = block_comment.and_then(parse_comment_block);
     let mut member_type: Option<ast::Type> = None;
 
@@ -45,6 +42,7 @@ fn parse_struct_member(
         (Some(name), Some(member_type)) => Ok(ast::StructMember {
             name,
             documentation: None,
+            attributes,
             member_type,
             span: ast::Span::from_pest(pair_span, ctx.source_id),
         }),
@@ -55,12 +53,12 @@ fn parse_struct_member(
 pub(crate) fn parse_struct_declaration(
     pair: Pair<'_>,
     initial_name: Option<ast::Identifier>,
-    ctx: &mut ParsingContext<'_, '_>,
+    ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Struct, DiagnosticsError> {
     let pair_span = pair.as_span();
 
     let mut name: Option<ast::Identifier> = initial_name;
-    let mut attributes: Vec<ast::Attribute> = Vec::new();
+    let attributes: Vec<ast::Attribute> = Vec::new();
     let mut members: Vec<ast::StructMember> = Vec::new();
     let mut pending_field_comment: Option<Pair<'_>> = None;
 
@@ -69,20 +67,12 @@ pub(crate) fn parse_struct_declaration(
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
             Rule::identifier => name = Some(parse_identifier(&current, ctx)),
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
-            Rule::struct_layout_member => {
-                match parse_struct_member(
-                    &name.as_ref().unwrap().value,
-                    "struct",
-                    current,
-                    pending_field_comment.take(),
-                    ctx,
-                ) {
-                    Ok(member) => {
-                        members.push(member);
-                    }
-                    Err(err) => ctx.diagnostics.push_error(err),
+            Rule::struct_layout_member => match parse_struct_member(current, pending_field_comment.take(), ctx) {
+                Ok(member) => {
+                    members.push(member);
                 }
-            }
+                Err(err) => ctx.diagnostics.push_error(err),
+            },
             Rule::declaration_modifiers => {}
             Rule::comment_block => pending_field_comment = Some(current),
             Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(

@@ -38,7 +38,7 @@ protocol ComponentController {
     /// 
     /// This ComponentController connection is closed when the component has
     /// terminated.
-    fn Kill() -> ()
+    Kill() -> ()
 
     /// Event that is triggered when the component is terminated.
     /// 

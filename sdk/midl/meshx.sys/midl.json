@@ -1,0 +1,7 @@
+{
+    "name": "meshx.sys",
+    "files": ["overview.midl"],
+    "dependencies": {
+        "fx": { "path": "../fx" }
+    }
+}

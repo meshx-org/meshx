@@ -1,4 +1,4 @@
-import { logger, ExecutorContext } from "@nrwl/devkit"
+import { logger, readJsonFile, ExecutorContext } from "@nrwl/devkit"
 import { exec } from "child_process"
 import * as path from "path"
 
@@ -7,18 +7,53 @@ export interface Options {
     srcs: string[]
     outDir: string
     language: "ts" | "rust"
+    midlJson?: string
     cwd?: string
     midlcPath?: string
 }
 
+interface LibraryDependency {
+    path: string
+}
+
+interface MIDLJson {
+    name: string
+    dependencies: Record<string, LibraryDependency>
+    files: string[]
+}
+
 async function buildIR(options: Options, context: ExecutorContext): Promise<void> {
     const outDir = path.resolve(context.root, options.outDir)
-
     const projectRoot = context.projectsConfigurations?.projects[context.projectName!].root
+    const midlJsonPath = path.resolve(projectRoot!, options.midlJson || "midl.json")
+    const midlJson = readJsonFile<MIDLJson>(midlJsonPath)
+
+    // Reqursively resolve all dependancy paths from the midl.json files
+    const resolveDependencies = (dependencies: Record<string, LibraryDependency>): Record<string, string[]> => {
+        let libraries: Record<string, string[]> = {}
+        for (const [name, dependency] of Object.entries(dependencies)) {
+            const files: string[] = []
+            const dependencyPath = path.resolve(projectRoot!, dependency.path)
+            const dependencyJson = readJsonFile<MIDLJson>(path.resolve(dependencyPath, "midl.json"))
+
+            files.push(...dependencyJson.files.map((file) => path.resolve(dependencyPath, file)))
+            libraries = { ...libraries, ...resolveDependencies(dependencyJson.dependencies) }
+            libraries[name] = files
+        }
+        return libraries
+    }
+
+    const files = resolveDependencies(midlJson.dependencies)
+    files[midlJson.name] = [...midlJson.files.map((file) => path.resolve(projectRoot!, file))]
+
+    let filesFlags = ""
+    Object.entries(files).forEach(([name, files]) => {
+        filesFlags += `--files ${files.join(" ")} `
+    })
 
     return new Promise((resolve, reject) => {
         exec(
-            `${context.root}/dist/tools/midl/midlc/midlc compile ${options.srcs.join(" ")}`,
+            `${context.root}/dist/tools/midl/midlc/midlc compile -o=${outDir}/ir.json  ${filesFlags}`,
             {
                 env: {
                     CLICOLOR_FORCE: "1",

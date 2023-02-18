@@ -1,5 +1,5 @@
 {
-    "name": "sdk/midl/meshx.ui.app",
+    "name": "sdk/midl/meshx.ui.views",
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "projectType": "library",
     "implicitDependencies": ["tools/nx-midl"],
@@ -7,12 +7,12 @@
         "build": {
             "executor": "./dist/tools/nx-midl:build",
             "dependsOn": ["^build", "library"],
-            "inputs": ["{workspaceRoot}/dist/sdk/midl/meshx.ui.app/lib.json"],
-            "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.ui.app/ir.json", "./ir.json"],
+            "inputs": ["{workspaceRoot}/dist/sdk/midl/meshx.ui.views/lib.json"],
+            "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.ui.views/ir.json", "./ir.json"],
             "options": {
-                "outDir": "dist/sdk/midl/meshx.ui.app",
+                "outDir": "dist/sdk/midl/meshx.ui.views",
                 "midlJson": "./midl.json",
-                "srcs": ["./view.midl", "./view_provider.midl"],
+                "srcs": [],
                 "language": "ts"
             }
         }

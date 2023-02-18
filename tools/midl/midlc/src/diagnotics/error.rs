@@ -72,14 +72,14 @@ impl DiagnosticsError {
             text,
             self.span(),
             self.message.as_ref(),
-            &DatamodelErrorColorer {},
+            &DiagnosticsErrorColorer {},
         )
     }
 }
 
-struct DatamodelErrorColorer {}
+struct DiagnosticsErrorColorer {}
 
-impl DiagnosticColorer for DatamodelErrorColorer {
+impl DiagnosticColorer for DiagnosticsErrorColorer {
     fn title(&self) -> &'static str {
         " ERROR(0001) "
     }

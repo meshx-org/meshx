@@ -1,0 +1,4 @@
+{
+    "name": "meshx.component.resolver",
+    "files": ["package.midl", "resolver.midl"]
+}

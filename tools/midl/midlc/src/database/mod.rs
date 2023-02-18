@@ -31,7 +31,9 @@ mod libraries;
 mod names;
 mod references;
 
-use midlgen::ir;
+use std::rc::Rc;
+use std::sync::Mutex;
+
 use pest::Parser;
 
 use crate::parse::{MIDLParser, Rule};
@@ -60,33 +62,18 @@ pub(crate) use libraries::Libraries;
 /// - Global validations are then performed on the mostly validated schema.
 ///   Currently only index name collisions.
 
-pub(crate) struct ParserDatabase<'lib> {
+pub(crate) struct ParserDatabase {
     // interner: interner::StringInterner,
     // names: Names,
     // types: Types,
     // relations: Relations,
-    pub(crate) all_libraries: Libraries<'lib>,
-    pub(crate) ir: midlgen::ir::Root,
+    pub(crate) all_libraries: Rc<Mutex<Libraries>>,
+    pub(crate) library: Rc<Mutex<ast::Library>>,
 }
 
-impl<'lib> ParserDatabase<'lib> {
+impl ParserDatabase {
     /// See the docs on [ParserDatabase](/struct.ParserDatabase.html).
-    pub(crate) fn new() -> Self {
-        let mut all_libraries = Libraries::new();
-
-        let ir = ir::Root {
-            name: "S".to_owned(),
-            documentation: None,
-            attributes: vec![],
-
-            table_declarations: vec![],
-            const_declarations: vec![],
-            enum_declarations: vec![],
-            struct_declarations: vec![],
-            protocol_declarations: vec![],
-            union_declarations: vec![],
-            bits_declarations: vec![],
-        };
+    pub(crate) fn new(all_libraries: Rc<Mutex<Libraries>>) -> Option<Self> {
         // println!("ir: {:?}", ir);
 
         /*
@@ -115,28 +102,39 @@ impl<'lib> ParserDatabase<'lib> {
 
         */
 
-        ParserDatabase { ir, all_libraries }
+        let library = Rc::from(Mutex::from(ast::Library::default()));
+
+        Some(ParserDatabase { all_libraries, library })
     }
 
-    pub fn get_ir(&'lib self) -> &ir::Root {
-        &self.ir
-    }
-
-    pub fn parse_file(&'lib self, source_id: SourceId, source: &SourceFile<'_>) -> Diagnostics {
-        let library = ast::Library::default();
+    pub fn parse_file(&self, source_id: SourceId, source: &SourceFile<'_>) -> Diagnostics {
         let mut diagnostics = Diagnostics::new();
-        let mut ctx = ParsingContext::new(library, &self.all_libraries, &mut diagnostics, source_id);
+        let mut ctx = ParsingContext::new(
+            self.library.clone(),
+            self.all_libraries.clone(),
+            &mut diagnostics,
+            source_id,
+        );
 
         let pairs = MIDLParser::parse(Rule::library, source.as_str()).unwrap();
 
         let ast = crate::parse_source(pairs, &mut ctx);
-        println!("ast: {:#?}", ast);
+        // println!("ast: {:#?}", ast);
 
         diagnostics
     }
 
-    pub fn compile(&'lib self) -> Diagnostics {
-        let mut diagnostics = Diagnostics::new();
-        diagnostics
+    pub fn compile(&self) -> (bool, Diagnostics) {
+        let diagnostics = Diagnostics::new();
+
+        {
+            let mut lock = self.all_libraries.lock().unwrap();
+
+            if !lock.insert(self.library.clone()) {
+                return (false, diagnostics);
+            }
+        }
+
+        return (true, diagnostics);
     }
 }

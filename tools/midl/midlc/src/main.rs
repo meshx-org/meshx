@@ -2,6 +2,8 @@
 
 #![deny(rust_2018_idioms, unsafe_code)]
 #![feature(map_try_insert)]
+#![feature(iter_next_chunk)]
+#![feature(option_result_contains)]
 
 mod ast;
 mod database;
@@ -10,17 +12,20 @@ mod error;
 mod parse;
 mod source_file;
 
-use clap::{arg, Command};
+use clap::{ArgAction, Command};
 
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
+use std::rc::Rc;
+use std::sync::Mutex;
 
 #[macro_use]
 extern crate pest_derive;
 
-use crate::database::ParserDatabase;
-use crate::diagnotics::Diagnostics;
+use crate::database::{ParserDatabase, Libraries};
+use crate::diagnotics::pretty_print_error_text;
+use crate::error::ErrorColorer;
 use crate::parse::parse_source;
 use crate::source_file::{SourceFile, SourceFiles};
 
@@ -34,7 +39,21 @@ fn cli() -> Command {
             Command::new("compile")
                 .about("adds things")
                 .arg_required_else_help(true)
-                .arg(arg!(<PATH> ... "Stuff to add").value_parser(clap::value_parser!(PathBuf))),
+                .arg(
+                    clap::Arg::new("OUT")
+                        .long("out")
+                        .short('o')
+                        .value_parser(clap::value_parser!(PathBuf))
+                        .action(ArgAction::Set),
+                )
+                .arg(
+                    clap::Arg::new("FILES")
+                        .long("files")
+                        .value_parser(clap::value_parser!(PathBuf))
+                        .value_delimiter(' ')
+                        .num_args(1..)
+                        .action(ArgAction::Append),
+                ),
         )
 }
 
@@ -43,34 +62,64 @@ fn main() -> std::io::Result<()> {
 
     match matches.subcommand() {
         Some(("compile", sub_matches)) => {
-            let paths = sub_matches
-                .get_many::<PathBuf>("PATH")
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>();
+            let paths = sub_matches.get_occurrences::<PathBuf>("FILES").unwrap();
+            let output = sub_matches.get_one::<PathBuf>("OUT").unwrap();
 
-            let files: Vec<SourceFile<'_>> = paths
-                .iter()
-                .map(|path| {
-                    let contents = std::fs::read_to_string(path).unwrap();
-                    let filename = path.file_name().unwrap().to_str().unwrap();
-                    let midl_source = SourceFile::new(filename, contents);
-                    midl_source
-                })
-                .collect();
+            let mut stdout = Box::new(std::io::stdout()) as Box<dyn Write>;
+            let mut sources = vec![];
 
-            println!("Compiling {:?} files", files);
+            paths.collect::<Vec<_>>().into_iter().for_each(|path| {
+                let lib_sources = path
+                    .map(|path| {
+                        println!("read file: {}", path.file_name().unwrap().to_str().unwrap());
 
-            let source_files = SourceFiles::from(files);
-            let db = ParserDatabase::new();
+                        let source_file = SourceFile::new(path.as_path());
+
+                        match source_file {
+                            Ok(source_file) => source_file,
+                            Err(e) => {
+                                pretty_print_error_text(
+                                    &mut stdout,
+                                    format!("couldn't read {}: {}", path.file_name().unwrap().to_str().unwrap(), e)
+                                        .as_str(),
+                                    &ErrorColorer {},
+                                );
+                                std::process::exit(1);
+                            }
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                let source_files = SourceFiles::from(lib_sources);
+                sources.push(source_files);
+            });
+
+            let all_libraries = Rc::new(Mutex::new(Libraries::new()));
             let mut success = true;
 
-            source_files.iter_sources().for_each(|(source_id, source)| {
-                println!("Parsing {:?}", source.filename());
+            for source_files in sources {
+                println!(
+                    "Compiling files: {:#?}",
+                    source_files.files.iter().map(|f| f.filename()).collect::<Vec<_>>()
+                );
 
+                let compiler = ParserDatabase::new(all_libraries.clone()).unwrap();
 
+                for (source_id, source) in source_files.iter() {
+                    println!("Parsing {:?}", source.filename());
 
-                let diagnostics = db.parse_file(source_id, source);
+                    let diagnostics = compiler.parse_file(source_id, source);
+
+                    if diagnostics.has_errors() {
+                        success = false;
+                        diagnostics.errors().iter().for_each(|e| {
+                            let source = &source_files[e.span().source];
+                            e.pretty_print(&mut stdout, source.filename(), source.as_str()).unwrap();
+                        });
+                    }
+                }
+
+                let (_, diagnostics) = compiler.compile();
 
                 if diagnostics.has_errors() {
                     success = false;
@@ -80,26 +129,32 @@ fn main() -> std::io::Result<()> {
                         e.pretty_print(&mut stdout, source.filename(), source.as_str()).unwrap();
                     });
                 }
-            });
-
-            let diagnostics = db.compile();
-
-            if diagnostics.has_errors() {
-                success = false;
-                diagnostics.errors().iter().for_each(|e| {
-                    let source = &source_files[e.span().source];
-                    let mut stdout = Box::new(std::io::stdout()) as Box<dyn Write>;
-                    e.pretty_print(&mut stdout, source.filename(), source.as_str()).unwrap();
-                });
             }
 
             if !success {
                 return Err(std::io::Error::new(std::io::ErrorKind::Other, "Compilation failed"));
             }
 
-            let ir_str = serde_json::to_string(db.get_ir())?;
+            let ir = midlgen::ir::Root {
+                name: "S".to_owned(),
+                documentation: None,
+                attributes: vec![],
 
-            let mut file = File::create("./ir.json")?;
+                table_declarations: vec![],
+                const_declarations: vec![],
+                enum_declarations: vec![],
+                struct_declarations: vec![],
+                protocol_declarations: vec![],
+                union_declarations: vec![],
+                bits_declarations: vec![],
+            };
+
+            println!("IR: {:#?}", output.clone().display());
+
+            let ir_str = serde_json::to_string(&ir)?;
+            std::fs::create_dir_all(output.clone().parent().unwrap())?;
+
+            let mut file = File::create(output)?;
             file.write_all(ir_str.as_bytes())?;
             file.flush()?;
 
