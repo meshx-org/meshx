@@ -1,76 +1,74 @@
-use std::str::FromStr;
-
+use crate::ast::Constant;
+use crate::ast::LayoutParameterList;
 use crate::database::ParsingContext;
-use crate::diagnotics::DiagnosticsError;
-use ast::Reference;
+use crate::parse::helpers::parsing_catch_all;
+use crate::parse::parse_const::parse_constant;
 
 use super::ast;
 use super::helpers::Pair;
 use super::parse_compound_identifier;
 use super::Rule;
 
-pub(crate) fn get_collection_subtype(
-    pair: &Pair<'_>,
-    ctx: &mut ParsingContext<  '_>,
-) -> Result<ast::Type, DiagnosticsError> {
-    let pair_span = pair.as_span();
-    let layout_parameters = pair.clone().into_inner().next();
+fn parse_layout_parameters(pair: Pair<'_>, ctx: &mut ParsingContext<'_>) -> Vec<ast::LayoutParameter> {
+    debug_assert!(pair.as_rule() == Rule::layout_parameters);
 
-    // figure out subtype here then return an ast::TypeConstructor at the end
-    match layout_parameters {
-        Some(layout_parameters) => {
-            let mut inner = layout_parameters.into_inner();
-            let first_param = inner.next().unwrap();
-            parse_type_constructor(first_param, ctx)
+    let mut params: Vec<ast::LayoutParameter> = vec![];
+
+    for current in pair.into_inner() {
+        match current.as_rule() {
+            Rule::constant => params.push(ast::LayoutParameter::Constant(parse_constant(current, ctx))),
+            Rule::type_constructor => {
+                params.push(ast::LayoutParameter::TypeConstructor(parse_type_constructor(
+                    current.clone(),
+                    ctx,
+                )));
+            }
+            _ => parsing_catch_all(&current, "layout parameter"),
         }
-        None => Err(DiagnosticsError::new_validation_error(
-            "This type cosntructor is invalid. It is missing a subtype parameter.",
-            ast::Span::from_pest(pair_span, ctx.source_id),
-        )),
     }
+
+    params
 }
 
-pub(crate) fn parse_type_constructor(
-    pair: Pair<'_>,
-    ctx: &mut ParsingContext<  '_>,
-) -> Result<ast::Type, DiagnosticsError> {
-    debug_assert!(pair.as_rule() == Rule::type_definition);
+pub(crate) fn parse_type_constructor(pair: Pair<'_>, ctx: &mut ParsingContext<'_>) -> ast::TypeConstructor {
+    debug_assert!(pair.as_rule() == Rule::type_constructor);
 
     let pair_span = pair.as_span();
+    let mut name = None;
 
-    if let Some(current) = pair.clone().into_inner().next() {
+    let mut params: Vec<ast::LayoutParameter> = vec![];
+    let mut params_span = None;
+    // TODO: params_signature
+
+    let mut constraits: Vec<ast::Constant> = vec![];
+    // TODO: constraits_signature
+
+    for current in pair.into_inner() {
         match current.as_rule() {
             Rule::compound_identifier => {
-                let identifier = parse_compound_identifier(&current, ctx);
-                Ok(ast::Type::IdentifierType {
-                    reference: Reference::new_sourced(identifier),
-                })
+                name = Some(parse_compound_identifier(&current, ctx));
             }
-            Rule::array_type => Ok(ast::Type::ArrayType {
-                element_type: get_collection_subtype(&pair, ctx)?.into(),
-            }),
-            Rule::vector_type => Ok(ast::Type::VectorType {
-                element_type: get_collection_subtype(&pair, ctx)?.into(),
-            }),
-            Rule::string_type => Ok(ast::Type::StringType { nullable: false }),
-            Rule::primitive_type => Ok(ast::Type::PrimitiveType {
-                nullable: false,
-                subtype: match ast::PrimitiveSubtype::from_str(pair.as_str()) {
-                    Ok(subtype) => subtype,
-                    Err(message) => {
-                        return Err(DiagnosticsError::new_validation_error(
-                            message,
-                            ast::Span::from_pest(pair_span, ctx.source_id),
-                        ))
-                    }
-                },
-            }),
-            _ => unreachable!(
-                "Encountered impossible type during parsing: {:?}",
-                current.clone().as_rule()
-            ),
+            Rule::inline_layout => {
+                // TODO: inline layout parse
+            }
+            Rule::layout_parameters => {
+                params_span = Some(ast::Span::from_pest(pair_span, ctx.source_id));
+                params.append(&mut parse_layout_parameters(current, ctx));
+            }
+            Rule::type_constraints => {
+                // TODO: constraints layout parse
+            }
+            _ => parsing_catch_all(&current, "struct member"),
         }
-    } else {
-        unreachable!("Encountered impossible type during parsing: {:?}", pair.as_rule())
+    }
+
+    ast::TypeConstructor {
+        parameters: ast::LayoutParameterList {
+            parameters: params,
+            span: params_span,
+        },
+        constraints: ast::LayoutConstraints {},
+        layout: ast::Reference::new_sourced(name.unwrap()),
+        r#type: None,
     }
 }

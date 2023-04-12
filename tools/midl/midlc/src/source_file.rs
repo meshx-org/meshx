@@ -54,7 +54,7 @@ impl<'files> SourceFiles<'files> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SourceId(pub usize);
 
 impl<'files> std::ops::Index<SourceId> for SourceFiles<'files> {

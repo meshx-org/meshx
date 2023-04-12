@@ -1,4 +1,5 @@
-use std::{collections::HashMap, rc::Rc, sync::Mutex};
+use std::cell::RefCell;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::ast;
 
@@ -12,10 +13,10 @@ pub(crate) struct Typespace;
 #[derive(Debug)]
 pub(crate) struct Libraries {
     // typespace: Rc<Typespace>,
-    libraries: Vec<Rc<Mutex<ast::Library>>>,
+    libraries: Vec<Rc<ast::Library>>,
 
     // root_library: &'lib ast::Library,
-    libraries_by_name: HashMap<ast::CompoundIdentifier, Rc<Mutex<ast::Library>>>,
+    libraries_by_name: HashMap<ast::CompoundIdentifier, Rc<ast::Library>>,
 }
 
 impl Libraries {
@@ -28,23 +29,21 @@ impl Libraries {
     }
 
     /// Insert |library|. It must only depend on already-inserted libraries.
-    pub(crate) fn insert(&mut self, library: Rc<Mutex<ast::Library>>) -> bool {
-        let library_lock = library.lock().unwrap();
+    pub(crate) fn insert(&mut self, library: Rc<ast::Library>) -> bool {
+        let library_name = library.name.borrow();
 
-        if library_lock.name.is_none() {
+        if library_name.is_none() {
             return false;
         }
 
-        let library_name = library_lock.name.clone().unwrap();
-
-        drop(library_lock);
+        let library_name = library_name.clone().unwrap();
 
         let multiple_entry = self.libraries_by_name.contains_key(&library_name);
         if multiple_entry {
             return false; // Fail(ErrMultipleLibrariesWithSameName, library.arbitrary_name_span, library.name);
         }
 
-        self.libraries.push(library);
+        self.libraries.push(library.clone());
         let library = self.libraries.last().unwrap();
         self.libraries_by_name.insert(library_name, library.clone());
 
@@ -52,7 +51,7 @@ impl Libraries {
     }
 
     /// Lookup a library by its |library_name|, or returns null if none is found.
-    pub(crate) fn lookup(&self, library_name: ast::CompoundIdentifier) -> Option<Rc<Mutex<ast::Library>>> {
+    pub(crate) fn lookup(&self, library_name: ast::CompoundIdentifier) -> Option<Rc<ast::Library>> {
         let iter = self.libraries_by_name.iter().find(|(id, _)| **id == library_name);
         iter.map(|(_, lib)| lib.clone())
     }

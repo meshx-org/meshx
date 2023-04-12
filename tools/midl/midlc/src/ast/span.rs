@@ -1,7 +1,7 @@
 use crate::source_file::SourceId;
 
 /// Represents a location in a MIDL's text representation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
     pub start: usize,
     pub end: usize,

@@ -1,4 +1,9 @@
-use super::{Attribute, Comment, Identifier, Span, Type, WithAttributes, WithDocumentation, WithIdentifier, WithSpan};
+use std::{cell::RefCell, rc::Rc};
+
+use super::{
+    Attribute, Comment, Declaration, Identifier, Span, TypeConstructor, WithAttributes, WithDocumentation,
+    WithIdentifier, WithSpan,
+};
 
 /// An opaque identifier for a field in an AST model. Use the
 /// `model[field_id]` syntax to resolve the id to an `ast::Field`.
@@ -21,14 +26,31 @@ impl std::ops::Index<StructMemberId> for Struct {
 }
 
 /// A struct member declaration.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StructMember {
     pub(crate) name: Identifier,
 
-    pub(crate) member_type: Type,
+    pub(crate) member_type_ctor: TypeConstructor,
 
+    /// The attributes of this struct member.
+    ///     
+    /// ```ignore
+    /// struct Foo {
+    ///  id i32 @id
+    ///         ^^^
+    /// }
+    /// ```
     pub(crate) attributes: Vec<Attribute>,
 
+    /// The documentation for this struct member.
+    /// 
+    /// ```ignore
+    /// struct Foo {
+    ///  /// Lorem ipsum
+    ///  ^^^^^^^^^^^^^^^
+    ///  id i32
+    /// }
+    /// ```
     pub(crate) documentation: Option<Comment>,
 
     /// The location of this struct in the text representation.
@@ -36,7 +58,7 @@ pub struct StructMember {
 }
 
 /// A struct declaration.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Struct {
     /// The name of the struct.
     /// NOTE: inline structs get their name automatically from the complier
@@ -85,6 +107,12 @@ pub struct Struct {
 
     /// The location of this struct in the text representation.
     pub(crate) span: Span,
+}
+
+impl Into<Declaration> for Struct {
+    fn into(self) -> Declaration {
+        Declaration::Struct(Rc::new(RefCell::new(self)))
+    }
 }
 
 impl Struct {

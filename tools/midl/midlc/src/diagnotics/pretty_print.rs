@@ -40,8 +40,8 @@ pub(crate) fn pretty_print(
     writeln!(
         f,
         "{} {}",
-        colorer.primary_color(colorer.title()).on_red().bold(),
-        description.bold().bright_red()
+        colorer.primary_color(colorer.title()).bold(),
+        description.bold()
     )?;
     writeln!(f, "  {arrow}  {file_path}")?;
     writeln!(f, "{}", format_line_number(0))?;

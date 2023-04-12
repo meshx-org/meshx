@@ -29,19 +29,23 @@
 mod context;
 mod libraries;
 mod names;
-mod references;
+mod resolve;
+// mod references;
 
+use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::Mutex;
 
 use pest::Parser;
+// use references::References;
 
 use crate::parse::{MIDLParser, Rule};
 use crate::source_file::{SourceFile, SourceId};
 use crate::{ast, diagnotics::Diagnostics};
 
-pub(crate) use context::ParsingContext;
+pub(crate) use context::{Context, ParsingContext};
 pub(crate) use libraries::Libraries;
+
+use self::resolve::ResolveStep;
 
 /// gathered during schema validation. Each validation step enriches the
 /// database with information that can be used to work with the schema, without
@@ -67,13 +71,13 @@ pub(crate) struct ParserDatabase {
     // names: Names,
     // types: Types,
     // relations: Relations,
-    pub(crate) all_libraries: Rc<Mutex<Libraries>>,
-    pub(crate) library: Rc<Mutex<ast::Library>>,
+    pub(crate) all_libraries: Rc<RefCell<Libraries>>,
+    pub(crate) library: Rc<ast::Library>,
 }
 
 impl ParserDatabase {
     /// See the docs on [ParserDatabase](/struct.ParserDatabase.html).
-    pub(crate) fn new(all_libraries: Rc<Mutex<Libraries>>) -> Option<Self> {
+    pub(crate) fn new(all_libraries: Rc<RefCell<Libraries>>) -> Option<Self> {
         // println!("ir: {:?}", ir);
 
         /*
@@ -102,7 +106,11 @@ impl ParserDatabase {
 
         */
 
-        let library = Rc::from(Mutex::from(ast::Library::default()));
+        let mut library = ast::Library::default();
+        let builtin = ast::Builtin::default();
+        library.elements.push(ast::Element::Builtin(&builtin));
+
+        let library = Rc::from(library);
 
         Some(ParserDatabase { all_libraries, library })
     }
@@ -118,23 +126,31 @@ impl ParserDatabase {
 
         let pairs = MIDLParser::parse(Rule::library, source.as_str()).unwrap();
 
-        let ast = crate::parse_source(pairs, &mut ctx);
-        // println!("ast: {:#?}", ast);
+        crate::parse_source(pairs, &mut ctx);
 
         diagnostics
     }
 
-    pub fn compile(&self) -> (bool, Diagnostics) {
-        let diagnostics = Diagnostics::new();
+    pub fn compile(&self) -> Diagnostics {
+        let mut diagnostics = Diagnostics::new();
+
+        let ctx = Context::new(self.library.clone(), self.all_libraries.clone(), &mut diagnostics);
+        let ctx = Rc::new(RefCell::new(ctx));
+        names::verify_names(ctx.clone());
+
+        let resolve_step = ResolveStep::new();
+
+        resolve_step.run(ctx);
 
         {
-            let mut lock = self.all_libraries.lock().unwrap();
+            let mut lock = self.all_libraries.borrow_mut();
 
             if !lock.insert(self.library.clone()) {
-                return (false, diagnostics);
+                // early return
+                return diagnostics;
             }
         }
 
-        return (true, diagnostics);
+        return diagnostics;
     }
 }

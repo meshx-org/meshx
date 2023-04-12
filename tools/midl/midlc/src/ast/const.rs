@@ -1,33 +1,53 @@
 use super::{
-    Attribute, Comment, Identifier, Literal, Span, Type, WithAttributes, WithDocumentation, WithIdentifier,
+    Attribute, Comment, Identifier, Literal, Span, TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier,
     WithSpan,
 };
 
 /// Represents a constant value.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Constant(pub Literal);
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Const {
+    /// The name of the constant.
+    ///     
+    /// ```ignore
+    /// const FOO u32 = 10
+    ///       ^^^
+    /// ```
     pub name: Identifier,
-    pub ty: Type,
+
+    /// The type of the constant.
+    /// 
+    /// ```ignore
+    /// const FOO u32 = 10
+    ///           ^^^
+    /// ```
+    pub type_ctor: TypeConstructor,
+
+    /// The value of the constant.
+    /// 
+    /// ```ignore
+    /// const FOO u32 = 10
+    ///                 ^^
+    /// ```
     pub value: Constant,
 
-    /// The attributes of this constant.
+    /// The attributes of the constant.
     ///
     /// ```ignore
     /// @example("Bar")
     /// ^^^^^^^^^^^^
-    /// const FOO :u32 = 10
+    /// const FOO u32 = 10
     /// ```
     pub attributes: Vec<Attribute>,
 
-    /// The documentation for this constant.
+    /// The documentation for the constant.
     ///
     /// ```ignore
     /// /// Lorem ipsum
     ///     ^^^^^^^^^^^
-    /// const FOO :u32 = 10
+    /// const FOO u32 = 10
     /// ```
     pub(crate) documentation: Option<Comment>,
 

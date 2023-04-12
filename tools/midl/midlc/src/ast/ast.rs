@@ -1,7 +1,7 @@
 use super::{CompoundIdentifier, Span};
 
 /// Represents arbitrary values.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Literal {
     /// Any numeric value e.g. floats or ints.
     NumericValue(String, Span),
@@ -38,7 +38,7 @@ pub struct LibraryDeclaration {
     pub name: CompoundIdentifier,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ImportDeclaration {
     pub name: CompoundIdentifier,
 }

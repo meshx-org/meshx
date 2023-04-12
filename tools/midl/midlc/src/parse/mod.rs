@@ -9,6 +9,12 @@ mod parse_type;
 mod parse_value;
 mod parser;
 
+use std::{
+    borrow::{Borrow, BorrowMut},
+    cell::RefCell,
+    rc::Rc,
+};
+
 use parse_const::parse_constant_declaration;
 use parse_import::parse_import;
 use parse_library::parse_library_declaration;
@@ -62,20 +68,18 @@ pub(crate) fn parse_source(pairs: Pairs<'_, Rule>, ctx: &mut ParsingContext<'_>)
                     Rule::struct_declaration => {
                         let struct_declaration = parse_struct_declaration(declaration_pair, None, ctx);
                         match struct_declaration {
-                            Ok(decl) => {
-                                let mut lib_lock = ctx.library.lock().unwrap();
-                                lib_lock.declarations.insert(ast::Declaration::Struct(decl))
-                            }
+                            Ok(decl) => ctx.library.declarations.borrow_mut().insert(decl.into()),
                             Err(err) => ctx.diagnostics.push_error(err),
                         }
                     }
                     Rule::const_declaration => {
                         let const_declaration = parse_constant_declaration(declaration_pair, ctx);
                         match const_declaration {
-                            Ok(decl) => {
-                                let mut lib_lock = ctx.library.lock().unwrap();
-                                lib_lock.declarations.insert(ast::Declaration::Const(decl))
-                            }
+                            Ok(decl) => ctx
+                                .library
+                                .declarations
+                                .borrow_mut()
+                                .insert(ast::Declaration::Const(Rc::new(RefCell::new(decl)))),
                             Err(err) => ctx.diagnostics.push_error(err),
                         }
                     }
@@ -83,35 +87,16 @@ pub(crate) fn parse_source(pairs: Pairs<'_, Rule>, ctx: &mut ParsingContext<'_>)
                         let result = parse_protocol_declaration(declaration_pair, ctx);
                         match result {
                             Ok((protocol, mut decls)) => {
-                                let mut lib_lock = ctx.library.lock().unwrap();
-                                lib_lock.declarations.insert(ast::Declaration::Protocol(protocol));
-                                decls.drain(..).for_each(|decl| lib_lock.declarations.insert(decl));
+                                let mut declarations = ctx.library.declarations.borrow_mut();
+                                declarations.insert(protocol.into());
+                                decls.drain(..).for_each(|decl| declarations.insert(decl));
                             }
                             Err(err) => ctx.diagnostics.push_error(err),
                         }
                     }
                     Rule::library_declaration => {
-                        let span = ast::Span::from_pest(declaration_pair.as_span(), ctx.source_id);
                         // All midl files in a library should agree on the library name.
-                        let new_name = parse_library_declaration(&declaration_pair, ctx);
-                        let mut lib_lock = ctx.library.lock().unwrap();
-
-                        if lib_lock.name.is_none() {
-                            lib_lock.name = Some(new_name);
-                            lib_lock.arbitrary_name_span = Some(span);
-                        } else {
-                            if !lib_lock.name.contains(&new_name) {
-                                ctx.diagnostics
-                                    .push_error(DiagnosticsError::new("ErrFilesDisagreeOnLibraryName", span));
-                                continue;
-                            }
-                            // Prefer setting arbitrary_name_span to a file which has attributes on the
-                            // library declaration, if any do, since it's conventional to put all
-                            // library attributes and the doc comment in a single file (overview.fidl).
-                            // if self.library.attributes.Empty() && source.library_decl.attributes {
-                            //    self.library.arbitrary_name_span = source.library_decl.span();
-                            // }
-                        }
+                        parse_library_declaration(&declaration_pair, ctx);
 
                         //ctx.library
                         //    .library_name_declarations

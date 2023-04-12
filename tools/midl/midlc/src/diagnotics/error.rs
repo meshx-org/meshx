@@ -81,7 +81,7 @@ struct DiagnosticsErrorColorer {}
 
 impl DiagnosticColorer for DiagnosticsErrorColorer {
     fn title(&self) -> &'static str {
-        " ERROR(0001) "
+        "error"
     }
 
     fn primary_color(&self, token: &'_ str) -> ColoredString {

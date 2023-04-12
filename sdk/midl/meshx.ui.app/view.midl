@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 library meshx.ui.app
 
-import fx as fx
+import fx as zx
 
 /// A View is an interface that a component implements to offer a Scenic
 /// view to its clients.  A Scenic view is container of Scenic graph nodes,
@@ -64,6 +64,6 @@ protocol View {
     /// The View's implementation should pass the `view_token` to Scenic
     /// using a `fuchsia.ui.view.CreateViewCmd`.
     Attach(resource struct {
-        view_token fx.handle(EVENTPAIR)
+        view_token fx.handle<EVENTPAIR>
     })
 }

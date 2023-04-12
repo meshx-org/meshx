@@ -10,7 +10,9 @@ mod r#struct;
 mod traits;
 mod type_constructor;
 
-use std::{rc::Rc, sync::Mutex};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet};
+use std::rc::Rc;
 
 pub use ast::*;
 
@@ -23,15 +25,24 @@ pub use r#struct::{Struct, StructMember};
 pub use reference::Reference;
 pub use span::Span;
 pub use traits::{WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
-pub use type_constructor::{PrimitiveSubtype, Type};
+pub use type_constructor::{
+    LayoutConstraints, LayoutParameter, LayoutParameterList, PrimitiveSubtype, Type, TypeConstructor,
+};
 
-#[derive(Debug)]
+use crate::source_file::SourceId;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Declaration {
-    Import(ImportDeclaration),
-    Const(Const),
-    Struct(Struct),
-    Protocol(Protocol),
-    Builtin(Builtin),
+    Import(Rc<RefCell<ImportDeclaration>>),
+    Const(Rc<RefCell<Const>>),
+    Struct(Rc<RefCell<Struct>>),
+    Protocol(Rc<RefCell<Protocol>>),
+    Builtin(Rc<RefCell<Builtin>>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Element {
+    Builtin(Rc<RefCell<Builtin>>),
 }
 
 //#[derive(Debug)]
@@ -40,9 +51,9 @@ pub enum Declaration {
 //    NewType(NewType)
 //}
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum BuiltinIdentity {
-    bool,
+    #[default] bool,
     i8,
     i16,
     i32,
@@ -66,7 +77,7 @@ enum BuiltinIdentity {
     HEAD,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Name;
 
 impl Name {
@@ -75,7 +86,7 @@ impl Name {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Builtin {
     identity: BuiltinIdentity,
     name: Name,
@@ -87,26 +98,16 @@ impl Builtin {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Declarations {
     pub structs: Vec<Declaration>,
     pub protocols: Vec<Declaration>,
     pub contants: Vec<Declaration>,
     pub builtins: Vec<Declaration>,
-
     pub imports: Vec<Declaration>,
 }
 
 impl Declarations {
-    fn iter(&self) -> impl Iterator<Item = &Declaration> {
-        self.structs
-            .iter()
-            .chain(self.protocols.iter())
-            .chain(self.contants.iter())
-            .chain(self.imports.iter())
-            .chain(self.builtins.iter())
-    }
-
     pub fn insert(&mut self, decl: Declaration) {
         match decl {
             Declaration::Struct(_) => self.structs.push(decl),
@@ -124,16 +125,80 @@ pub enum RegisterResult {
     Duplicate,
 }
 
-#[derive(Debug, Default)]
-pub struct Dependencies;
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct LibraryRef {
+    span: Span,
+    dep_library: Rc<Library>,
+}
+
+// Per-file information about imports.
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+struct PerFile {
+    // References to dependencies, keyed by library name or by alias.
+    refs: BTreeMap<CompoundIdentifier, Rc<LibraryRef>>,
+    // Set containing ref->library for every ref in |refs|.
+    libraries: BTreeSet<Rc<Library>>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Dependencies {
+    // All dependencies, in the order they were registered.
+    refs: Vec<Rc<LibraryRef>>,
+
+    // Maps a library's name to its LibraryRef.
+    by_name: BTreeMap<CompoundIdentifier, Rc<LibraryRef>>,
+
+    // Maps a library's filename to its PerFile.
+    by_source_id: BTreeMap<SourceId, PerFile>,
+
+    // All dependencies, including transitive dependencies.
+    dependencies_aggregate: BTreeSet<Rc<Library>>,
+}
 
 impl Dependencies {
     // Registers a dependency to a library. The registration name is |maybe_alias|
     // if provided, otherwise the library's name. Afterwards, Dependencies::Lookup
     // will return |dep_library| given the registration name.
-    pub fn register(&self, span: &Span, dep_library: Rc<Mutex<Library>>, alias: Option<Identifier>) -> RegisterResult {
-        // let filename = span.source_file().filename();
-        RegisterResult::Success
+    pub fn register(
+        &mut self,
+        span: &Span,
+        dep_library: Rc<Library>,
+        alias: Option<CompoundIdentifier>,
+    ) -> RegisterResult {
+        self.refs.push(Rc::from(LibraryRef {
+            span: span.clone(),
+            dep_library: dep_library.clone(),
+        }));
+
+        let lib_ref = self.refs.last().unwrap();
+
+        let name = if alias.is_some() {
+            alias.unwrap()
+        } else {
+            dep_library.name.borrow().clone().unwrap()
+        };
+
+        log::debug!("register: {:?} as {}", dep_library.name.borrow(), name);
+
+        let per_file = if self.by_source_id.contains_key(&span.source) {
+            self.by_source_id.get_mut(&span.source).unwrap()
+        } else {
+            self.by_source_id.try_insert(span.source, PerFile::default()).unwrap()
+        };
+
+        log::debug!("per_file.refs: {:?}", per_file.refs.keys());
+
+        if !per_file.libraries.insert(dep_library.clone()) {
+            return RegisterResult::Duplicate;
+        }
+
+        if per_file.refs.insert(name, lib_ref.clone()).is_some() {
+            return RegisterResult::Collision;
+        }
+
+        self.dependencies_aggregate.insert(dep_library);
+
+        return RegisterResult::Success;
     }
 }
 
@@ -145,21 +210,23 @@ impl Dependencies {
 /// The AST is not validated, also fields and attributes are not resolved. Every node is
 /// annotated with its location in the text representation.
 /// Basically, the AST is an object oriented representation of the midl's text.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Library {
-    pub name: Option<CompoundIdentifier>,
+    pub name: RefCell<Option<CompoundIdentifier>>,
 
-    pub dependencies: Dependencies,
+    pub dependencies: RefCell<Dependencies>,
 
     /// All structs, enums, protocols, constants, bits and type aliase declarations.
     /// Populated by ParseStep, and then rewritten by ResolveStep.
-    pub declarations: Declarations,
+    pub declarations: RefCell<Declarations>,
+
+    pub elements: Vec<Element>,
 
     // Contains the same decls as `declarations`, but in a topologically sorted
     // order, i.e. later decls only depend on earlier ones. Populated by SortStep.
     pub declaration_order: Vec<Declaration>,
 
-    pub arbitrary_name_span: Option<Span>,
+    pub arbitrary_name_span: RefCell<Option<Span>>,
 }
 
 impl Library {
@@ -171,17 +238,20 @@ impl Library {
         // availabilities). Perhaps we could make the root library less special and
         // compile it as well. That would require addressing circularity issues.
         let mut library = Library::default();
-        library.name = Some(CompoundIdentifier {
+        library.name = RefCell::new(Some(CompoundIdentifier {
             components: vec![Identifier {
                 value: "".to_owned(),
                 span,
             }],
             span,
-        });
+        }));
 
         let mut insert = |name: &str, id: BuiltinIdentity| {
             let decl = Builtin::new(id, Name::new_intrinsic(&library, name));
-            library.declarations.insert(Declaration::Builtin(decl));
+            library
+                .declarations
+                .borrow_mut()
+                .insert(Declaration::Builtin(Rc::new(RefCell::new(decl))));
         };
 
         // An assertion in Declarations::Insert ensures that these insertions
@@ -218,13 +288,14 @@ impl Library {
         return library;
     }
 
-    /// Iterate over all the top-level items in the library.
-    pub fn iter_decls(&self) -> impl Iterator<Item = (DeclarationId, &Declaration)> {
-        self.declarations
-            .iter()
-            .enumerate()
-            .map(|(top_idx, top)| (top_idx_to_top_id(top_idx, top), top))
+    // want to traverse all elements which are simialr to declarations in this library
+    pub fn traverse_elements(&self, visitor: &mut dyn FnMut(&Element)) {
+        for element in &self.elements {
+            visitor(element);
+        }
     }
+
+    // Iterate over all the top-level declarations.
 }
 
 /// An opaque identifier for a generator block in a library.
@@ -237,7 +308,7 @@ pub struct BuiltinId(u32);
 
 /// An opaque identifier for a generator block in a library.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct StructId(u32);
+pub struct StructId(pub u32);
 
 /// An opaque identifier for a generator block in a library.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

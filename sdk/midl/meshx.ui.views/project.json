@@ -1,13 +1,16 @@
 {
     "name": "sdk/midl/meshx.ui.views",
-    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "projectType": "library",
     "implicitDependencies": ["tools/nx-midl"],
     "targets": {
         "build": {
             "executor": "./dist/tools/nx-midl:build",
-            "dependsOn": ["^build", "library"],
-            "inputs": ["{workspaceRoot}/dist/sdk/midl/meshx.ui.views/lib.json"],
+            "dependsOn": ["^build"],
+            "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.ui.views/midl.json",
+                "{workspaceRoot}/sdk/midl/meshx.ui.views/*.midl"
+            ],
             "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.ui.views/ir.json", "./ir.json"],
             "options": {
                 "outDir": "dist/sdk/midl/meshx.ui.views",

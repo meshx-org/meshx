@@ -4,6 +4,7 @@
 #![feature(map_try_insert)]
 #![feature(iter_next_chunk)]
 #![feature(option_result_contains)]
+#![feature(extend_one)]
 
 mod ast;
 mod database;
@@ -14,16 +15,16 @@ mod source_file;
 
 use clap::{ArgAction, Command};
 
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::sync::Mutex;
 
 #[macro_use]
 extern crate pest_derive;
 
-use crate::database::{ParserDatabase, Libraries};
+use crate::database::{Libraries, ParserDatabase};
 use crate::diagnotics::pretty_print_error_text;
 use crate::error::ErrorColorer;
 use crate::parse::parse_source;
@@ -94,11 +95,11 @@ fn main() -> std::io::Result<()> {
                 sources.push(source_files);
             });
 
-            let all_libraries = Rc::new(Mutex::new(Libraries::new()));
+            let all_libraries = Rc::new(RefCell::from(Libraries::new()));
             let mut success = true;
 
             for source_files in sources {
-                println!(
+                log::info!(
                     "Compiling files: {:#?}",
                     source_files.files.iter().map(|f| f.filename()).collect::<Vec<_>>()
                 );
@@ -106,7 +107,7 @@ fn main() -> std::io::Result<()> {
                 let compiler = ParserDatabase::new(all_libraries.clone()).unwrap();
 
                 for (source_id, source) in source_files.iter() {
-                    println!("Parsing {:?}", source.filename());
+                    log::info!("Parsing {:?}", source.filename());
 
                     let diagnostics = compiler.parse_file(source_id, source);
 
@@ -119,7 +120,7 @@ fn main() -> std::io::Result<()> {
                     }
                 }
 
-                let (_, diagnostics) = compiler.compile();
+                let diagnostics = compiler.compile();
 
                 if diagnostics.has_errors() {
                     success = false;
@@ -130,6 +131,8 @@ fn main() -> std::io::Result<()> {
                     });
                 }
             }
+
+            // println!("Success: {:#?}", all_libraries);
 
             if !success {
                 return Err(std::io::Error::new(std::io::ErrorKind::Other, "Compilation failed"));

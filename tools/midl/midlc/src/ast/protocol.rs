@@ -1,12 +1,14 @@
+use std::{rc::Rc, cell::RefCell};
+
 use super::{
     Attribute, Comment, CompoundIdentifier, Identifier, Span, WithAttributes, WithDocumentation, WithIdentifier,
-    WithSpan,
+    WithSpan, Declaration,
 };
 
 #[derive(Debug)]
 struct RequestType {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ProtocolMethod {
     /// The name of the protocol method.
     ///
@@ -67,7 +69,7 @@ pub struct ProtocolMethod {
     pub(crate) span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Protocol {
     /// The names of the composed protocols.
     ///
@@ -126,6 +128,12 @@ pub struct Protocol {
 impl Protocol {
     pub fn iter_methods(&self) -> impl ExactSizeIterator<Item = (&ProtocolMethod)> + Clone {
         self.methods.iter().enumerate().map(|(idx, method)| (method))
+    }
+}
+
+impl Into<Declaration> for Protocol {
+    fn into(self) -> Declaration {
+        Declaration::Protocol(Rc::new(RefCell::new(self)))
     }
 }
 

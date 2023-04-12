@@ -19,12 +19,12 @@ fn parse_struct_member(
     let mut name: Option<ast::Identifier> = None;
     let attributes: Vec<ast::Attribute> = Vec::new();
     let mut comment: Option<ast::Comment> = block_comment.and_then(parse_comment_block);
-    let mut member_type: Option<ast::Type> = None;
+    let mut member_type_ctor: Option<ast::TypeConstructor> = None;
 
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::identifier => name = Some(parse_identifier(&current, ctx)),
-            Rule::type_definition => member_type = Some(parse_type_constructor(current, ctx)?),
+            Rule::type_constructor => member_type_ctor = Some(parse_type_constructor(current, ctx)),
             Rule::inline_attribute_list => {}
             Rule::trailing_comment => {
                 comment = match (comment, parse_trailing_comment(current)) {
@@ -38,12 +38,12 @@ fn parse_struct_member(
         }
     }
 
-    match (name, member_type) {
-        (Some(name), Some(member_type)) => Ok(ast::StructMember {
+    match (name, member_type_ctor) {
+        (Some(name), Some(member_type_ctor)) => Ok(ast::StructMember {
             name,
             documentation: None,
             attributes,
-            member_type,
+            member_type_ctor,
             span: ast::Span::from_pest(pair_span, ctx.source_id),
         }),
         _ => panic!("Encountered impossible struct member declaration during parsing"),

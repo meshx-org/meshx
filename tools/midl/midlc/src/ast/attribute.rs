@@ -2,7 +2,7 @@ use super::{Identifier, Span, WithIdentifier, WithSpan};
 
 /// An attribute (following `@`) on a struct, struct member, enum, enum value or constant
 /// field.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Attribute {
     /// The name of the attribute:
     ///

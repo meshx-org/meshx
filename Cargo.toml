@@ -1,5 +1,4 @@
 [workspace]
-
 members = [
     "src/crates/meshx",
     "src/crates/fiber_rust",
@@ -13,3 +12,6 @@ members = [
     "tools/midl/midlgen_ts",
     "tools/midl/midlgen_rust",
 ]
+
+[profile.release]
+debug = true

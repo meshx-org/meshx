@@ -33,8 +33,8 @@ pub(crate) fn parse_constant_declaration(
 
     Ok(ast::Const {
         name: parse_identifier(&identifier, ctx),
-        ty: parse_type_constructor(ty, ctx)?,
-        value: parse_constant(constant.clone(), ctx),
+        type_ctor: parse_type_constructor(ty, ctx),
+        value: parse_constant(constant, ctx),
         attributes,
         documentation: None,
         span: ast::Span::from_pest(pair_span, ctx.source_id),

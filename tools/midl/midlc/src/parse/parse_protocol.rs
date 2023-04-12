@@ -31,7 +31,7 @@ fn parse_parameter_list(
                     ctx,
                 )
                 .unwrap();
-                declarations.push(ast::Declaration::Struct(struct_declaration));
+                declarations.push(struct_declaration.into());
             }
             _ => parsing_catch_all(&current, "parameter list"),
         }

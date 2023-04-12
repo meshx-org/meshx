@@ -1,6 +1,6 @@
 use hcl::Identifier;
 
-use super::{CompoundIdentifier, Reference};
+use super::{Constant, Reference, Span};
 use std::str::FromStr;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -57,25 +57,36 @@ struct TypeInternal {
     kind: TypeKind,
 }
 
-#[derive(Debug, Clone)]
-struct LayoutParameterList {}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum LayoutParameter {
+    TypeConstructor(TypeConstructor),
+    Constant(Constant),
+}
 
-#[derive(Debug, Clone)]
-struct LayoutConstraints {}
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LayoutParameterList {
+    pub parameters: Vec<LayoutParameter>,
 
-#[derive(Debug, Clone)]
-struct TypeConstructor {
+    /// The location of this parameter list in the text representation.
+    pub span: Option<Span>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LayoutConstraints {}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TypeConstructor {
     // Set during construction.
-    layout: Reference,
-    parameters: Box<LayoutParameterList>,
-    constraints: Box<LayoutConstraints>,
+    pub layout: Reference,
+    pub parameters: LayoutParameterList,
+    pub constraints: LayoutConstraints,
 
     // Set during compilation.
-    r#type: Option<Type>,
+    pub(crate) r#type: Option<Type>,
     // TODO: resolved_params: Option<LayoutInvocation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Type {
     ArrayType {
         element_type: Box<Type>,

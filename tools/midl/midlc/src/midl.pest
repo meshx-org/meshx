@@ -24,7 +24,7 @@ const_declaration = {
     block_attribute_list 
     ~ CONST_KEYWORD 
     ~ identifier 
-    ~ type_definition 
+    ~ type_constructor 
     ~ "=" 
     ~ constant 
 }
@@ -63,14 +63,14 @@ declaration_modifiers =  { STRICT_KEYWORD | FLEXIBLE_KEYWORD | RESOURCE_KEYWORD 
 
 protocol_member       = _{ protocol_method | protocol_event | protocol_compose }
 protocol_method       =  { block_attribute_list ~ identifier ~ parameter_list ~ protocol_result? }
-protocol_result       =  { "->" ~ parameter_list ~ ( "error" ~ type_definition )? }
+protocol_result       =  { "->" ~ parameter_list ~ ( "error" ~ type_constructor )? }
 protocol_event        =  { block_attribute_list ~ "->" ~ identifier ~ parameter_list }
 protocol_compose      =  { COMPOSE_KEYWORD ~ compound_identifier }
 
 parameter_list        =   { "(" ~ (struct_declaration | identifier ) ~ ")" }
 
 layout                = _{ compound_identifier | inline_layout }
-layout_subtype        =  { type_definition }
+layout_subtype        =  { type_constructor }
 layout_body           =  { 
 							BLOCK_OPEN 
                             ~ (value_layout | struct_layout | ordinal_layout) 
@@ -84,7 +84,7 @@ struct_layout_member  =  { member_field ~ inline_attribute_list ~ trailing_comma
 ordinal_layout        =  { ( NEWLINE* ~ ordinal_layout_member ~ NEWLINE* )+ }
 ordinal_layout_member =  { "#" ~ ordinal ~ (member_field | RESERVED_KEYWORD) ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
 
-member_field         = _{ identifier ~ type_definition }
+member_field         = _{ identifier ~ type_constructor }
 inline_layout        =  { 
 							block_attribute_list
                             ~ declaration_modifiers* 
@@ -94,16 +94,17 @@ inline_layout        =  {
                         }
 
 layout_parameters    = !{ layout_parameter ~ ("," ~ layout_parameter ~ WHITESPACE* )*  }
-layout_parameter     = _{ type | constant }
+layout_parameter     = _{ type_constructor | constant }
+
+type_constructor     =  { layout ~ ( "<" ~ layout_parameters ~ ">" )? ~ ( ":" ~ type_constraints )? }
+type_constraints     =  { type_constraint | "<" ~ type_constraint_list ~ ">" }
+type_constraint_list = _{ type_constraint | type_constraint ~ "," ~ type_constraint_list }
+
+type_constraint      =  { constant }
+constant             =  { compound_identifier | literal }
 
 layout_type          =  { inline_layout }
-array_type           =  { "array" ~ ("(" ~ layout_parameters ~ ")") }
-vector_type          =  { "vector" ~ ("(" ~ layout_parameters ~ ")") }
-string_type          =  { "string" ~ ("(" ~ layout_parameters ~ ")")? }
-primitive_type       =  { "bool" | "f32" | "f64" | "u8" | "u16" | "u32" | "u64" | "i8" | "i16" | "i32" | "i64" }
-type                 = _{ string_type | primitive_type | vector_type | array_type | compound_identifier }
-type_definition      = ${ type }
-
+ 
 // ######################################
 // Comments and Documentation Comments
 // ######################################
@@ -139,7 +140,6 @@ ASCII_CONTROL_CHARACTER = _{ '\u{0000}'..'\u{001F}' }
 string_escape           = _{ "\\" ~ ANY }
 string_content          = @{ (string_escape | !("\"" | ASCII_CONTROL_CHARACTER) ~ ANY)* }
 string_literal          = ${ "\"" ~ string_content ~ "\"" }
-constant                =  { literal | compound_identifier }
 
 ordinal                 =  { ASCII_NONZERO_DIGIT }
 

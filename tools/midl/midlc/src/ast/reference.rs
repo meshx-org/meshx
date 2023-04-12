@@ -7,15 +7,15 @@ use super::CompoundIdentifier;
 // use it for lookups after decomposing.
 struct Key {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Target;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Reference {
     state: ReferenceState,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ReferenceState {
     RawSourced { identifier: CompoundIdentifier },
     RawSynthetic { target: Target },
