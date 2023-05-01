@@ -1,4 +1,4 @@
-// Copyright 2022 MeshX Contributors. All rights reserved.
+// Copyright 2023 MeshX Contributors. All rights reserved.
 // Copyright 2017 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -9,7 +9,7 @@ use fiber_sys as sys;
 
 use crate::handle::{Handle, HandleBased, HandleRef, AsHandleRef};
 use crate::impl_handle_based;
-use crate::status::Status;
+use fiber_status::Status;
 
 /// An object representing a Zircon process.
 ///

@@ -1,4 +1,4 @@
-// Copyright 2022 MeshX Contributors. All rights reserved.
+// Copyright 2023 MeshX Contributors. All rights reserved.
 // Copyright 2016 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -82,6 +82,15 @@ impl Time {
     pub const INFINITE_PAST: Time = Time(sys::FX_TIME_INFINITE_PAST);
     pub const ZERO: Time = Time(0);
 
+    /// Get the current monotonic time.
+    ///
+    /// Wraps the
+    /// [zx_clock_get_monotonic](https://fuchsia.dev/fuchsia-src/reference/syscalls/clock_get_monotonic.md)
+    /// syscall.
+    pub fn get_monotonic() -> Time {
+        unsafe { Time(sys::fx_clock_get_monotonic()) }
+    }
+
     /// Returns the number of nanoseconds since the epoch contained by this `Time`.
     pub const fn into_nanos(self) -> i64 {
         self.0
@@ -90,4 +99,114 @@ impl Time {
     pub const fn from_nanos(nanos: i64) -> Self {
         Time(nanos)
     }
+}
+
+impl From<stdtime::Duration> for Duration {
+    fn from(dur: stdtime::Duration) -> Self {
+        Duration::from_seconds(dur.as_secs() as i64) + Duration::from_nanos(dur.subsec_nanos() as i64)
+    }
+}
+
+impl ops::Add<Duration> for Time {
+    type Output = Time;
+    fn add(self, dur: Duration) -> Time {
+        Time::from_nanos(dur.into_nanos().saturating_add(self.into_nanos()))
+    }
+}
+
+impl ops::Add<Time> for Duration {
+    type Output = Time;
+    fn add(self, time: Time) -> Time {
+        Time::from_nanos(self.into_nanos().saturating_add(time.into_nanos()))
+    }
+}
+
+impl ops::Add for Duration {
+    type Output = Duration;
+    fn add(self, dur: Duration) -> Duration {
+        Duration::from_nanos(self.into_nanos().saturating_add(dur.into_nanos()))
+    }
+}
+
+impl ops::Sub for Duration {
+    type Output = Duration;
+    fn sub(self, dur: Duration) -> Duration {
+        Duration::from_nanos(self.into_nanos().saturating_sub(dur.into_nanos()))
+    }
+}
+
+impl ops::Sub<Duration> for Time {
+    type Output = Time;
+    fn sub(self, dur: Duration) -> Time {
+        Time::from_nanos(self.into_nanos().saturating_sub(dur.into_nanos()))
+    }
+}
+
+impl ops::Sub<Time> for Time {
+    type Output = Duration;
+    fn sub(self, other: Time) -> Duration {
+        Duration::from_nanos(self.into_nanos().saturating_sub(other.into_nanos()))
+    }
+}
+
+impl ops::AddAssign for Duration {
+    fn add_assign(&mut self, dur: Duration) {
+        self.0 = self.0.saturating_add(dur.into_nanos());
+    }
+}
+
+impl ops::SubAssign for Duration {
+    fn sub_assign(&mut self, dur: Duration) {
+        self.0 = self.0.saturating_sub(dur.into_nanos());
+    }
+}
+
+impl ops::AddAssign<Duration> for Time {
+    fn add_assign(&mut self, dur: Duration) {
+        self.0 = self.0.saturating_add(dur.into_nanos());
+    }
+}
+
+impl ops::SubAssign<Duration> for Time {
+    fn sub_assign(&mut self, dur: Duration) {
+        self.0 = self.0.saturating_sub(dur.into_nanos());
+    }
+}
+
+impl<T> ops::Mul<T> for Duration
+where
+    T: Into<i64>,
+{
+    type Output = Self;
+    fn mul(self, mul: T) -> Self {
+        Duration::from_nanos(self.0.saturating_mul(mul.into()))
+    }
+}
+
+impl<T> ops::Div<T> for Duration
+where
+    T: Into<i64>,
+{
+    type Output = Self;
+    fn div(self, div: T) -> Self {
+        Duration::from_nanos(self.0.saturating_div(div.into()))
+    }
+}
+
+impl ops::Neg for Duration {
+    type Output = Self;
+    fn neg(self) -> Self::Output {
+        Self(self.0.saturating_neg())
+    }
+}
+
+/// Read the number of high-precision timer ticks since boot. These ticks may be processor cycles,
+/// high speed timer, profiling timer, etc. They are not guaranteed to continue advancing when the
+/// system is asleep.
+///
+/// Wraps the
+/// [fx_ticks_get](https://fuchsia.dev/fuchsia-src/reference/syscalls/ticks_get.md)
+/// syscall.
+pub fn ticks_get() -> i64 {
+    unsafe { sys::fx_ticks_get() }
 }

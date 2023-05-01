@@ -1,3 +1,23 @@
 {
-    
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "name": "sdk/midl/fx",
+    "projectType": "library",
+    "implicitDependencies": ["tools/nx-midl"],
+    "targets": {
+        "build": {
+            "executor": "./dist/tools/nx-midl:build",
+            "dependsOn": ["^build"],
+            "inputs": [
+                "{workspaceRoot}/sdk/midl/fx/midl.json",
+                "{workspaceRoot}/sdk/midl/fx/*.midl"
+            ],
+            "outputs": ["{workspaceRoot}/dist/sdk/midl/fx/ir.json"],
+            "options": {
+                "outDir": "dist/sdk/midl/fx",
+                "midlJson": "./midl.json",
+                "srcs": ["./component_runner.midl"],
+                "language": "ts"
+            }
+        }
+    }
 }

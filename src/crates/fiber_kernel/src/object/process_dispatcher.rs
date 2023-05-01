@@ -1,8 +1,7 @@
 use std::rc::Rc;
 
 use crate::object::{
-    DataObjectDispatcher, DataViewDispatcher, Dispatcher, HandleTable, JobDispatcher, JobPolicy, KernelHandle,
-    TypedDispatcher, BaseDispatcher,
+    BaseDispatcher, Dispatcher, HandleTable, JobDispatcher, JobPolicy, KernelHandle, TypedDispatcher, VMODispatcher,
 };
 use crate::process_context::with_context;
 use fiber_sys as sys;
@@ -73,18 +72,7 @@ impl ProcessDispatcher {
         parent_job: Rc<JobDispatcher>,
         name: String,
         flags: u32,
-    ) -> Result<
-        (
-            KernelHandle<ProcessDispatcher>,
-            sys::fx_rights_t,
-            KernelHandle<DataViewDispatcher>,
-            sys::fx_rights_t,
-        ),
-        sys::fx_status_t,
-    > {
-        let root_data = vec![0 as u8];
-        let (root_do, root_do_rights) = DataObjectDispatcher::create()?;
-
+    ) -> Result<(KernelHandle<ProcessDispatcher>, sys::fx_rights_t), sys::fx_status_t> {
         let handle = KernelHandle {
             dispatcher: ProcessDispatcher::new(parent_job.clone(), name.clone(), flags),
         };
@@ -94,17 +82,13 @@ impl ProcessDispatcher {
             return Err(status);
         }
 
-        // Create a dispatcher for the root DV.
-        let root_dv = Rc::from((root_data).as_slice());
-        let (dv_handle, dv_rights) = DataViewDispatcher::create(root_dv)?;
-
         // Only now that the process has been fully created and initialized can we register it with its
         // parent job. We don't want anyone to see it in a partially initalized state.
         if !parent_job.add_child_process(handle.dispatcher()) {
             return Err(sys::FX_ERR_BAD_STATE);
         }
 
-        Ok((handle, ProcessDispatcher::default_rights(), dv_handle, dv_rights))
+        Ok((handle, ProcessDispatcher::default_rights()))
     }
 
     fn init(&self) -> sys::fx_status_t {

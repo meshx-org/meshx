@@ -1,0 +1,11 @@
+[package]
+edition = "2021"
+name = "meshx_async"
+version = "0.1.0"
+
+[dependencies]
+crossbeam = "0.8.1"
+fiber_rust = {path = "../fiber_rust"}
+futures = "0.3"
+parking_lot = "0.12.1"
+pin-utils = "0.1.0"

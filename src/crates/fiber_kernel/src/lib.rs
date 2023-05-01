@@ -1,4 +1,6 @@
-// Copyright 2022 MeshX Contributors. All rights reserved.
+#![feature(trait_upcasting)]
+
+// Copyright 2023 MeshX Contributors. All rights reserved.
 pub mod koid;
 mod object;
 mod process_context;
@@ -108,8 +110,7 @@ impl fiber_sys::System for Kernel {
             return status;
         }
 
-        let (new_process_handle, process_rights, new_root_dv_handle, root_dv_rights) =
-            result.expect("should be a valid value");
+        let (new_process_handle, process_rights) = result.expect("should be a valid value");
 
         // TODO: let koid: u32 = new_process_handle.dispatcher().get_koid();
         // TODO: ktrace(TAG_PROC_CREATE, koid, 0, 0, 0);
@@ -118,10 +119,6 @@ impl fiber_sys::System for Kernel {
         // TODO: arch_trace_process_create( koid, new_vmar_handle.dispatcher().vmar().aspace().arch_aspace().arch_table_phys());
 
         let handle = Handle::make(new_process_handle, process_rights);
-
-        if status == sys::FX_OK {
-            let handle = Handle::make(new_root_dv_handle, root_dv_rights);
-        }
 
         status
     }
@@ -201,6 +198,157 @@ impl fiber_sys::System for Kernel {
 
     fn sys_task_kill(&self, handle: sys::fx_handle_t) -> sys::fx_status_t {
         0
+    }
+
+    fn sys_object_signal_peer(&self, handle: sys::fx_handle_t, clear_mask: u32, set_mask: u32) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_object_signal(&self, handle: sys::fx_handle_t, clear_mask: u32, set_mask: u32) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_object_wait_one(
+        &self,
+        handle: sys::fx_handle_t,
+        waitfor: sys::fx_signals_t,
+        deadline: sys::fx_time_t,
+        observed: *mut sys::fx_signals_t,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_object_wait_async(
+        &self,
+        handle: sys::fx_handle_t,
+        port_handle: sys::fx_handle_t,
+        key: u64,
+        signals: sys::fx_signals_t,
+        options: u32,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_channel_create(
+        &self,
+        options: u32,
+        out0: *mut sys::fx_handle_t,
+        out1: *mut sys::fx_handle_t,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_channel_read(
+        &self,
+        handle: sys::fx_handle_t,
+        options: u32,
+        bytes: *mut u8,
+        handles: *mut sys::fx_handle_t,
+        num_bytes: u32,
+        num_handles: u32,
+        actual_bytes: *mut u32,
+        actual_handles: *mut u32,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_channel_read_etc(
+        &self,
+        handle: sys::fx_handle_t,
+        options: u32,
+        bytes: *mut u8,
+        handles: *mut sys::fx_handle_info_t,
+        num_bytes: u32,
+        num_handles: u32,
+        actual_bytes: *mut u32,
+        actual_handles: *mut u32,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_channel_write(
+        &self,
+        handle: sys::fx_handle_t,
+        options: u32,
+        bytes: *const u8,
+        num_bytes: u32,
+        handles: *const sys::fx_handle_t,
+        num_handles: u32,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_channel_write_etc(
+        &self,
+        handle: sys::fx_handle_t,
+        options: u32,
+        bytes: *const u8,
+        num_bytes: u32,
+        handles: *const sys::fx_handle_disposition_t,
+        num_handles: u32,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_channel_call_etc(
+        &self,
+        handle: sys::fx_handle_t,
+        options: u32,
+        deadline: sys::fx_time_t,
+        args: *const sys::fx_channel_call_etc_args_t,
+        actual_bytes: *const u32,
+        actual_handles: *const u32,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_vmo_create(&self, size: u64, options: u32, out: *mut sys::fx_handle_t) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_vmo_read(
+        &self,
+        handle: sys::fx_handle_t,
+        buffer: *mut u8,
+        offset: u64,
+        buffer_size: usize,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_vmo_write(
+        &self,
+        handle: sys::fx_handle_t,
+        buffer: *const u8,
+        offset: u64,
+        buffer_size: usize,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_vmo_get_size(&self, handle: sys::fx_handle_t, size: *mut u64) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_port_create(&self, options: u32, out: *mut sys::fx_handle_t) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_port_queue(&self, handle: sys::fx_handle_t, packet: *const sys::fx_port_packet_t) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_port_wait(
+        &self,
+        handle: sys::fx_handle_t,
+        deadline: sys::fx_time_t,
+        packet: *mut sys::fx_port_packet_t,
+    ) -> sys::fx_status_t {
+        todo!()
+    }
+
+    fn sys_port_cancel(&self, handle: sys::fx_handle_t, source: sys::fx_handle_t, key: u64) -> sys::fx_status_t {
+        todo!()
     }
 }
 

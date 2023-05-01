@@ -1,0 +1,22 @@
+// Copyright 2023 MeshX Contributors. All rights reserved.
+// Copyright 2017 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library meshx.mem;
+
+using fx;
+
+/// Binary data that might be stored inline or in a VMO.
+///
+/// Useful for performance-sensitive protocols that sometimes receive small
+/// amounts of binary data (i.e., which is more efficient to provide using
+/// `bytes`) but also need to support arbitrary amounts of data (i.e., which
+/// need to be provided out-of-line in a `Buffer`).
+/// NOTE: use a fx.handle:VMO object and store the size of the contents in the ZX_PROP_VMO_CONTENT_SIZE
+type Data = flexible resource union {
+    /// The binary data provided inline in the message.
+    1: bytes vector<uint8>:MAX;
+
+    /// The vmo that contains the buffer.
+    2: buffer fx.handle:VMO;
+};

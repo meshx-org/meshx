@@ -1,0 +1,41 @@
+{
+    "name": "meshx",
+    "root": "./src/crates/meshx",
+    "projectType": "application",
+    "implicitDependencies": ["fiber_kernel"],
+    "targets": {
+        "build": {
+            "executor": "@nxrs/cargo:build",
+            "options": {
+                "toolchain": "nightly",
+                "release": false
+            },
+            "configurations": {
+                "production": {
+                    "release": true
+                }
+            }
+        },
+        "run": {
+            "executor": "@nxrs/cargo:build",
+            "options": {
+                "toolchain": "nightly",
+                "release": false,
+                "run": true
+            }
+        },
+        "test": {
+            "executor": "@nxrs/cargo:test",
+            "options": {}
+        },
+        "lint": {
+            "executor": "@nxrs/cargo:clippy",
+            "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+            }
+        }
+    },
+    "tags": []
+}

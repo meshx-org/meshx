@@ -1,0 +1,20 @@
+{
+    "name": "fiber_status",
+    "root": "./src/crates/fiber_status",
+    "projectType": "library",
+    "targets": {
+        "test": {
+            "executor": "@nxrs/cargo:test",
+            "options": {}
+        },
+        "lint": {
+            "executor": "@nxrs/cargo:clippy",
+            "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+            }
+        }
+    },
+    "tags": []
+}

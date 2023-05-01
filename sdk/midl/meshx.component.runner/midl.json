@@ -1,0 +1,13 @@
+{
+    "name": "meshx.component.runner",
+    "files": ["component_runner.midl"],
+    "dependencies": {
+        "fx": { "path": "../fx" },
+        "meshx.mem": { "path": "../meshx.mem" },
+        "meshx.url": { "path": "../meshx.url" },
+        "meshx.data": { "path": "../meshx.data" },
+        // "meshx.io": { "path": "../meshx.io" }
+        "meshx.process": { "path": "../meshx.process" },
+        "meshx.component": { "path": "../meshx.component" }
+    }
+}

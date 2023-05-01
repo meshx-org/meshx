@@ -53,7 +53,7 @@ async function buildIR(options: Options, context: ExecutorContext): Promise<void
 
     return new Promise((resolve, reject) => {
         exec(
-            `${context.root}/dist/tools/midl/midlc/midlc compile -o=${outDir}/ir.json  ${filesFlags}`,
+            `${context.root}/dist/tools/midl/midlc/midlc compile -o=${outDir}/ir.json ${filesFlags}`,
             {
                 env: {
                     CLICOLOR_FORCE: "1",
@@ -75,11 +75,13 @@ async function buildLibrary(options: Options, context: ExecutorContext): Promise
     const projectRoot = context.projectsConfigurations?.projects[context.projectName!].root
     const cwd = options.cwd ? options.cwd : projectRoot
 
+    const outDir = path.resolve(context.root, options.outDir)
+
     return new Promise((resolve, reject) => {
         exec(
             `${context.root}/dist/tools/midl/midlgen_${options.language}/midlgen_${
                 options.language
-            } --json ${path.resolve(cwd!, "ir.json")}`,
+            } --json ${path.resolve(outDir, "ir.json")}`,
             {
                 cwd,
             },

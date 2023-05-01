@@ -1,4 +1,4 @@
-// Copyright 2022 MeshX Contributors. All rights reserved.
+// Copyright 2023 MeshX Contributors. All rights reserved.
 // Copyright 2016 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -6,7 +6,7 @@
 #![allow(non_camel_case_types)]
 
 pub type fx_clock_t = u32;
-pub type fx_duration_t = i64;
+
 pub type fx_handle_t = u32;
 pub type fx_handle_op_t = u32;
 pub type fx_koid_t = u64;
@@ -22,7 +22,51 @@ pub type fx_policy_t = u32;
 pub type fx_ssize_t = isize;
 pub type fx_status_t = i32;
 pub type fx_vm_option_t = u32;
+
+/// Absolute time in nanoseconds (generally with respect to the monotonic clock)
 pub type fx_time_t = i64;
+/// A duration in nanoseconds
+pub type fx_duration_t = i64;
+/// A duration in hardware ticks
+pub type fx_ticks_t = i64;
+
+// Ports V2
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum fx_packet_type_t {
+    FX_PKT_TYPE_USER = 0,
+    FX_PKT_TYPE_SIGNAL_ONE = 1,
+    FX_PKT_TYPE_SIGNAL_REP = 2,
+}
+
+impl Default for fx_packet_type_t {
+    fn default() -> Self {
+        fx_packet_type_t::FX_PKT_TYPE_USER
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct fx_packet_signal_t {
+    pub trigger: fx_signals_t,
+    pub observed: fx_signals_t,
+    pub count: u64,
+}
+
+// Actually a union of different integer types, but this should be good enough.
+pub type fx_packet_user_t = [u8; 32];
+
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
+pub struct fx_port_packet_t {
+    pub key: u64,
+    pub packet_type: fx_packet_type_t,
+    pub status: i32,
+    pub union: [u8; 32],
+}
+
+pub const FX_WAIT_ASYNC_TIMESTAMP: u32 = 1;
+pub const FX_WAIT_ASYNC_EDGE: u32 = 2;
 
 // object property constants
 pub const FX_MAX_NAME_LEN: usize = 32;
@@ -95,6 +139,12 @@ multiconst!(fx_rights_t, [
     FX_RIGHT_SAME_RIGHTS    = 1 << 31;
 ]);
 
+multiconst!(u32, [
+    FX_VMO_RESIZABLE = 1 << 1;
+    FX_VMO_DISCARDABLE = 1 << 2;
+    FX_VMO_TRAP_DIRTY = 1 << 3;
+]);
+
 multiconst!(fx_status_t, [
     FX_OK                         = 0;
     FX_ERR_INTERNAL               = -1;
@@ -118,6 +168,14 @@ multiconst!(fx_status_t, [
     FX_ERR_ALREADY_BOUND          = -27;
     FX_ERR_UNAVAILABLE            = -28;
     FX_ERR_ACCESS_DENIED          = -30;
+    FX_ERR_IO                     = -40;
+    FX_ERR_IO_REFUSED             = -41;
+    FX_ERR_IO_DATA_INTEGRITY      = -42;
+    FX_ERR_IO_DATA_LOSS           = -43;
+    FX_ERR_IO_NOT_PRESENT         = -44;
+    FX_ERR_IO_OVERRUN             = -45;
+    FX_ERR_IO_MISSED_DEADLINE     = -46;
+    FX_ERR_IO_INVALID             = -47;
     FX_ERR_BAD_PATH               = -50;
     FX_ERR_NOT_DIR                = -51;
     FX_ERR_NOT_FILE               = -52;
@@ -133,20 +191,108 @@ multiconst!(fx_status_t, [
     FX_ERR_NOT_CONNECTED          = -73;
 ]);
 
+multiconst!(fx_signals_t, [
+    FX_SIGNAL_NONE              = 0;
+    FX_OBJECT_SIGNAL_ALL        = 0x00ffffff;
+    FX_USER_SIGNAL_ALL          = 0xff000000;
+    FX_OBJECT_SIGNAL_0          = 1 << 0;
+    FX_OBJECT_SIGNAL_1          = 1 << 1;
+    FX_OBJECT_SIGNAL_2          = 1 << 2;
+    FX_OBJECT_SIGNAL_3          = 1 << 3;
+    FX_OBJECT_SIGNAL_4          = 1 << 4;
+    FX_OBJECT_SIGNAL_5          = 1 << 5;
+    FX_OBJECT_SIGNAL_6          = 1 << 6;
+    FX_OBJECT_SIGNAL_7          = 1 << 7;
+    FX_OBJECT_SIGNAL_8          = 1 << 8;
+    FX_OBJECT_SIGNAL_9          = 1 << 9;
+    FX_OBJECT_SIGNAL_10         = 1 << 10;
+    FX_OBJECT_SIGNAL_11         = 1 << 11;
+    FX_OBJECT_SIGNAL_12         = 1 << 12;
+    FX_OBJECT_SIGNAL_13         = 1 << 13;
+    FX_OBJECT_SIGNAL_14         = 1 << 14;
+    FX_OBJECT_SIGNAL_15         = 1 << 15;
+    FX_OBJECT_SIGNAL_16         = 1 << 16;
+    FX_OBJECT_SIGNAL_17         = 1 << 17;
+    FX_OBJECT_SIGNAL_18         = 1 << 18;
+    FX_OBJECT_SIGNAL_19         = 1 << 19;
+    FX_OBJECT_SIGNAL_20         = 1 << 20;
+    FX_OBJECT_SIGNAL_21         = 1 << 21;
+    FX_OBJECT_SIGNAL_22         = 1 << 22;
+    FX_OBJECT_HANDLE_CLOSED     = 1 << 23;
+    FX_USER_SIGNAL_0            = 1 << 24;
+    FX_USER_SIGNAL_1            = 1 << 25;
+    FX_USER_SIGNAL_2            = 1 << 26;
+    FX_USER_SIGNAL_3            = 1 << 27;
+    FX_USER_SIGNAL_4            = 1 << 28;
+    FX_USER_SIGNAL_5            = 1 << 29;
+    FX_USER_SIGNAL_6            = 1 << 30;
+    FX_USER_SIGNAL_7            = 1 << 31;
+    FX_OBJECT_READABLE          = FX_OBJECT_SIGNAL_0;
+    FX_OBJECT_WRITABLE          = FX_OBJECT_SIGNAL_1;
+    FX_OBJECT_PEER_CLOSED       = FX_OBJECT_SIGNAL_2;
+    // Cancelation (handle was closed while waiting with it)
+    FX_SIGNAL_HANDLE_CLOSED     = FX_OBJECT_HANDLE_CLOSED;
+    // Event
+    FX_EVENT_SIGNALED           = FX_OBJECT_SIGNAL_3;
+    // EventPair
+    FX_EVENTPAIR_SIGNALED       = FX_OBJECT_SIGNAL_3;
+    FX_EVENTPAIR_CLOSED         = FX_OBJECT_SIGNAL_2;
+    // Task signals (process, thread, job)
+    FX_TASK_TERMINATED          = FX_OBJECT_SIGNAL_3;
+    // Channel
+    FX_CHANNEL_READABLE         = FX_OBJECT_SIGNAL_0;
+    FX_CHANNEL_WRITABLE         = FX_OBJECT_SIGNAL_1;
+    FX_CHANNEL_PEER_CLOSED      = FX_OBJECT_SIGNAL_2;
+    // Clock
+    FX_CLOCK_STARTED            = FX_OBJECT_SIGNAL_4;
+    // Socket
+    FX_SOCKET_READABLE            = FX_OBJECT_READABLE;
+    FX_SOCKET_WRITABLE            = FX_OBJECT_WRITABLE;
+    FX_SOCKET_PEER_CLOSED         = FX_OBJECT_PEER_CLOSED;
+    FX_SOCKET_PEER_WRITE_DISABLED = FX_OBJECT_SIGNAL_4;
+    FX_SOCKET_WRITE_DISABLED      = FX_OBJECT_SIGNAL_5;
+    FX_SOCKET_READ_THRESHOLD      = FX_OBJECT_SIGNAL_10;
+    FX_SOCKET_WRITE_THRESHOLD     = FX_OBJECT_SIGNAL_11;
+    // Job
+    FX_JOB_TERMINATED           = FX_OBJECT_SIGNAL_3;
+    FX_JOB_NO_JOBS              = FX_OBJECT_SIGNAL_4;
+    FX_JOB_NO_PROCESSES         = FX_OBJECT_SIGNAL_5;
+    // Process
+    FX_PROCESS_TERMINATED       = FX_OBJECT_SIGNAL_3;
+    // Thread
+    FX_THREAD_TERMINATED        = FX_OBJECT_SIGNAL_3;
+    FX_THREAD_RUNNING           = FX_OBJECT_SIGNAL_4;
+    FX_THREAD_SUSPENDED         = FX_OBJECT_SIGNAL_5;
+    // Log
+    FX_LOG_READABLE             = FX_OBJECT_READABLE;
+    FX_LOG_WRITABLE             = FX_OBJECT_WRITABLE;
+    // Timer
+    FX_TIMER_SIGNALED           = FX_OBJECT_SIGNAL_3;
+    // Vmo
+    FX_VMO_ZERO_CHILDREN        = FX_OBJECT_SIGNAL_3;
+]);
+
 multiconst!(fx_obj_type_t, [
     FX_OBJ_TYPE_NONE                = 0;
     FX_OBJ_TYPE_PROCESS             = 1;
+    FX_OBJ_TYPE_VMO                 = 3;
     FX_OBJ_TYPE_CHANNEL             = 4;
-    FX_OBJ_TYPE_VMAR                = 5;
-    FX_OBJ_TYPE_DATAVIEW            = 6;
-    FX_OBJ_TYPE_DATAOBJECT          = 7;
+    FX_OBJ_TYPE_EVENT               = 5;
+    FX_OBJ_TYPE_PORT                = 6;
     FX_OBJ_TYPE_JOB                 = 17;
+    FX_OBJ_TYPE_VMAR                = 18;
 ]);
+
+// System ABI commits to having no more than 64 object types.
+//
+// See zx_info_process_handle_stats_t for an example of a binary interface that
+// depends on having an upper bound for the number of object types.
+pub const FX_OBJ_TYPE_UPPER_BOUND: usize = 64;
 
 multiconst!(fx_object_info_topic_t, [
     FX_INFO_NONE                       = 0;
     FX_INFO_HANDLE_VALID               = 1;
-    FX_INFO_HANDLE_BASIC               = 2;  // zx_info_handle_basic_t[1]
+    FX_INFO_HANDLE_BASIC               = 2;  // fx_info_handle_basic_t[1]
 ]);
 
 multiconst!(fx_policy_t, [
@@ -221,6 +367,32 @@ pub struct fx_handle_info_t {
     pub ty: fx_obj_type_t,
     pub rights: fx_rights_t,
     pub unused: u32,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct zx_channel_call_args_t {
+    pub wr_bytes: *const u8,
+    pub wr_handles: *const fx_handle_t,
+    pub rd_bytes: *mut u8,
+    pub rd_handles: *mut fx_handle_t,
+    pub wr_num_bytes: u32,
+    pub wr_num_handles: u32,
+    pub rd_num_bytes: u32,
+    pub rd_num_handles: u32,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct fx_channel_call_etc_args_t {
+    pub wr_bytes: *const u8,
+    pub wr_handles: *mut fx_handle_disposition_t,
+    pub rd_bytes: *mut u8,
+    pub rd_handles: *mut fx_handle_info_t,
+    pub wr_num_bytes: u32,
+    pub wr_num_handles: u32,
+    pub rd_num_bytes: u32,
+    pub rd_num_handles: u32,
 }
 
 #[repr(C)]

@@ -1,0 +1,23 @@
+{
+    "name": "sdk/midl/meshx.data",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "library",
+    "implicitDependencies": ["tools/nx-midl"],
+    "targets": {
+        "build": {
+            "executor": "./dist/tools/nx-midl:build",
+            "dependsOn": ["^build"],
+            "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.data/midl.json",
+                "{workspaceRoot}/sdk/midl/meshx.data/*.midl"
+            ],
+            "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.data/ir.json", "./ir.json"],
+            "options": {
+                "outDir": "dist/sdk/midl/meshx.data",
+                "midlJson": "./midl.json",
+                "srcs": [],
+                "language": "ts"
+            }
+        }
+    }
+}

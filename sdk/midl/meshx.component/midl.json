@@ -1,0 +1,7 @@
+{
+    "name": "meshx.component",
+    "files": ["constants.midl"],
+    "dependencies": {
+        "fx": { "path": "../fx" }
+    }
+}

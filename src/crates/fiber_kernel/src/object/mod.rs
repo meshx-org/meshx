@@ -3,16 +3,14 @@ mod handle;
 mod handle_table;
 mod job_dispatcher;
 mod process_dispatcher;
-mod dv_dispatcher;
-mod do_dispatcher;
+mod vmo_dispatcher;
 
 pub(crate) use dispatcher::*;
 pub(crate) use handle::*;
 pub(crate) use handle_table::*;
 pub(crate) use job_dispatcher::*;
 pub(crate) use process_dispatcher::*;
-pub(crate) use dv_dispatcher::*;
-pub(crate) use do_dispatcher::*;
+pub(crate) use vmo_dispatcher::*;
 
 #[derive(Debug)]
 pub struct KernelObject;

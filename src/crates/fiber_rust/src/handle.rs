@@ -1,18 +1,18 @@
-// Copyright 2022 MeshX Contributors. All rights reserved.
+// Copyright 2023 MeshX Contributors. All rights reserved.
 // Copyright 2018 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 //! Type-safe bindings for Fiber handles.
 
+use fiber_status::Status;
 use fiber_sys as sys;
 use std::marker::PhantomData;
 use std::mem::ManuallyDrop;
 
 use crate::info::{ObjectQuery, Topic};
 use crate::rights::Rights;
-use crate::status::Status;
-use crate::{object_get_info, ok, assoc_values};
+use crate::{assoc_values, object_get_info, ok, Port, Signals, Time, WaitAsyncOpts};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[repr(transparent)]
@@ -129,6 +129,31 @@ impl<'a, T: HandleBased> Unowned<'a, T> {
         let status = unsafe { sys::fx_handle_duplicate(self.raw_handle(), rights.bits(), &mut out) };
         ok(status).map(|()| T::from(Handle(out)))
     }
+
+    pub fn signal(&self, clear_mask: Signals, set_mask: Signals) -> Result<(), Status> {
+        let status = unsafe { sys::fx_object_signal(self.raw_handle(), clear_mask.bits(), set_mask.bits()) };
+        ok(status)
+    }
+
+    pub fn wait(&self, signals: Signals, deadline: Time) -> Result<Signals, Status> {
+        let mut pending = Signals::empty().bits();
+        let status =
+            unsafe { sys::fx_object_wait_one(self.raw_handle(), signals.bits(), deadline.into_nanos(), &mut pending) };
+        ok(status).map(|()| Signals::from_bits_truncate(pending))
+    }
+
+    pub fn wait_async(&self, port: &Port, key: u64, signals: Signals, options: WaitAsyncOpts) -> Result<(), Status> {
+        let status = unsafe {
+            sys::fx_object_wait_async(
+                self.raw_handle(),
+                port.raw_handle(),
+                key,
+                signals.bits(),
+                options.bits(),
+            )
+        };
+        ok(status)
+    }
 }
 
 /// A trait to get a reference to the underlying handle of an object.
@@ -142,6 +167,27 @@ pub trait AsHandleRef {
     /// key in a data structure).
     fn raw_handle(&self) -> sys::fx_handle_t {
         self.as_handle_ref().inner.0
+    }
+
+    /// Set and clear userspace-accessible signal bits on an object. Wraps the
+    /// [zx_object_signal](https://fuchsia.dev/fuchsia-src/reference/syscalls/object_signal.md)
+    /// syscall.
+    fn signal_handle(&self, clear_mask: Signals, set_mask: Signals) -> Result<(), Status> {
+        self.as_handle_ref().signal(clear_mask, set_mask)
+    }
+
+    /// Waits on a handle. Wraps the
+    /// [zx_object_wait_one](https://fuchsia.dev/fuchsia-src/reference/syscalls/object_wait_one.md)
+    /// syscall.
+    fn wait_handle(&self, signals: Signals, deadline: Time) -> Result<Signals, Status> {
+        self.as_handle_ref().wait(signals, deadline)
+    }
+
+    /// Causes packet delivery on the given port when the object changes state and matches signals.
+    /// [zx_object_wait_async](https://fuchsia.dev/fuchsia-src/reference/syscalls/object_wait_async.md)
+    /// syscall.
+    fn wait_async_handle(&self, port: &Port, key: u64, signals: Signals, options: WaitAsyncOpts) -> Result<(), Status> {
+        self.as_handle_ref().wait_async(port, key, signals, options)
     }
 
     /// Wraps the
@@ -233,7 +279,20 @@ pub trait HandleBased: AsHandleRef + From<Handle> + Into<Handle> {
     }
 }
 
-/// Zircon object types.
+/// A trait implemented by all handles for objects which have a peer.
+pub trait Peered: HandleBased {
+    /// Set and clear userspace-accessible signal bits on the object's peer. Wraps the
+    /// [zx_object_signal_peer][osp] syscall.
+    ///
+    /// [osp]: https://fuchsia.dev/fuchsia-src/reference/syscalls/object_signal_peer.md
+    fn signal_peer(&self, clear_mask: Signals, set_mask: Signals) -> Result<(), Status> {
+        let handle = self.raw_handle();
+        let status = unsafe { sys::fx_object_signal_peer(handle, clear_mask.bits(), set_mask.bits()) };
+        ok(status)
+    }
+}
+
+/// Fiber object types.
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[repr(transparent)]
 pub struct ObjectType(sys::fx_obj_type_t);
@@ -242,12 +301,19 @@ assoc_values!(ObjectType, [
     NONE            = sys::FX_OBJ_TYPE_NONE;
     PROCESS         = sys::FX_OBJ_TYPE_PROCESS;
     CHANNEL         = sys::FX_OBJ_TYPE_CHANNEL;
+    PORT            = sys::FX_OBJ_TYPE_PORT;
     JOB             = sys::FX_OBJ_TYPE_JOB;
+    VMO             = sys::FX_OBJ_TYPE_VMO;
 ]);
 
 impl ObjectType {
-    /// Converts ObjectType into the underlying zircon type.
-    pub fn into_raw(self) -> sys::fx_obj_type_t {
+    /// Creates an `ObjectType` from the underlying zircon type.
+    pub const fn from_raw(raw: sys::fx_obj_type_t) -> Self {
+        Self(raw)
+    }
+
+    /// Converts `ObjectType` into the underlying zircon type.
+    pub const fn into_raw(self) -> sys::fx_obj_type_t {
         self.0
     }
 }
@@ -299,4 +365,72 @@ struct HandleBasicInfoQuery;
 unsafe impl ObjectQuery for HandleBasicInfoQuery {
     const TOPIC: Topic = Topic::HANDLE_BASIC;
     type InfoTy = sys::fx_info_handle_basic_t;
+}
+
+/// Handle operation.
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum HandleOp<'a> {
+    Move(Handle),
+    Duplicate(HandleRef<'a>),
+}
+
+/// Operation to perform on handles during write.
+/// Based on fx_handle_disposition_t, but does not match the same layout.
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct HandleDisposition<'a> {
+    pub handle_op: HandleOp<'a>,
+    pub object_type: ObjectType,
+    pub rights: Rights,
+    pub result: Status,
+}
+
+impl HandleDisposition<'_> {
+    pub fn into_raw<'a>(self) -> sys::fx_handle_disposition_t {
+        match self.handle_op {
+            HandleOp::Move(mut handle) => sys::fx_handle_disposition_t {
+                operation: sys::FX_HANDLE_OP_MOVE,
+                handle: std::mem::replace(&mut handle, Handle::invalid()).into_raw(),
+                type_: self.object_type.0,
+                rights: self.rights.bits(),
+                result: self.result.into_raw(),
+            },
+            HandleOp::Duplicate(handle_ref) => sys::fx_handle_disposition_t {
+                operation: sys::FX_HANDLE_OP_DUPLICATE,
+                handle: handle_ref.raw_handle(),
+                type_: self.object_type.0,
+                rights: self.rights.bits(),
+                result: self.result.into_raw(),
+            },
+        }
+    }
+}
+
+/// Information on handles that were read.
+/// Based on zx_handle_info_t.
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[repr(C)]
+pub struct HandleInfo {
+    pub handle: Handle,
+    pub object_type: ObjectType,
+    pub rights: Rights,
+}
+
+impl HandleInfo {
+    /// # Safety
+    ///
+    /// See [`Handle::from_raw`] for requirements about the validity and closing
+    /// of `raw.handle`.
+    ///
+    /// `raw.rights` must be a bitwise combination of one or more [`Rights`]
+    /// with no additional bits set.
+    ///
+    /// Note that while `raw.ty` _should_ correspond to the type of the handle,
+    /// that this is not required for safety.
+    pub const unsafe fn from_raw(raw: sys::fx_handle_info_t) -> HandleInfo {
+        HandleInfo {
+            handle: Handle::from_raw(raw.handle),
+            object_type: ObjectType(raw.ty),
+            rights: Rights::from_bits_unchecked(raw.rights),
+        }
+    }
 }

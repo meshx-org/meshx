@@ -6,7 +6,6 @@ use std::rc::Rc;
 use fiber_sys as sys;
 use generational_arena::{Arena, Index};
 use once_cell::unsync::Lazy;
-use static_assertions::const_assert;
 
 use crate::object::{
     Dispatcher, Handle, HandleOwner, ProcessDispatcher, HANDLE_GENERATION_MASK, HANDLE_GENERATION_SHIFT,
@@ -22,7 +21,7 @@ pub(crate) struct HandleTableArena {
 fn new_handle_value(index: u32, old_value: u32) -> u32 {
     debug_assert_eq!((index & !HANDLE_INDEX_MASK), 0);
 
-    let old_gen = 0;
+    let mut old_gen = 0;
 
     if old_value != 0 {
         // This slot has been used before.
@@ -35,18 +34,32 @@ fn new_handle_value(index: u32, old_value: u32) -> u32 {
     index | new_gen
 }
 
+const HANDLE_MUST_BE_ONE_MASK: u32 = (0x1 << HANDLE_RESERVED_BITS) - 1;
+//const_assert!(HANDLE_MUST_BE_ONE_MASK == sys::FX_HANDLE_FIXED_BITS_MASK); // kHandleMustBeOneMask must match ZX_HANDLE_FIXED_BITS_MASK!
+
+fn map_value_to_handle(value: sys::fx_handle_t, mixer: u32) -> *const Handle {
+    // Validate that the "must be one" bits are actually one.
+    if (value & HANDLE_MUST_BE_ONE_MASK) != HANDLE_MUST_BE_ONE_MASK {
+        return std::ptr::null();
+    }
+
+    let handle_id = ((value as u32) ^ mixer) >> HANDLE_RESERVED_BITS;
+    return Handle::from_u32(handle_id);
+}
+
 impl HandleTableArena {
-    fn handle_to_index(&self, id: *const Handle) -> u32 {
-        Index::
-        (a, b)
+    fn handle_to_index(&self, handle: *const Handle) -> u32 {
+        // return handle - self.arena.base()
+
+        return handle as u32;
     }
 
     // Returns a new |base_value| based on the value stored in the free
     // arena slot pointed to by |addr|. The new value will be different
     // from the last |base_value| used by this slot.
-    fn get_new_base_value(addr: *const ()) -> u32 {
+    fn get_new_base_value(&self, addr: *const ()) -> u32 {
         // Get the index of this slot within the arena.
-        let handle_index = handle_to_index(addr as *const Handle);
+        let handle_index = self.handle_to_index(addr as *const Handle);
 
         // Check the free memory for a stashed base_value.
         let v = unsafe { (*(addr as *const Handle)).base_value };
@@ -57,7 +70,7 @@ impl HandleTableArena {
     /// Allocate space for a Handle from the arena, but don't instantiate the
     /// object.  |base_value| gets the value for Handle::base_value_.  |what|
     /// says whether this is allocation or duplication, for the error message.
-    fn alloc(&self, dispatcher: &Rc<dyn Dispatcher>, what: &str) -> (Index, u32) {
+    fn alloc(&mut self, dispatcher: &Rc<dyn Dispatcher>, what: &str) -> Index {
         // Attempt to allocate a handle.
         let idx = self.arena.insert(Handle {
             process_id: sys::FX_KOID_INVALID.into(),
@@ -65,7 +78,7 @@ impl HandleTableArena {
             handle_rights: todo!(),
             base_value: todo!(),
         });
-        
+
         let outstanding_handles = self.arena.len();
 
         //if (unlikely(addr == nullptr)) {
@@ -87,7 +100,11 @@ impl HandleTableArena {
         //debug_assert!((addr).process_id().eq(&sys::FX_KOID_INVALID) == true);
         //debug_assert!((addr).dispatcher() == nullptr);
 
-        (idx, get_new_base_value(addr))
+        // NOTE: we don't have a cocept to return bases here so instead we return the index
+        // *base_value = GetNewBaseValue(addr);
+        // return addr;
+
+        idx
     }
 
     fn delete(&self, handle: *const Handle) {
@@ -95,14 +112,13 @@ impl HandleTableArena {
 
         let dispatcher = handle.dispatcher().clone();
 
-
         let old_base_value = handle.base_value;
         let base_value = &handle.base_value;
 
         // There may be stale pointers to this slot and they will look at process_id. We expect
         // process_id to already have been cleared by the process dispatcher before the handle got to
         // this point.
-        debug_assert!(handle.process_id()  == sys::FX_KOID_INVALID);
+        debug_assert!(handle.process_id() == sys::FX_KOID_INVALID);
 
         // TODO:
         //if (dispatcher.is_waitable()) {
@@ -113,10 +129,10 @@ impl HandleTableArena {
         std::mem::forget(handle);
 
         // Make sure the base value was not altered by the destructor.
-        debug_assert!(unsafe { (*base_value) } == old_base_value);
+        debug_assert!(unsafe { *base_value } == old_base_value);
 
         let zero_handles = dispatcher.base().decrement_handle_count();
-        self.arena.remove(handle);
+        // self.arena.remove(handle);
 
         // TODO: we need downcast for this
         //if (zero_handles) {
@@ -132,19 +148,6 @@ impl HandleTableArena {
 pub(crate) const HANDLE_TABLE: Lazy<HandleTableArena> = Lazy::new(|| HandleTableArena {
     arena: Arena::with_capacity(size_of::<Handle>() * MAX_HANDLE_COUNT as usize),
 });
-
-const HANDLE_MUST_BE_ONE_MASK: u32 = (0x1 << HANDLE_RESERVED_BITS) - 1;
-//const_assert!(HANDLE_MUST_BE_ONE_MASK == sys::FX_HANDLE_FIXED_BITS_MASK); // kHandleMustBeOneMask must match ZX_HANDLE_FIXED_BITS_MASK!
-
-fn map_value_to_handle(value: sys::fx_handle_t, mixer: u32) -> *const Handle {
-    // Validate that the "must be one" bits are actually one.
-    if (value & HANDLE_MUST_BE_ONE_MASK) != HANDLE_MUST_BE_ONE_MASK {
-        return std::ptr::null();
-    }
-
-    let handle_id = ((value as u32) ^ mixer) >> HANDLE_RESERVED_BITS;
-    return Handle::from_u32(handle_id);
-}
 
 struct LockedState {}
 

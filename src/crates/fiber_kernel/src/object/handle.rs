@@ -1,4 +1,4 @@
-// Copyright 2022 MeshX Contributors. All rights reserved.
+// Copyright 2023 MeshX Contributors. All rights reserved.
 // Copyright 2016 The Fuchsia Authors
 //
 // Use of this source code is governed by a MIT-style
@@ -50,9 +50,9 @@ pub(crate) struct Handle {
     // process_id_ is atomic because threads from different processes can
     // access it concurrently, while holding different instances of
     // handle_table_lock_.
-    process_id: AtomicU64,
-    dispatcher: Rc<dyn Dispatcher>,
-    handle_rights: fx_rights_t,
+    pub(super) process_id: AtomicU64,
+    pub(super) dispatcher: Rc<dyn Dispatcher>,
+    pub(super) handle_rights: fx_rights_t,
     pub(super) base_value: u32,
 }
 
@@ -87,10 +87,12 @@ impl Handle {
 
     // Called only by Dup.
     fn new_from_raw(rhs: *const Handle, rights: fx_rights_t, base_value: u32) -> Self {
+        let dispatcher = unsafe { (*rhs).dispatcher().clone() };
+
         Handle {
             process_id: AtomicU64::new(0),
             handle_rights: rights,
-            dispatcher: Rc::new(unsafe { (*rhs).dispatcher.clone() }),
+            dispatcher,
             base_value: 0,
         }
     }
@@ -115,11 +117,11 @@ impl Handle {
     }
 
     // Handle should never be created by anything other than Make or Dup.
-    pub(crate) fn make_from_dispatcher<T: 'static>(dispatcher: Rc<T>, rights: fx_rights_t) -> HandleOwner {
+    pub(crate) fn make_from_dispatcher<T: 'static + Dispatcher>(dispatcher: Rc<T>, rights: fx_rights_t) -> HandleOwner {
         Box::new(Handle::new(dispatcher, rights, 0))
     }
 
-    pub(crate) fn make<T: 'static>(handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner {
+    pub(crate) fn make<T: 'static + Dispatcher>(handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner {
         Box::new(Handle::new(handle.dispatcher().clone(), rights, 0))
     }
 

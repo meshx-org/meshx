@@ -1,0 +1,22 @@
+[package]
+edition = "2021"
+name = "midl"
+version = "0.1.0"
+
+[dependencies]
+assert_matches = "1.5.0"
+bitflags = "2.1.0"
+meshx_async = {path = "../meshx_async"}
+fiber_rust = {path = "../fiber_rust"}
+fiber_types = {path = "../fiber_types"}
+fiber_status = {path = "../fiber_status"}
+futures = "0.3.28"
+static_assertions = "1.1.0"
+thiserror = "1.0.40"
+tracing = "0.1.29"
+zerocopy = "0.6.1"
+slab="0.4.5"
+parking_lot="0.12.1"
+
+[features]
+mock_syscalls = []

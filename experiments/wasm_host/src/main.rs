@@ -1,39 +1,50 @@
-use std::env;
-use std::fs;
-use std::io::{Read, Write};
-use wasm_tcp::public_function;
+// please add this feature if you're using rust of version < 1.63
+// #![feature(explicit_generic_args_with_impl_trait)]
 
-use tikv_client::{Config, TransactionClient};
+use wasmedge_sdk::{async_host_function, error::HostFuncError, params, Caller, ImportObjectBuilder, Vm, WasmValue};
 
-fn call_dynamic() -> u32 {
-    public_function()
+#[no_mangle]
+pub extern "C" fn test() -> u32 {
+    return 0;
+}
+
+#[async_host_function]
+async fn say_hello(caller: Caller, _args: Vec<WasmValue>) -> Result<Vec<WasmValue>, HostFuncError> {
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    println!("Hello, world!");
+
+    // get executor from caller
+    let executor = caller.executor();
+    assert!(executor.is_some());
+
+    // get module instance from caller
+    let instance = caller.instance();
+    if let Some(instance) = instance {
+        assert_eq!(instance.name(), Some("extern".to_string()));
+        assert_eq!(instance.func_count(), 1);
+        assert_eq!(instance.memory_count(), 0);
+        assert_eq!(instance.global_count(), 0);
+        assert_eq!(instance.table_count(), 0);
+    }
+
+    // get memory from caller
+    let mem = caller.memory(0);
+    assert!(mem.is_none());
+
+    Ok(vec![])
 }
 
 #[tokio::main]
-async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    env_logger::init();
-    let s = call_dynamic();
-    println!("{}", s);
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // create an import module
+    let import = ImportObjectBuilder::new()
+        .with_func_async::<(), ()>("say_hello", say_hello)?
+        .build("extern")?;
 
-    let config = Config::new();
+    let vm = Vm::new(None)?.register_import_module(import)?;
 
-    config.with_security(
-        // The path to the file that contains the PEM encoding of the server’s CA certificates.
-        "/path/to/ca.pem",
-        // The path to the file that contains the PEM encoding of the server’s certificate chain.
-        "/path/to/client-cert.pem",
-        // The path to the file that contains the PEM encoding of the server’s private key.
-        "/path/to/client-key.pem",
-    );
+    let fut2 = vm.run_func_async(Some("extern"), "say_hello", params!()).await;
 
-    let txn_client = TransactionClient::new(vec!["127.0.0.1:2379"]).await?;
-
-    let mut txn = txn_client.begin_optimistic().await?;
-    txn.put("key".to_owned(), "hello".to_owned()).await?;
-    let value = txn.get("key".to_owned()).await?;
-    txn.commit().await?;
-
-    println!("{:?}", value);
-
+    println!("main thread");
     Ok(())
 }

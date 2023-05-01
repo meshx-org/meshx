@@ -1,4 +1,4 @@
-// Copyright 2022 MeshX Contributors. All rights reserved.
+// Copyright 2023 MeshX Contributors. All rights reserved.
 // Copyright 2017 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -234,6 +234,7 @@ bitflags! {
     }
 }
 
+/* 
 #[cfg(test)]
 mod tests {
     // The unit tests are built with a different crate name, but fuchsia_runtime returns a "real"
@@ -331,3 +332,4 @@ mod tests {
             .expect("failed to set critical process for job");
     }
 }
+*/

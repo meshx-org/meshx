@@ -1,0 +1,7 @@
+{
+    "name": "meshx.url",
+    "files": ["url.midl"],
+    "dependencies": {
+        "fx": { "path": "../fx" }
+    }
+}

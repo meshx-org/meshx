@@ -1,7 +1,9 @@
-// Copyright 2022 MeshX Contributors. All rights reserved.
+// Copyright 2023 MeshX Contributors. All rights reserved.
 
 use fiber_kernel::{process_scope, Kernel};
-use fiber_rust::{prelude::*, status::Status, sys, Handle, Job, Process};
+use fiber_rust::{prelude::*, sys, Handle, Job, Process};
+use fiber_status as fx_status;
+
 use log::{debug, info};
 use phf::phf_map;
 
@@ -18,7 +20,7 @@ static PROCESS_DISPATCH_TABLE: phf::Map<&'static str, fn(i32, i32) -> i32> = phf
     "-" => minus,
 };
 
-fn main() -> Result<(), Status> {
+fn main() -> Result<(), fx_status::Status> {
     env_logger::init();
 
     let kernel = Kernel::new(|process| {

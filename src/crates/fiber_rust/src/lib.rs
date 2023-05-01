@@ -1,4 +1,4 @@
-// Copyright 2022 MeshX Contributors. All rights reserved.
+// Copyright 2023 MeshX Contributors. All rights reserved.
 // Copyright 2016 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -10,27 +10,33 @@ pub mod sys {
     pub use fiber_sys::*;
 }
 
-
 use crate::info::ObjectQuery;
-use crate::status::Status;
 
+mod channel;
 mod handle;
 mod info;
 mod job;
-mod process;
 mod rights;
-pub mod status;
+mod signals;
+mod process;
 mod task;
-mod vmar;
 mod time;
+mod vmar;
+mod vmo;
+mod port;
 
+pub use self::rights::*;
+pub use self::channel::*;
 pub use self::handle::*;
+pub use self::signals::*;
 pub use self::info::*;
+pub use self::port::*;
+pub use self::vmo::*;
 pub use self::job::*;
 pub use self::process::*;
-pub use self::status::*;
 pub use self::task::*;
 pub use self::time::*;
+pub use fiber_status::*;
 
 /// Prelude containing common utility traits.
 /// Designed for use like `use fuchsia_zircon::prelude::*;`
@@ -47,16 +53,19 @@ macro_rules! impl_handle_based {
                 self.0.as_handle_ref()
             }
         }
+        
         impl From<Handle> for $type_name {
             fn from(handle: Handle) -> Self {
                 $type_name(handle)
             }
         }
+
         impl From<$type_name> for Handle {
             fn from(x: $type_name) -> Handle {
                 x.0
             }
         }
+
         impl HandleBased for $type_name {}
     };
 }
@@ -115,4 +124,21 @@ pub fn object_get_info<Q: ObjectQuery>(handle: HandleRef<'_>, out: &mut [Q::Info
         )
     };
     ok(status)
+}
+
+pub fn usize_into_u32(n: usize) -> Result<u32, ()> {
+    if n > ::std::u32::MAX as usize || n < ::std::u32::MIN as usize {
+        return Err(());
+    }
+    Ok(n as u32)
+}
+
+pub fn size_to_u32_sat(n: usize) -> u32 {
+    if n > ::std::u32::MAX as usize {
+        return ::std::u32::MAX;
+    }
+    if n < ::std::u32::MIN as usize {
+        return ::std::u32::MIN;
+    }
+    n as u32
 }

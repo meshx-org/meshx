@@ -1,0 +1,23 @@
+{
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "name": "sdk/midl/meshx.mem",
+    "projectType": "library",
+    "implicitDependencies": ["tools/nx-midl"],
+    "targets": {
+        "build": {
+            "executor": "./dist/tools/nx-midl:build",
+            "dependsOn": ["^build"],
+            "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.mem/midl.json",
+                "{workspaceRoot}/sdk/midl/meshx.mem/*.midl"
+            ],
+            "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.mem/ir.json"],
+            "options": {
+                "outDir": "dist/sdk/midl/meshx.mem",
+                "midlJson": "./midl.json",
+                "srcs": ["./buffer.midl"],
+                "language": "ts"
+            }
+        }
+    }
+}

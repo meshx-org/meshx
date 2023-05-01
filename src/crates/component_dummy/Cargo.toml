@@ -1,0 +1,16 @@
+[package]
+edition = "2021"
+name = "component_dummy"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fiber_rust = { path = "../fiber_rust" }
+midl = { path = "../midl" }
+fiber_status = { path = "../fiber_status" }
+bitflags = "2.1.0"
+futures = "0.3.17"

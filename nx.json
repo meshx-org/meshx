@@ -1,15 +1,5 @@
 {
-    "tasksRunnerOptions": {
-        "default": {
-            "runner": "nx/tasks-runners/default",
-            "options": {
-                "cacheableOperations": ["build", "lint", "test", "e2e"]
-            }
-        }
-    },
     "npmScope": "meshx-org",
-    "extends": "nx/presets/npm.json",
-    "$schema": "./node_modules/nx/schemas/nx-schema.json",
     "targetDefaults": {
         "build": {
             "dependsOn": ["^build"]
@@ -20,5 +10,15 @@
         "test": {
             "inputs": ["default", "^default", "{workspaceRoot}/jest.preset.js"]
         }
-    }
+    },
+    "tasksRunnerOptions": {
+        "default": {
+            "runner": "nx/tasks-runners/default",
+            "options": {
+                "cacheableOperations": ["build", "lint", "test", "e2e"]
+            }
+        }
+    },
+    "extends": "nx/presets/npm.json",
+    "plugins": ["@nxrs/cargo"]
 }

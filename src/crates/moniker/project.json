@@ -1,0 +1,20 @@
+{
+    "name": "moniker",
+    "root": "./src/crates/moniker",
+    "projectType": "library",
+    "targets": {
+        "test": {
+            "executor": "@nxrs/cargo:test",
+            "options": {}
+        },
+        "lint": {
+            "executor": "@nxrs/cargo:clippy",
+            "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+            }
+        }
+    },
+    "tags": []
+}
