@@ -3,7 +3,21 @@ use fiber_sys as sys;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use super::Handle;
 use crate::object::{BaseDispatcher, Dispatcher, INamed, KernelHandle, ProcessDispatcher, TypedDispatcher};
+
+// Returns the job that is the ancestor of all other tasks.
+pub(crate) fn get_root_job_dispatcher() -> Rc<JobDispatcher> {
+    unimplemented!()
+}
+
+pub(crate) fn get_root_job_handle() -> *const Handle {
+    unimplemented!()
+}
+
+// Start the RootJobObserver. Must be called after the root job has at
+// least one child process or child job.
+pub(crate) fn start_root_job_observer() {}
 
 // The starting max_height value of the root job.
 static ROOT_JOB_MAX_HEIGHT: u32 = 32;
@@ -118,7 +132,7 @@ impl JobDispatcher {
 
     pub(crate) fn new(flags: u32, parent: Option<Rc<JobDispatcher>>, policy: JobPolicy) -> JobDispatcher {
         JobDispatcher {
-            base: BaseDispatcher::new(),
+            base: BaseDispatcher::new(0),
             parent_job: parent.clone(),
             max_height: if parent.is_some() {
                 parent.unwrap().max_height() - 1
@@ -129,7 +143,6 @@ impl JobDispatcher {
             state: State::READY,
             return_code: 0,
             kill_on_oom: false,
-
             policy,
             guarded: RefCell::new(GuardedJobState {
                 jobs: vec![],

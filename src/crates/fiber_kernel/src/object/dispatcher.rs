@@ -1,19 +1,71 @@
 use crate::koid;
 use fiber_sys as sys;
 use std::any::Any;
+use std::rc::Rc;
 use std::sync::atomic::{fence, AtomicU32, Ordering};
+use super::signal_observer::SignalObserver;
 
 #[derive(Debug)]
 pub(crate) struct BaseDispatcher {
     koid: sys::fx_koid_t,
     handle_count: AtomicU32,
+
+    // |signals| is the set of currently active signals.
+    //
+    // There are several high-level operations in which the signal state is accessed.  Some of these
+    // operations require holding |get_lock()| and some do not.  See the comment at |get_lock()|.
+    //
+    // 1. Adding, removing, or canceling an observer - These operations involve access to both
+    // signals_ and observers_ and must be performed while holding get_lock().
+    //
+    // 2. Updating signal state - This is a composite operation consisting of two sub-operations:
+    //
+    //    a. Clearing signals - Because no observer may be triggered by deasserting (clearing) a
+    //    signal, it is not necessary to hold |get_lock()| while clearing.  Simply clearing signals
+    //    does not need to access observers_.
+    //
+    //    b. Raising (setting) signals and notifying matched observers - This operation must appear
+    //    atomic to and cannot overlap with any of the operations in #1 above.  |get_lock()| must be
+    //    held for the duration of this operation.
+    //
+    // Regardless of whether the operation requires holding |get_lock()| or not, access to this field
+    // should use acquire/release memory ordering.  That is, use memory_order_acquire for read,
+    // memory_order_release for write, and memory_order_acq_rel for read-modify-write.  To understand
+    // why it's important to use acquire/release, consider the following (contrived) example:
+    //
+    //   RelaxedAtomic<bool> ready;
+    //
+    //   void T1() {
+    //     // Wait for T2 to clear the signals.
+    //     while (d.PollSignals() & kMask) {
+    //     }
+    //     // Now that we've seen there are no signals we can be confident that ready is true.
+    //     ASSERT(ready.load());
+    //   }
+    //
+    //   void T2() {
+    //     ready.store(true);
+    //     d.ClearSignals(kMask);
+    //   }
+    //
+    // In the example above, T1's ASSERT may fire if PollSignals or ClearSignals were to use relaxed
+    // memory order for accessing signals_.
+    signals: AtomicU32, // alias fx_signals_t
+
+    // List of observers watching for changes in signals on this dispatcher.
+    observers: Vec<Box<dyn SignalObserver<Test>>>, // TA_GUARDED(get_lock());
 }
 
+struct Test {}
+
 impl BaseDispatcher {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(signals: sys::fx_signals_t) -> Self {
+        // kcounter_add(dispatcher_create_count, 1);
         BaseDispatcher {
             koid: koid::generate(),
             handle_count: AtomicU32::new(0),
+            signals: AtomicU32::new(signals),
+            observers: Vec::new(),
         }
     }
 
@@ -51,11 +103,48 @@ impl BaseDispatcher {
         // refcount), this can just be relaxed.
         self.handle_count.load(Ordering::Relaxed)
     }
+
+    /// Raise (set) signals specified by |signals| without notifying observers.
+    ///
+    /// Returns the old value.
+    pub(super) fn raise_signals_locked(&self, signals: sys::fx_signals_t) -> sys::fx_signals_t {
+        self.signals.fetch_or(signals, Ordering::AcqRel)
+    }
+
+    /// Notify the observers waiting on one or more |signals|.
+    ///
+    /// unlike UpdateState and UpdateStateLocked, this method does not modify the stored signal state.
+    pub(super) fn notify_observers_locked(&self, signals: sys::fx_signals_t) {
+        let i = 0;
+        
+        for it in self.observers.iter_mut() {
+            // Ignore observers that don't need to be notified.
+            if (it.get_triggering_signals() & signals) == 0 {
+                i += 1;
+                continue;
+            }
+
+            let to_remove = it;
+            i += 1;
+            self.observers.remove(i);
+            to_remove.on_match(signals);
+        }
+    }
+}
+
+pub(crate) struct PeeredDispatcherBase<T> {
+    pub peer: Option<Rc<T>>,
+    pub peer_koid: Option<sys::fx_koid_t>,
 }
 
 pub(crate) trait TypedDispatcher {
     fn get_type() -> sys::fx_obj_type_t;
     fn default_rights() -> sys::fx_rights_t;
+}
+
+pub(crate) trait PeeredDispatcher: Dispatcher {
+    fn init_peer(&self, peer: Rc<Self>);
+    fn peer(&self) -> &Option<Rc<Self>>;
 }
 
 pub(crate) trait Dispatcher: Any {

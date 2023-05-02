@@ -8,7 +8,7 @@
 
 use std::rc::Rc;
 
-use super::{BaseDispatcher, Dispatcher, TypedDispatcher, KernelHandle};
+use super::{BaseDispatcher, Dispatcher, KernelHandle, TypedDispatcher};
 use fiber_sys as sys;
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ impl Dispatcher for VMODispatcher {
 
 impl TypedDispatcher for VMODispatcher {
     fn default_rights() -> sys::fx_rights_t {
-        sys::FX_RIGHT_NONE
+        sys::FX_DEFAULT_VMO_RIGHTS
     }
 
     fn get_type() -> sys::fx_obj_type_t {
@@ -51,7 +51,7 @@ impl VMODispatcher {
 
     pub fn new() -> Rc<VMODispatcher> {
         Rc::new(VMODispatcher {
-            base: BaseDispatcher::new(),
+            base: BaseDispatcher::new(sys::FX_VMO_ZERO_CHILDREN),
         })
     }
 }

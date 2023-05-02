@@ -173,33 +173,33 @@ impl HandleTable {
 
     // Maps a |handle| to an integer which can be given to usermode as a
     // handle value. Uses Handle->base_value() plus additional mixing.
-    fn map_handle_to_value<T>(handle: *const Handle) -> sys::fx_handle_t {
+    pub(crate) fn map_handle_to_value<T>(&self, handle: *const Handle) -> sys::fx_handle_t {
         unimplemented!()
     }
 
-    fn map_handle_owner_to_value<T>(handle: &HandleOwner) -> sys::fx_handle_t {
+    pub(crate) fn map_handle_owner_to_value<T>(handle: &HandleOwner) -> sys::fx_handle_t {
         unimplemented!()
     }
 
     // Returns the number of outstanding handles in this handle table.
-    fn handle_count(&self) -> u32 {
+    pub(crate) fn handle_count(&self) -> u32 {
         self.count
     }
 
-    pub fn is_handle_valid(&self, handle_value: sys::fx_handle_t) -> bool {
+    pub(crate) fn is_handle_valid(&self, handle_value: sys::fx_handle_t) -> bool {
         unimplemented!()
     }
 
-    pub fn get_koid_for_handle(&self, handle_value: sys::fx_handle_t) -> sys::fx_koid_t {
+    pub(crate) fn get_koid_for_handle(&self, handle_value: sys::fx_handle_t) -> sys::fx_koid_t {
         unimplemented!()
     }
 
-    fn add_handle(&mut self, handle: HandleOwner) {
+    pub(crate) fn add_handle(&mut self, handle: HandleOwner) {
         //Guard<BrwLockPi, BrwLockPi::Writer> guard{&lock_};
         self.add_handle_locked(handle);
     }
 
-    fn add_handle_locked(&mut self, handle: HandleOwner) {
+    pub(crate) fn add_handle_locked(&mut self, handle: HandleOwner) {
         // NOTE: We need to use unsafe and raw pointer here to access the parent so we can avoid circular dependency issues.
         let koid = unsafe { (*self.process).get_koid() };
         handle.set_process_id(koid);

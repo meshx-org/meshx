@@ -125,7 +125,7 @@ impl Handle {
         Box::new(Handle::new(handle.dispatcher().clone(), rights, 0))
     }
 
-    pub(crate) fn dup<T: 'static>(source: *const Handle, rights: fx_rights_t) -> HandleOwner {
+    pub(crate) fn dup(source: *const Handle, rights: fx_rights_t) -> HandleOwner {
         Box::new(Handle::new_from_raw(source, rights, 0))
     }
 

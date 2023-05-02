@@ -167,7 +167,7 @@ pub trait System: std::fmt::Debug {
 }
 
 #[cfg(all(not(test), not(target_arch = "wasm32")))]
-pub static SYSTEM: OnceCell<Box<(dyn System + Send + Sync)>> = OnceCell::new();
+pub static SYSTEM: OnceCell<std::sync::Arc<(dyn System + Send + Sync)>> = OnceCell::new();
 
 #[cfg(all(not(test), not(target_arch = "wasm32")))]
 pub fn fx_handle_close(handle: fx_handle_t) -> fx_status_t {

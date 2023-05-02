@@ -2,12 +2,14 @@
 
 // Copyright 2023 MeshX Contributors. All rights reserved.
 pub mod koid;
+
+mod userboot;
 mod object;
 mod process_context;
 
-use log::{info, trace};
-use std::fmt;
+use log::trace;
 use std::rc::Rc;
+use std::{fmt, sync::Arc};
 
 use fiber_sys as sys;
 
@@ -15,6 +17,7 @@ use crate::object::{Handle, JobDispatcher, JobPolicy, ProcessDispatcher};
 
 pub struct Kernel {
     cb: fn(&object::ProcessObject),
+    boot_process: Option<Arc<dyn Fn() + Send + Sync>>,
 }
 
 impl fmt::Debug for Kernel {
@@ -154,13 +157,15 @@ impl fiber_sys::System for Kernel {
         options: u32,
         out: *const sys::fx_handle_t,
     ) -> sys::fx_status_t {
-        trace!("parent = {}", parent_job);
+        trace!("klog sys_job_create: {}", parent_job);
 
         if options != 0 {
             return sys::FX_ERR_INVALID_ARGS;
         }
 
         let up = ProcessDispatcher::get_current();
+
+        trace!("klog up: {:?}", up);
 
         let result = up
             .handle_table()
@@ -353,45 +358,59 @@ impl fiber_sys::System for Kernel {
 }
 
 #[inline]
-pub fn process_scope<F, R>(f: F)
+pub(crate) fn process_scope<F: Send + Sync + 'static>(f: F, process: Rc<ProcessDispatcher>)
 where
-    F: FnOnce() -> R,
+    F: Fn(),
 {
+    trace!("enter process scope");
+
     // Make sure to save the guard, see documentation for more information
-    let _guard = process_context::ScopeGuard::new(process_context::Context {
-        process: ProcessDispatcher::create(Rc::from(JobDispatcher::new(0, None, JobPolicy)), String::from(""), 0)
-            .unwrap()
-            .0
-            .dispatcher()
-            .clone(),
-    });
+    let _guard = process_context::ScopeGuard::new(process_context::Context { process });
 
     f();
 }
 
 type OnProcessStartHook = fn(&object::ProcessObject);
 
+
+
 impl Kernel {
     pub fn new(on_process_start_cb: OnProcessStartHook) -> Self {
         Self {
             cb: on_process_start_cb,
+            boot_process: None,
         }
     }
 
-    pub fn init(&self) {
-        info!("initializing kernel");
+    pub fn register_boot_process<F>(&mut self, f: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        let process = ProcessDispatcher::create(Rc::from(JobDispatcher::new(0, None, JobPolicy)), String::from(""), 0)
+            .unwrap()
+            .0
+            .dispatcher()
+            .clone();
+
+        self.boot_process = Some(Arc::new(f));
     }
 
     pub fn run_root(&self) {
-        // TODO
-        //let res: io::Result<()> = smol::block_on(async {
-        //    let mut stream = net::TcpStream::connect("example.com:80").await?;
-        //    let req = b"GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n";
-        //    stream.write_all(req).await?;
+        let refer = self.boot_process.clone();
 
-        //    let mut stdout = Unblock::new(std::io::stdout());
-        //    io::copy(stream, &mut stdout).await?;
-        //    Ok(())
-        //});
+        // TODO: do not create a process here, but use the current process
+        let process = ProcessDispatcher::create(Rc::from(JobDispatcher::new(0, None, JobPolicy)), String::from(""), 0)
+            .unwrap()
+            .0
+            .dispatcher()
+            .clone();
+
+        process_scope(
+            move || {
+                let process = refer.as_ref().unwrap();
+                process()
+            },
+            process,
+        );
     }
 }

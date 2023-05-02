@@ -42,7 +42,7 @@ impl Dispatcher for ProcessDispatcher {
 
 impl TypedDispatcher for ProcessDispatcher {
     fn default_rights() -> sys::fx_rights_t {
-        sys::FX_RIGHT_EXECUTE
+        sys::FX_DEFAULT_PROCESS_RIGHTS
     }
 
     fn get_type() -> sys::fx_obj_type_t {
@@ -53,7 +53,7 @@ impl TypedDispatcher for ProcessDispatcher {
 impl ProcessDispatcher {
     fn new(job: Rc<JobDispatcher>, name: String, flags: u32) -> Rc<ProcessDispatcher> {
         let mut new_process = ProcessDispatcher {
-            base: BaseDispatcher::new(),
+            base: BaseDispatcher::new(0),
             job: job.clone(),
             policy: job.get_policy(),
             handle_table: None,

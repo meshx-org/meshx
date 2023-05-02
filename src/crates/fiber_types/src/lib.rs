@@ -21,6 +21,7 @@ pub type fx_signals_t = u32;
 pub type fx_policy_t = u32;
 pub type fx_ssize_t = isize;
 pub type fx_status_t = i32;
+pub type fx_txid_t = u32;
 pub type fx_vm_option_t = u32;
 
 /// Absolute time in nanoseconds (generally with respect to the monotonic clock)
@@ -137,6 +138,14 @@ multiconst!(fx_rights_t, [
     FX_RIGHT_APPLY_PROFILE  = 1 << 19;
     FX_RIGHT_MANAGE_SOCKET  = 1 << 20;
     FX_RIGHT_SAME_RIGHTS    = 1 << 31;
+
+    // Convenient names for commonly grouped rights.
+    FX_RIGHTS_BASIC = FX_RIGHT_TRANSFER | FX_RIGHT_DUPLICATE | FX_RIGHT_WAIT | FX_RIGHT_INSPECT;
+    FX_RIGHTS_IO = FX_RIGHT_READ | FX_RIGHT_WRITE;
+    FX_RIGHTS_PROPERTY = FX_RIGHT_GET_PROPERTY | FX_RIGHT_SET_PROPERTY;
+    FX_DEFAULT_CHANNEL_RIGHTS = (FX_RIGHTS_BASIC & (!FX_RIGHT_DUPLICATE)) | FX_RIGHTS_IO | FX_RIGHT_SIGNAL | FX_RIGHT_SIGNAL_PEER;
+    FX_DEFAULT_PROCESS_RIGHTS    = FX_RIGHTS_BASIC | FX_RIGHTS_IO | FX_RIGHTS_PROPERTY | FX_RIGHT_ENUMERATE | FX_RIGHT_DESTROY | FX_RIGHT_SIGNAL | FX_RIGHT_MANAGE_PROCESS | FX_RIGHT_MANAGE_THREAD;
+    FX_DEFAULT_VMO_RIGHTS  = FX_RIGHTS_BASIC | FX_RIGHTS_IO | FX_RIGHTS_PROPERTY | FX_RIGHT_MAP | FX_RIGHT_SIGNAL;
 ]);
 
 multiconst!(u32, [

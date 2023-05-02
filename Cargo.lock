@@ -630,6 +630,7 @@ dependencies = [
 name = "fiber_kernel"
 version = "0.1.0"
 dependencies = [
+ "fiber_rust",
  "fiber_sys",
  "generational-arena",
  "id-arena",

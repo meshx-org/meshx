@@ -8,6 +8,8 @@ crate-type = ["cdylib"]
 
 [dependencies]
 fiber_sys = {version = "0.1.0", path = "../fiber_sys"}
+fiber_rust = {version = "0.1.0", path = "../fiber_rust"}
+
 log="0.4.17"
 smol="1.2.5"
 static_assertions = "1.1"

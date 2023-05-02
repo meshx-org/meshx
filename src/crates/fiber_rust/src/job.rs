@@ -5,10 +5,10 @@
 //! Type-safe bindings for Zircon jobs.
 use crate::vmar::Vmar;
 use crate::{impl_handle_based, ok};
-use crate::{object_get_info, ObjectQuery};
 use crate::{AsHandleRef, Duration, Handle, HandleBased, HandleRef, Process, Status, Task};
 use bitflags::bitflags;
 use fiber_sys as sys;
+use log::trace;
 use std::convert::Into;
 
 /// An object representing a Zircon job.
@@ -24,9 +24,11 @@ impl Job {
     /// Create a new job as a child of the current job.
     ///
     /// Wraps the
-    /// [zx_job_create](https://fuchsia.dev/fuchsia-src/reference/syscalls/job_create.md)
+    /// [fx_job_create](https://docs.meshx.co/reference/syscalls/job_create.md)
     /// syscall.
     pub fn create_child_job(&self) -> Result<Job, Status> {
+        trace!("create_child_job");
+
         let parent_job_raw = self.raw_handle();
         let mut out = 0;
         let options = 0;
@@ -41,9 +43,11 @@ impl Job {
     /// root of the new process's address space.
     ///
     /// Wraps the
-    /// [zx_process_create](https://fuchsia.dev/fuchsia-src/reference/syscalls/process_create.md)
+    /// [fx_process_create](https://docs.meshx.co/reference/syscalls/process_create.md)
     /// syscall.
     pub fn create_child_process(&self, name: &str) -> Result<(Process, Vmar), Status> {
+        trace!("create_child_process: {:?}", name);
+
         let parent_job_raw = self.raw_handle();
         let name_ptr = name.as_ptr();
         let name_size = name.len();
@@ -74,6 +78,8 @@ impl Job {
 
     /// Wraps the [zx_job_set_policy](//docs/reference/syscalls/job_set_policy.md) syscall.
     pub fn set_policy(&self, policy: JobPolicy) -> Result<(), Status> {
+        trace!("set_policy");
+
         match policy {
             JobPolicy::Basic(policy_option, policy_set) => {
                 let sys_opt = policy_option.into();
@@ -131,8 +137,11 @@ impl Job {
             }
         }
     }
+
     /// Wraps the [zx_job_set_critical](//docs/reference/syscalls/job_set_critical.md) syscall.
     pub fn set_critical(&self, opts: JobCriticalOptions, process: &Process) -> Result<(), Status> {
+        trace!("set_critical");
+        
         ok(unsafe { sys::fx_job_set_critical(self.raw_handle(), opts.bits(), process.raw_handle()) })
     }
 }
