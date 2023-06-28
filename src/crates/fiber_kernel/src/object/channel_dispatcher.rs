@@ -1,5 +1,5 @@
-use std::any::Any;
 use std::rc::Rc;
+use std::{any::Any, sync::RwLock};
 
 use fiber_sys as sys;
 
@@ -55,7 +55,7 @@ impl MessageWaiter {
     fn cancel(&self, status: sys::fx_status_t) {
         unimplemented!()
     }
-    fn wait(&self, /*deadline: &Deadline*/) -> sys::fx_status_t {
+    fn wait(&self /*deadline: &Deadline*/) -> sys::fx_status_t {
         unimplemented!()
     }
     // Returns any delivered message via out and the status.
@@ -64,14 +64,14 @@ impl MessageWaiter {
     }
 
     fn get_channel(&self) -> Option<Rc<ChannelDispatcher>> {
-        self.channel
+        self.channel.clone()
     }
 
     fn get_txid(&self) -> sys::fx_txid_t {
         return self.txid;
     }
 
-    fn set_txid(&self, txid: sys::fx_txid_t) {
+    fn set_txid(&mut self, txid: sys::fx_txid_t) {
         self.txid = txid;
     }
 }
@@ -127,14 +127,19 @@ impl PeeredDispatcher for ChannelDispatcher {
     /// initialization, prior to any other thread obtaining a reference to the object.  These
     /// constraints allow for an optimization where fields are accessed without acquiring the lock,
     /// hence the TA_NO_THREAD_SAFETY_ANALYSIS annotation.
-    fn init_peer(&self, peer: Rc<Self>) {
+    fn init_peer(&mut self, peer: Rc<RwLock<Self>>) {
         debug_assert!(self.peered_base.peer.is_none());
         debug_assert!(self.peered_base.peer_koid == Some(sys::FX_KOID_INVALID));
+
+        self.peered_base.peer_koid = {
+            let peer_lock = peer.read().unwrap();
+            Some(peer_lock.get_koid())
+        };
+
         self.peered_base.peer = Some(peer);
-        self.peered_base.peer_koid = Some(peer.get_koid());
     }
 
-    fn peer(&self) -> &Option<Rc<Self>> {
+    fn peer(&self) -> &Option<Rc<RwLock<Self>>> {
         &self.peered_base.peer
     }
 }
@@ -168,7 +173,7 @@ impl ChannelDispatcher {
 
     /// Write to the opposing endpoint's message queue. |owner| is the handle table koid of the process
     /// attempting to write to the channel, or FX_KOID_INVALID if kernel is doing it.
-    pub(crate) fn write(&self, owner: sys::fx_koid_t, msg: MessagePacketPtr) -> sys::fx_status_t {
+    pub(crate) fn write(&mut self, owner: sys::fx_koid_t, msg: MessagePacketPtr) -> sys::fx_status_t {
         // canary_.Assert();
         // Guard<CriticalMutex> guard{get_lock()};
 
@@ -183,19 +188,23 @@ impl ChannelDispatcher {
             return sys::FX_ERR_PEER_CLOSED;
         }
 
-        let peer = self.peer().unwrap();
+        let peer = self.peer().as_ref().unwrap();
 
         // AssertHeld(*self.peer().get_lock());
 
-        if peer.try_write_to_message_waiter(msg) {
+        let mut peer_lock = peer.write().unwrap();
+
+        let result = peer_lock.try_write_to_message_waiter(msg);
+
+        if result.is_ok() {
             return sys::FX_OK;
         }
 
-        peer.write_self(msg);
+        peer_lock.write_self(result.unwrap_err());
         sys::FX_OK
     }
 
-    fn write_self(&self, msg: MessagePacketPtr) {
+    fn write_self(&mut self, msg: MessagePacketPtr) {
         //canary_.Assert();
 
         // Once we've acquired the channel_lock_ we're going to make a copy of the previously active
@@ -229,15 +238,16 @@ impl ChannelDispatcher {
 
         // Don't bother waking observers if FX_CHANNEL_READABLE was already active.
         if (previous_signals & sys::FX_CHANNEL_READABLE) == 0 {
-            self.base().notify_observers_locked(previous_signals | sys::FX_CHANNEL_READABLE);
+            self.base()
+                .notify_observers_locked(previous_signals | sys::FX_CHANNEL_READABLE);
         }
     }
 
-    fn try_write_to_message_waiter(&self, msg: MessagePacketPtr) -> bool {
+    fn try_write_to_message_waiter(&self, msg: MessagePacketPtr) -> Result<(), MessagePacketPtr> {
         // canary_.Assert();
 
         if self.waiters.is_empty() {
-            return false;
+            return Err(msg);
         }
 
         // If the far side has "call" waiters waiting for replies, see if this message's txid matches one
@@ -245,19 +255,19 @@ impl ChannelDispatcher {
         // checking the list if this message's txid isn't kernel generated.
         let txid = msg.get_txid();
         if !is_kernel_generated_txid(txid) {
-            return false;
+            return Err(msg);
         }
 
-        for waiter in self.waiters {
+        for waiter in self.waiters.iter() {
             // (3C) Deliver message to waiter.
             // Remove waiter from list.
             if waiter.get_txid() == txid {
                 // TODO: self.waiters.erase(waiter);
                 waiter.deliver(msg);
-                return true;
+                return Ok(());
             }
         }
 
-        false
+        Err(msg)
     }
 }

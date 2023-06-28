@@ -19,7 +19,7 @@ fn userboot_init() {
     // handles, which we'll fill in as we create things.
     let result = MessagePacket::create(std::ptr::null(), 0, userboot::HANDLE_COUNT as u16);
     assert!(result.is_ok());
-    let msg = result.unwrap();
+    let mut msg = result.unwrap();
 
     let handles = msg.mutable_handles();
     debug_assert!(msg.num_handles() == userboot::HANDLE_COUNT as u16);
@@ -36,11 +36,11 @@ fn userboot_init() {
     // let vmar = vmar_handle.dispatcher();
     // let vmar_handle_owner = Handle::make( vmar_handle, vmar_rights);
 
-    handles[userboot::PROC_SELF] = *proc_handle_owner; // TODO: release
+    handles[userboot::PROC_SELF] = &*proc_handle_owner; // TODO: release
                                                        // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
 
     // It gets the root job handles.
-    handles[userboot::ROOT_JOB] = *get_job_handle(); // TODO: release
+    handles[userboot::ROOT_JOB] = &*get_job_handle(); // TODO: release
     assert!(handles.get(userboot::ROOT_JOB).is_some());
 
     // TODO: revisit this

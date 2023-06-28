@@ -111,7 +111,7 @@ impl Handle {
         // let handle_addr = gHandleTableArena.arena.Confine(handle_addr);
 
         let handle = unsafe { &*handle_addr };
-        let handle_addr = unsafe { handle_addr as usize };
+        let handle_addr = handle_addr as usize;
 
         conditional_select_spec_eq(handle.base_value() as usize, value as usize, handle_addr, 0) as *const Handle
     }

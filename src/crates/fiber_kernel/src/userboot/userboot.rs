@@ -56,7 +56,7 @@ pub(crate) const ROOT_JOB: usize = 1;
 pub(crate) const HANDLE_COUNT: usize = 3;
 pub(crate) const CHILD_HANDLE_COUNT: usize = HANDLE_COUNT + 5;
 
-fn extract_handles(channel: fx::Channel) -> [sys::fx_handle_t; HANDLE_COUNT] {
+/*fn extract_handles(channel: fx::Channel) -> [sys::fx_handle_t; HANDLE_COUNT] {
     return [0; HANDLE_COUNT];
 }
 
@@ -165,3 +165,4 @@ extern "C" fn start(arg: fx::sys::fx_handle_t) {
     let handle = unsafe { fx::Handle::from_raw(arg) };
     bootstrap(fx::Channel::from_handle(handle));
 }
+*/

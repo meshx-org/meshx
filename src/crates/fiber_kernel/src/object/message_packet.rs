@@ -26,10 +26,9 @@ const fn payload_offset(num_handles: u32) -> u32 {
 pub(crate) struct MessagePacket {
     data_size: usize,
     num_handles: u16,
-    payload_offset: usize,
-    buffer_chain: BufferChain,
     owns_handles: bool,
-    handles: Vec<Handle>,
+    data: Vec<u8>,
+    handles: Vec<*const Handle>,
     // TODO: handles
 }
 
@@ -38,18 +37,11 @@ impl MessagePacket {
     // Create method to create a MessagePacket.  This, in turn, guarantees that
     // when a user creates a MessagePacket, they end up with the proper
     // MessagePacket::UPtr type for managing the message packet's life cycle.
-    fn new(
-        buffer_chain: *const BufferChain,
-        data_size: usize,
-        payload_offset: usize,
-        num_handles: u16,
-        handles: Vec<Handle>,
-    ) -> Self {
+    fn new(data: Vec<u8>, data_size: usize, num_handles: u16, handles: Vec<*const Handle>) -> Self {
         MessagePacket {
-            buffer_chain,
+            data,
             handles,
             data_size,
-            payload_offset,
             num_handles,
             owns_handles: false,
         }
@@ -61,34 +53,20 @@ impl MessagePacket {
     //
     // Returns FX_OK on success.
     fn create_common(data_size: usize, num_handles: u16) -> Result<MessagePacketPtr, sys::fx_status_t> {
-        if data_size > kMaxMessageSize || num_handles > kMaxMessageHandles {
+        if data_size as u32 > MAX_MESSAGE_SIZE || num_handles as u32 > MAX_MESSAGE_HANDLES {
             return Err(sys::FX_ERR_OUT_OF_RANGE);
         }
 
         let payload_offset = payload_offset(num_handles as u32);
 
-        // MessagePackets lives *inside* a list of buffers.  The first buffer holds the MessagePacket
+        // MessagePackets lives *inside* a list of buffers. The first buffer holds the MessagePacket
         // object, followed by its handles (if any), and finally the payload data.
-        let chain = BufferChain::alloc(payload_offset + data_size as u32);
-        if !chain {
-            return Err(sys::FX_ERR_NO_MEMORY);
-        }
-
-        debug_assert!(!chain.buffers().is_empty());
-        chain.skip(payload_offset);
-
-        let data = chain.buffers().front().data();
-        let handles = data + HANDLES_OFFSET;
+        let data = Vec::with_capacity(data_size);
+        let handles = Vec::with_capacity(num_handles as usize);
 
         // Construct the MessagePacket into the first buffer.
         // static_assert(kMaxMessageHandles <= UINT16_MAX, "");
-        let msg = Box::new(MessagePacket::new(
-            chain,
-            data_size,
-            payload_offset,
-            num_handles,
-            handles,
-        ));
+        let msg = Box::new(MessagePacket::new(data, data_size, num_handles, handles));
 
         // The MessagePacket now owns the BufferChain and msg owns the MessagePacket.
         return Ok(msg);
@@ -108,20 +86,19 @@ impl MessagePacket {
             return result;
         }
 
-        let new_msg = result.unwrap();
-        let result = new_msg.buffer_chain.append_kernel(data, data_size);
-
-        if result.is_err() {
-            return result;
-        }
-
-        Ok(new_msg)
+        Ok(result.unwrap())
     }
 
     // Copies the packet's |data_size()| bytes to |buf|.
     // Returns an error if |buf| points to a bad user address.
     pub(crate) fn copy_data_to(&self, buf: &mut [u8]) -> sys::fx_status_t {
-        return self.buffer_chain.CopyOut(buf, self.payload_offset, self.data_size);
+        if buf.len() < self.data_size {
+            return sys::FX_ERR_BUFFER_TOO_SMALL;
+        }
+
+        buf[..self.data_size].copy_from_slice(&self.data[..self.data_size]);
+
+        return sys::FX_OK;
     }
 
     pub(crate) fn data_size(&self) -> usize {
@@ -132,15 +109,15 @@ impl MessagePacket {
         return self.num_handles;
     }
 
-    pub(crate) fn handles(&self) -> *const Handle {
-        self.handles.as_ptr()
+    pub(crate) fn handles(&self) -> &Vec<*const Handle> {
+        self.handles.as_ref()
     }
 
-    pub(crate) fn mutable_handles(&self) -> &mut Vec<Handle> {
+    pub(crate) fn mutable_handles(&mut self) -> &mut Vec<*const Handle> {
         self.handles.as_mut()
     }
 
-    fn set_owns_handles(&self, own_handles: bool) {
+    fn set_owns_handles(&mut self, own_handles: bool) {
         self.owns_handles = own_handles;
     }
 
@@ -152,14 +129,16 @@ impl MessagePacket {
         }
 
         // The first few bytes of the payload are a zx_txid_t.
-        let payload_start = self.buffer_chain.buffers().front().data() + self.payload_offset;
+        let payload_start = self.data.as_ptr();
         return (payload_start) as sys::fx_txid_t;
     }
 
-    pub(crate) fn set_txid(&self, txid: sys::fx_txid_t) {
+    pub(crate) fn set_txid(&mut self, txid: sys::fx_txid_t) {
         if self.data_size >= std::mem::size_of::<sys::fx_txid_t>() {
-            let payload_start = self.buffer_chain.buffers().front().data() + self.payload_offset;
-            *payload_start = txid;
+            let payload_start = self.data.as_mut_ptr();
+            unsafe {
+                *payload_start = txid as u8;
+            }
         }
     }
 }

@@ -1,9 +1,10 @@
+use super::signal_observer::SignalObserver;
 use crate::koid;
 use fiber_sys as sys;
 use std::any::Any;
 use std::rc::Rc;
+use std::sync::{Mutex, RwLock};
 use std::sync::atomic::{fence, AtomicU32, Ordering};
-use super::signal_observer::SignalObserver;
 
 #[derive(Debug)]
 pub(crate) struct BaseDispatcher {
@@ -53,7 +54,7 @@ pub(crate) struct BaseDispatcher {
     signals: AtomicU32, // alias fx_signals_t
 
     // List of observers watching for changes in signals on this dispatcher.
-    observers: Vec<Box<dyn SignalObserver<Test>>>, // TA_GUARDED(get_lock());
+    observers: Mutex<Vec<Box<dyn SignalObserver<Test>>>>, // TA_GUARDED(get_lock());
 }
 
 struct Test {}
@@ -65,7 +66,7 @@ impl BaseDispatcher {
             koid: koid::generate(),
             handle_count: AtomicU32::new(0),
             signals: AtomicU32::new(signals),
-            observers: Vec::new(),
+            observers: Mutex::new(Vec::new()),
         }
     }
 
@@ -115,9 +116,10 @@ impl BaseDispatcher {
     ///
     /// unlike UpdateState and UpdateStateLocked, this method does not modify the stored signal state.
     pub(super) fn notify_observers_locked(&self, signals: sys::fx_signals_t) {
-        let i = 0;
-        
-        for it in self.observers.iter_mut() {
+        let mut i = 0;
+        let mut observers = self.observers.lock().unwrap();
+
+        for it in observers.iter_mut() {
             // Ignore observers that don't need to be notified.
             if (it.get_triggering_signals() & signals) == 0 {
                 i += 1;
@@ -126,14 +128,14 @@ impl BaseDispatcher {
 
             let to_remove = it;
             i += 1;
-            self.observers.remove(i);
+            observers.remove(i);
             to_remove.on_match(signals);
         }
     }
 }
 
 pub(crate) struct PeeredDispatcherBase<T> {
-    pub peer: Option<Rc<T>>,
+    pub peer: Option<Rc<RwLock<T>>>,
     pub peer_koid: Option<sys::fx_koid_t>,
 }
 
@@ -143,8 +145,8 @@ pub(crate) trait TypedDispatcher {
 }
 
 pub(crate) trait PeeredDispatcher: Dispatcher {
-    fn init_peer(&self, peer: Rc<Self>);
-    fn peer(&self) -> &Option<Rc<Self>>;
+    fn init_peer(&mut self, peer: Rc<RwLock<Self>>);
+    fn peer(&self) -> &Option<Rc<RwLock<Self>>>;
 }
 
 pub(crate) trait Dispatcher: Any {

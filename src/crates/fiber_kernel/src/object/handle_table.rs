@@ -173,7 +173,7 @@ impl HandleTable {
 
     // Maps a |handle| to an integer which can be given to usermode as a
     // handle value. Uses Handle->base_value() plus additional mixing.
-    pub(crate) fn map_handle_to_value<T>(&self, handle: *const Handle) -> sys::fx_handle_t {
+    pub(crate) fn map_handle_to_value(&self, handle: *const Handle) -> sys::fx_handle_t {
         unimplemented!()
     }
 
@@ -274,7 +274,7 @@ impl HandleTable {
 
         let handle = unsafe { &*handle };
 
-        let mut rights = handle.rights();
+        let rights = handle.rights();
 
         Ok(handle.dispatcher().clone())
     }
