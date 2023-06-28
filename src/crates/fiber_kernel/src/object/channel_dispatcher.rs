@@ -118,6 +118,10 @@ impl Dispatcher for ChannelDispatcher {
     fn base(&self) -> &BaseDispatcher {
         &self.base
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl PeeredDispatcher for ChannelDispatcher {
@@ -173,7 +177,7 @@ impl ChannelDispatcher {
 
     /// Write to the opposing endpoint's message queue. |owner| is the handle table koid of the process
     /// attempting to write to the channel, or FX_KOID_INVALID if kernel is doing it.
-    pub(crate) fn write(&mut self, owner: sys::fx_koid_t, msg: MessagePacketPtr) -> sys::fx_status_t {
+    pub(crate) fn write(&self, owner: sys::fx_koid_t, msg: MessagePacketPtr) -> sys::fx_status_t {
         // canary_.Assert();
         // Guard<CriticalMutex> guard{get_lock()};
 

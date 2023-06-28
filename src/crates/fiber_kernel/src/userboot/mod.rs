@@ -1,6 +1,6 @@
 mod userboot;
 
-use fiber_rust::sys;
+use fiber_rust::{sys, Process};
 
 use crate::object::{
     get_root_job_dispatcher, get_root_job_handle, start_root_job_observer, ChannelDispatcher, Handle, HandleOwner,
@@ -19,9 +19,8 @@ fn userboot_init() {
     // handles, which we'll fill in as we create things.
     let result = MessagePacket::create(std::ptr::null(), 0, userboot::HANDLE_COUNT as u16);
     assert!(result.is_ok());
-    let mut msg = result.unwrap();
+    let msg = result.unwrap();
 
-    let handles = msg.mutable_handles();
     debug_assert!(msg.num_handles() == userboot::HANDLE_COUNT as u16);
 
     // Create the process.
@@ -31,13 +30,22 @@ fn userboot_init() {
     let (process_handle, process_rights) = result.unwrap();
 
     // It needs its own process and root VMAR handles.
-    let process = process_handle.dispatcher();
+
     let proc_handle_owner = Handle::make(process_handle, process_rights);
+    let process = proc_handle_owner
+        .dispatcher()
+        .as_any()
+        .downcast_ref::<ProcessDispatcher>()
+        .unwrap();
+
     // let vmar = vmar_handle.dispatcher();
     // let vmar_handle_owner = Handle::make( vmar_handle, vmar_rights);
 
+    let mut msg = msg;
+    let handles = msg.mutable_handles();
+
     handles[userboot::PROC_SELF] = &*proc_handle_owner; // TODO: release
-                                                       // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
+                                                        // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
 
     // It gets the root job handles.
     handles[userboot::ROOT_JOB] = &*get_job_handle(); // TODO: release
@@ -63,10 +71,12 @@ fn userboot_init() {
 
     let result = ChannelDispatcher::create();
     assert!(result.is_ok());
-    let (user_handle, kernel_handle, channel_rights) = result.unwrap();
+    let (user_handle, channel_handle, channel_rights) = result.unwrap();
+
+    let channel_dispatcher = channel_handle.dispatcher();
 
     // Transfer it in.
-    let status = kernel_handle.dispatcher().write(sys::FX_KOID_INVALID, msg);
+    let status = channel_dispatcher.write(sys::FX_KOID_INVALID, msg);
     assert!(status == sys::FX_OK);
 
     // Inject the user-side channel handle into the process.

@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::{any::Any, sync::RwLock};
 use std::collections::VecDeque;
 use std::mem::size_of;
 use std::rc::Rc;
@@ -149,14 +149,17 @@ pub(crate) const HANDLE_TABLE: Lazy<HandleTableArena> = Lazy::new(|| HandleTable
     arena: Arena::with_capacity(size_of::<Handle>() * MAX_HANDLE_COUNT as usize),
 });
 
-struct LockedState {}
-
 #[derive(Debug)]
-pub struct HandleTable {
+struct GuardedState {
     // The actual handle table.  When removing one or more handles from this list, be sure to
     // advance or invalidate any cursors that might point to the handles being removed.
     count: u32,                      // TA_GUARDED(lock_) = 0;
     handles: VecDeque<Box<dyn Any>>, //TA_GUARDED(lock_);
+}
+
+#[derive(Debug)]
+pub struct HandleTable {
+    guarded: RwLock<GuardedState>,
 
     // The containing ProcessDispatcher.
     process: *const ProcessDispatcher,
@@ -165,9 +168,11 @@ pub struct HandleTable {
 impl HandleTable {
     pub(super) fn new(process: *const ProcessDispatcher) -> Self {
         HandleTable {
-            count: 0,
-            handles: VecDeque::new(),
             process,
+            guarded: RwLock::new(GuardedState {
+                count: 0,
+                handles: VecDeque::new(),
+            }),
         }
     }
 
@@ -183,7 +188,7 @@ impl HandleTable {
 
     // Returns the number of outstanding handles in this handle table.
     pub(crate) fn handle_count(&self) -> u32 {
-        self.count
+        self.guarded.read().unwrap().count
     }
 
     pub(crate) fn is_handle_valid(&self, handle_value: sys::fx_handle_t) -> bool {
@@ -194,17 +199,20 @@ impl HandleTable {
         unimplemented!()
     }
 
-    pub(crate) fn add_handle(&mut self, handle: HandleOwner) {
+    pub(crate) fn add_handle(&self, handle: HandleOwner) {
         //Guard<BrwLockPi, BrwLockPi::Writer> guard{&lock_};
         self.add_handle_locked(handle);
     }
 
-    pub(crate) fn add_handle_locked(&mut self, handle: HandleOwner) {
+    pub(crate) fn add_handle_locked(&self, handle: HandleOwner) {
         // NOTE: We need to use unsafe and raw pointer here to access the parent so we can avoid circular dependency issues.
         let koid = unsafe { (*self.process).get_koid() };
         handle.set_process_id(koid);
-        self.handles.push_front(handle);
-        self.count += 1;
+        
+        let mut guarded = self.guarded.write().unwrap();
+
+        guarded.handles.push_front(handle);
+        guarded.count += 1;
     }
 
     /*fn get_handle_locked<T>(&self, handle_value: sys::fx_handle_t, skip_policy: bool) -> *const Handle<T> {

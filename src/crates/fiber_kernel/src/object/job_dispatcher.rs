@@ -1,6 +1,6 @@
 use fiber_sys as sys;
 
-use std::cell::RefCell;
+use std::{cell::RefCell, any::Any};
 use std::rc::Rc;
 
 use super::Handle;
@@ -82,6 +82,10 @@ impl Dispatcher for JobDispatcher {
 
     fn base(&self) -> &BaseDispatcher {
         &self.base
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

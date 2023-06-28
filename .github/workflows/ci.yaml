@@ -23,13 +23,16 @@ jobs:
                   fetch-depth: 0
 
             - uses: nrwl/nx-set-shas@v3
-            - uses: actions-rs/toolchain@v1
+
+            - name: Setup Rust toolchain
+              uses: actions-rs/toolchain@v1
               with:
                   toolchain: nightly
                   override: true
                   # components: rustfmt, clippy
 
-            - run: npm ci
+            - name: Install depenedencies
+              run: npm ci
 
             - run: npx nx format:check
             - run: npx nx affected --target=lint --parallel=3

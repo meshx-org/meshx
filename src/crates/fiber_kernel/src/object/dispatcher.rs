@@ -3,13 +3,21 @@ use crate::koid;
 use fiber_sys as sys;
 use std::any::Any;
 use std::rc::Rc;
-use std::sync::{Mutex, RwLock};
 use std::sync::atomic::{fence, AtomicU32, Ordering};
+use std::sync::{Mutex, RwLock};
+
+#[derive(Debug)]
+struct BaseDispatcherInner {
+    // List of observers watching for changes in signals on this dispatcher.
+    observers: Vec<Box<dyn SignalObserver<Test>>>, // TA_GUARDED(get_lock());
+}
 
 #[derive(Debug)]
 pub(crate) struct BaseDispatcher {
     koid: sys::fx_koid_t,
     handle_count: AtomicU32,
+
+    inner: RwLock<BaseDispatcherInner>,
 
     // |signals| is the set of currently active signals.
     //
@@ -52,9 +60,6 @@ pub(crate) struct BaseDispatcher {
     // In the example above, T1's ASSERT may fire if PollSignals or ClearSignals were to use relaxed
     // memory order for accessing signals_.
     signals: AtomicU32, // alias fx_signals_t
-
-    // List of observers watching for changes in signals on this dispatcher.
-    observers: Mutex<Vec<Box<dyn SignalObserver<Test>>>>, // TA_GUARDED(get_lock());
 }
 
 struct Test {}
@@ -66,7 +71,7 @@ impl BaseDispatcher {
             koid: koid::generate(),
             handle_count: AtomicU32::new(0),
             signals: AtomicU32::new(signals),
-            observers: Mutex::new(Vec::new()),
+            inner: RwLock::new(BaseDispatcherInner { observers: Vec::new() }),
         }
     }
 
@@ -117,9 +122,9 @@ impl BaseDispatcher {
     /// unlike UpdateState and UpdateStateLocked, this method does not modify the stored signal state.
     pub(super) fn notify_observers_locked(&self, signals: sys::fx_signals_t) {
         let mut i = 0;
-        let mut observers = self.observers.lock().unwrap();
+        let read_lock = self.inner.read().unwrap();
 
-        for it in observers.iter_mut() {
+        for it in read_lock.observers.iter() {
             // Ignore observers that don't need to be notified.
             if (it.get_triggering_signals() & signals) == 0 {
                 i += 1;
@@ -128,7 +133,9 @@ impl BaseDispatcher {
 
             let to_remove = it;
             i += 1;
-            observers.remove(i);
+
+            let mut write_lock = self.inner.write().unwrap();
+            write_lock.observers.remove(i);
             to_remove.on_match(signals);
         }
     }
@@ -150,6 +157,8 @@ pub(crate) trait PeeredDispatcher: Dispatcher {
 }
 
 pub(crate) trait Dispatcher: Any {
+    fn as_any(&self) -> &dyn Any;
+
     fn get_koid(&self) -> sys::fx_koid_t;
     fn get_related_koid(&self) -> sys::fx_koid_t;
 

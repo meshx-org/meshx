@@ -6,7 +6,7 @@
                 initial_mutability, handle, rights);
 }*/
 
-use std::rc::Rc;
+use std::{any::Any, rc::Rc};
 
 use super::{BaseDispatcher, Dispatcher, KernelHandle, TypedDispatcher};
 use fiber_sys as sys;
@@ -27,6 +27,10 @@ impl Dispatcher for VMODispatcher {
 
     fn base(&self) -> &super::BaseDispatcher {
         &self.base
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 

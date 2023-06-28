@@ -148,7 +148,7 @@ impl Handle {
 
     /// Returns the Dispatcher to which this instance points.
     pub(crate) fn dispatcher(&self) -> &Rc<dyn Dispatcher> {
-        return &self.dispatcher;
+         &self.dispatcher
     }
 
     /// Returns the process that owns this instance. Used to guarantee

@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::rc::Rc;
 
 use crate::object::{
@@ -37,6 +38,10 @@ impl Dispatcher for ProcessDispatcher {
 
     fn base(&self) -> &super::BaseDispatcher {
         &self.base
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
