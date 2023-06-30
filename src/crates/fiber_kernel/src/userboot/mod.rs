@@ -1,20 +1,24 @@
 mod userboot;
-
 use fiber_rust::{sys, Process};
 
-use crate::object::{
-    get_root_job_dispatcher, get_root_job_handle, start_root_job_observer, ChannelDispatcher, Handle, HandleOwner,
-    JobDispatcher, MessagePacket, ProcessDispatcher, TypedDispatcher,
+use crate::{
+    object::{
+        ChannelDispatcher, GenericDispatcher, Handle, HandleOwner, JobDispatcher, MessagePacket, ProcessDispatcher,
+        TypedDispatcher,
+    },
+    Kernel,
 };
 
-fn get_job_handle() -> HandleOwner {
-    Handle::dup(get_root_job_handle(), JobDispatcher::default_rights())
+fn get_job_handle(kernel: &Kernel) -> HandleOwner {
+    Handle::dup(kernel.get_root_job_handle(), JobDispatcher::default_rights())
 }
 
 // KCOUNTER(timeline_userboot, "boot.timeline.userboot")
 // KCOUNTER(init_time, "init.userboot.time.msec")
 
-fn userboot_init() {
+pub fn userboot_init(kernel: &Kernel) {
+    log::info!("userboot_init()");
+
     // Prepare the bootstrap message packet. This allocates space for its
     // handles, which we'll fill in as we create things.
     let result = MessagePacket::create(std::ptr::null(), 0, userboot::HANDLE_COUNT as u16);
@@ -23,20 +27,18 @@ fn userboot_init() {
 
     debug_assert!(msg.num_handles() == userboot::HANDLE_COUNT as u16);
 
+    log::debug!("userboot_init: msg={:?}", msg);
+
     // Create the process.
     // let vmar_handle:  KernelHandle<VmAddressRegionDispatcher> ;
-    let result = ProcessDispatcher::create(get_root_job_dispatcher(), "userboot".to_owned(), 0);
+    let result = ProcessDispatcher::create(kernel.get_root_job_dispatcher(), "userboot".to_owned(), 0);
     assert!(result.is_ok());
     let (process_handle, process_rights) = result.unwrap();
 
     // It needs its own process and root VMAR handles.
 
     let proc_handle_owner = Handle::make(process_handle, process_rights);
-    let process = proc_handle_owner
-        .dispatcher()
-        .as_any()
-        .downcast_ref::<ProcessDispatcher>()
-        .unwrap();
+    let process = proc_handle_owner.dispatcher().as_process_dispatcher().unwrap();
 
     // let vmar = vmar_handle.dispatcher();
     // let vmar_handle_owner = Handle::make( vmar_handle, vmar_rights);
@@ -44,11 +46,12 @@ fn userboot_init() {
     let mut msg = msg;
     let handles = msg.mutable_handles();
 
-    handles[userboot::PROC_SELF] = &*proc_handle_owner; // TODO: release
-                                                        // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
+
+    handles[userboot::PROC_SELF] = Some(*proc_handle_owner); // TODO: release
+                                                       // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
 
     // It gets the root job handles.
-    handles[userboot::ROOT_JOB] = &*get_job_handle(); // TODO: release
+    handles[userboot::ROOT_JOB] = Some(*get_job_handle(kernel)); // TODO: release
     assert!(handles.get(userboot::ROOT_JOB).is_some());
 
     // TODO: revisit this
@@ -73,7 +76,7 @@ fn userboot_init() {
     assert!(result.is_ok());
     let (user_handle, channel_handle, channel_rights) = result.unwrap();
 
-    let channel_dispatcher = channel_handle.dispatcher();
+    let channel_dispatcher = channel_handle.dispatcher().as_channel_dispatcher().unwrap();
 
     // Transfer it in.
     let status = channel_dispatcher.write(sys::FX_KOID_INVALID, msg);
@@ -108,7 +111,7 @@ fn userboot_init() {
     // ASSERT(status == ZX_OK);
 
     // Create a root job observer, restarting the system if the root job becomes childless.
-    start_root_job_observer();
+    kernel.start_root_job_observer();
 
     // FIXME: dprintf(SPEW, "userboot: %-23s @ %#" PRIxPTR "\n", "entry point", entry);
 

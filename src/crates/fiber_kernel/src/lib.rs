@@ -1,23 +1,37 @@
 #![feature(trait_upcasting)]
+#![feature(local_key_cell_methods)]
 
 // Copyright 2023 MeshX Contributors. All rights reserved.
 pub mod koid;
+pub mod userboot;
 
-mod userboot;
 mod object;
 mod process_context;
 
 use log::trace;
-use std::rc::Rc;
-use std::{fmt, sync::Arc};
+use object::HandleOwner;
+use once_cell::sync::OnceCell;
+use process_context::process_scope;
+use std::{cell::Cell, fmt, sync::Arc};
 
 use fiber_sys as sys;
 
-use crate::object::{Handle, JobDispatcher, JobPolicy, ProcessDispatcher};
+use crate::object::{
+    GenericDispatcher, Handle, JobDispatcher, JobPolicy, KernelHandle, ProcessDispatcher, RootJobObserver,
+    TypedDispatcher,
+};
 
 pub struct Kernel {
     cb: fn(&object::ProcessObject),
     boot_process: Option<Arc<dyn Fn() + Send + Sync>>,
+
+    // All jobs and processes of this Kernel are rooted at this job.
+    root_job: Option<Arc<JobDispatcher>>,
+    root_job_handle: Option<HandleOwner>,
+
+    // Watch the root job, taking action (such as a system reboot) if it ends up
+    // with no children.
+    root_job_observer: OnceCell<RootJobObserver>,
 }
 
 impl fmt::Debug for Kernel {
@@ -104,7 +118,7 @@ impl fiber_sys::System for Kernel {
             return status;
         }
 
-        let parent_job = result.unwrap();
+        let parent_job = result.unwrap().as_job_dispatcher().unwrap();
 
         // create a new process dispatcher
         let result = ProcessDispatcher::create(parent_job, name, options);
@@ -140,7 +154,7 @@ impl fiber_sys::System for Kernel {
             return status;
         }
 
-        let process: Rc<ProcessDispatcher> = result.unwrap();
+        let process = result.unwrap();
 
         // (self.cb)(&ProcessObject(KernelObject));
 
@@ -175,7 +189,7 @@ impl fiber_sys::System for Kernel {
             return status;
         }
 
-        let parent_job = result.unwrap();
+        let parent_job = result.unwrap().as_job_dispatcher().unwrap();
 
         let (status, handle, rights) = JobDispatcher::create(parent_job, options);
 
@@ -357,40 +371,79 @@ impl fiber_sys::System for Kernel {
     }
 }
 
-#[inline]
-pub(crate) fn process_scope<F: Send + Sync + 'static>(f: F, process: Rc<ProcessDispatcher>)
-where
-    F: Fn(),
-{
-    trace!("enter process scope");
-
-    // Make sure to save the guard, see documentation for more information
-    let _guard = process_context::ScopeGuard::new(process_context::Context { process });
-
-    f();
-}
-
 type OnProcessStartHook = fn(&object::ProcessObject);
-
-
 
 impl Kernel {
     pub fn new(on_process_start_cb: OnProcessStartHook) -> Self {
         Self {
             cb: on_process_start_cb,
             boot_process: None,
+
+            root_job: None,
+            root_job_handle: None,
+            root_job_observer: OnceCell::new(),
         }
+    }
+
+    pub fn init(&mut self) {
+        // Create root job.
+        let root_job = JobDispatcher::create_root_job();
+        self.root_job = Some(root_job.clone());
+
+        //if constexpr (KERNEL_BASED_MEMORY_ATTRIBUTION) {
+        //    // Insert the kernel's attribution object as a child of the root job.
+        //    fbl::RefPtr<AttributionObject> kernel = AttributionObject::GetKernelAttribution();
+        //    kernel->AddToGlobalListWithKoid(root_job_->attribution_objects_end(), ZX_KOID_INVALID);
+        //}
+
+        // Create handle.
+        self.root_job_handle = Some(Handle::make::<JobDispatcher>(
+            KernelHandle::new(GenericDispatcher::JobDispatcher(root_job)),
+            JobDispatcher::default_rights(),
+        ));
+
+        assert!(self.root_job_handle.is_some());
+    }
+
+    // Returns the job that is the ancestor of all other tasks.
+    pub(crate) fn get_root_job_dispatcher(&self) -> Arc<JobDispatcher> {
+        debug_assert!(self.root_job.is_some());
+
+        self.root_job.as_ref().unwrap().clone()
+    }
+
+    pub(crate) fn get_root_job_handle(&self) -> &Box<Handle> {
+        self.root_job_handle.as_ref().unwrap()
+    }
+
+    /// Start the RootJobObserver. Must be called after the root job has at
+    /// least one child process or child job.
+    pub(crate) fn start_root_job_observer(&self) {
+        assert!(self.root_job_observer.get().is_some());
+        debug_assert!(self.root_job.is_some());
+
+        self.root_job_observer
+            .set(RootJobObserver::new(
+                self.root_job.clone().unwrap(), /*,self.root_job_handle.get()*/
+            ))
+            .unwrap();
+
+        //if !ac.check() {
+        //    panic!("root-job: failed to allocate observer\n");
+        //}
+
+        // Initialize the memory watchdog.
+        // self.memory_watchdog_.Init(this);
     }
 
     pub fn register_boot_process<F>(&mut self, f: F)
     where
         F: Fn() + Send + Sync + 'static,
     {
-        let process = ProcessDispatcher::create(Rc::from(JobDispatcher::new(0, None, JobPolicy)), String::from(""), 0)
+        let process = ProcessDispatcher::create(JobDispatcher::new(0, None, JobPolicy), String::from(""), 0)
             .unwrap()
             .0
-            .dispatcher()
-            .clone();
+            .dispatcher();
 
         self.boot_process = Some(Arc::new(f));
     }
@@ -399,16 +452,17 @@ impl Kernel {
         let refer = self.boot_process.clone();
 
         // TODO: do not create a process here, but use the current process
-        let process = ProcessDispatcher::create(Rc::from(JobDispatcher::new(0, None, JobPolicy)), String::from(""), 0)
+        let dispatcher = ProcessDispatcher::create(JobDispatcher::new(0, None, JobPolicy), String::from(""), 0)
             .unwrap()
             .0
-            .dispatcher()
-            .clone();
+            .dispatcher();
+
+        let process = dispatcher.as_process_dispatcher().unwrap();
 
         process_scope(
             move || {
-                let process = refer.as_ref().unwrap();
-                process()
+                let entry = refer.as_ref().unwrap();
+                entry()
             },
             process,
         );

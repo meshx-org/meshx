@@ -1,11 +1,14 @@
 use std::any::Any;
 use std::rc::Rc;
+use std::sync::Arc;
 
 use crate::object::{
     BaseDispatcher, Dispatcher, HandleTable, JobDispatcher, JobPolicy, KernelHandle, TypedDispatcher, VMODispatcher,
 };
-use crate::process_context::with_context;
+use crate::process_context::{with_context, get_last_process};
 use fiber_sys as sys;
+
+use super::GenericDispatcher;
 
 // state of the process
 #[derive(Debug, PartialEq)]
@@ -21,7 +24,7 @@ pub(crate) struct ProcessDispatcher {
     base: BaseDispatcher,
     handle_table: Option<HandleTable>,
     name: String,
-    job: Rc<JobDispatcher>,
+    job: Arc<JobDispatcher>,
     policy: JobPolicy,
     state: State,
 }
@@ -39,10 +42,6 @@ impl Dispatcher for ProcessDispatcher {
     fn base(&self) -> &super::BaseDispatcher {
         &self.base
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 impl TypedDispatcher for ProcessDispatcher {
@@ -56,7 +55,9 @@ impl TypedDispatcher for ProcessDispatcher {
 }
 
 impl ProcessDispatcher {
-    fn new(job: Rc<JobDispatcher>, name: String, flags: u32) -> Rc<ProcessDispatcher> {
+    fn new(job: Arc<JobDispatcher>, name: String, flags: u32) -> Arc<ProcessDispatcher> {
+        log::debug!("ProcessDispatcher::new({:?})", name);
+
         let mut new_process = ProcessDispatcher {
             base: BaseDispatcher::new(0),
             job: job.clone(),
@@ -66,30 +67,39 @@ impl ProcessDispatcher {
             state: State::INITIAL,
         };
 
-        let handle_table = HandleTable::new(&new_process as *const ProcessDispatcher);
+        let handle_table = HandleTable::new(&new_process);
         new_process.handle_table = Some(handle_table);
 
         //  kcounter_add(dispatcher_process_create_count, 1);
-        Rc::new(new_process)
+        Arc::from(new_process)
     }
 
     pub(crate) fn create(
-        parent_job: Rc<JobDispatcher>,
+        parent_job: Arc<JobDispatcher>,
         name: String,
         flags: u32,
     ) -> Result<(KernelHandle<ProcessDispatcher>, sys::fx_rights_t), sys::fx_status_t> {
-        let handle = KernelHandle {
-            dispatcher: ProcessDispatcher::new(parent_job.clone(), name.clone(), flags),
+        let handle = KernelHandle::new(GenericDispatcher::ProcessDispatcher(ProcessDispatcher::new(
+            parent_job.clone(),
+            name.clone(),
+            flags,
+        )));
+
+        let process_dispatcher = match handle.dispatcher() {
+            GenericDispatcher::ProcessDispatcher(handle) => handle,
+            _ => panic!("Wrong dispatcher type"),
         };
 
-        let status = handle.dispatcher().init();
+        let status = process_dispatcher.init();
         if status != sys::FX_OK {
             return Err(status);
         }
 
+        let child_process = handle.dispatcher().as_process_dispatcher().unwrap();
+
         // Only now that the process has been fully created and initialized can we register it with its
         // parent job. We don't want anyone to see it in a partially initalized state.
-        if !parent_job.add_child_process(handle.dispatcher()) {
+        if !parent_job.add_child_process(&child_process) {
             return Err(sys::FX_ERR_BAD_STATE);
         }
 
@@ -113,8 +123,10 @@ impl ProcessDispatcher {
         return sys::FX_OK;
     }
 
-    pub(crate) fn get_current() -> Rc<ProcessDispatcher> {
-        with_context(|context| context.process.clone())
+    pub(crate) fn get_current() -> Arc<ProcessDispatcher> {
+        log::trace!("ProcessDispatcher::get_current()");
+
+        get_last_process()
     }
 
     pub(crate) fn handle_table(&self) -> &HandleTable {

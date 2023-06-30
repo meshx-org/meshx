@@ -1,10 +1,12 @@
 use std::rc::Rc;
+use std::sync::Arc;
 use std::{any::Any, sync::RwLock};
 
 use fiber_sys as sys;
 
 use super::{
-    BaseDispatcher, Dispatcher, KernelHandle, MessagePacketPtr, PeeredDispatcher, PeeredDispatcherBase, TypedDispatcher,
+    BaseDispatcher, Dispatcher, GenericDispatcher, KernelHandle, MessagePacketPtr, PeerHolder, PeeredDispatcher,
+    PeeredDispatcherBase, TypedDispatcher,
 };
 
 // This value is part of the zx_channel_call contract.
@@ -24,8 +26,9 @@ fn is_kernel_generated_txid(txid: sys::fx_txid_t) -> bool {
 // only transitions to nullptr while holding the ChannelDispatcher's lock.
 //
 // See also: comments in ChannelDispatcher::Call()
+#[derive(Debug)]
 struct MessageWaiter {
-    channel: Option<Rc<ChannelDispatcher>>,
+    channel: Option<Arc<ChannelDispatcher>>,
     msg: Option<MessagePacketPtr>,
 
     // TODO(teisenbe/swetland): Investigate hoisting this outside to reduce
@@ -63,7 +66,7 @@ impl MessageWaiter {
         unimplemented!()
     }
 
-    fn get_channel(&self) -> Option<Rc<ChannelDispatcher>> {
+    fn get_channel(&self) -> Option<Arc<ChannelDispatcher>> {
         self.channel.clone()
     }
 
@@ -76,6 +79,7 @@ impl MessageWaiter {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct ChannelDispatcher {
     base: BaseDispatcher,
     peered_base: PeeredDispatcherBase<ChannelDispatcher>,
@@ -118,10 +122,6 @@ impl Dispatcher for ChannelDispatcher {
     fn base(&self) -> &BaseDispatcher {
         &self.base
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 impl PeeredDispatcher for ChannelDispatcher {
@@ -131,7 +131,7 @@ impl PeeredDispatcher for ChannelDispatcher {
     /// initialization, prior to any other thread obtaining a reference to the object.  These
     /// constraints allow for an optimization where fields are accessed without acquiring the lock,
     /// hence the TA_NO_THREAD_SAFETY_ANALYSIS annotation.
-    fn init_peer(&mut self, peer: Rc<RwLock<Self>>) {
+    fn init_peer(&mut self, peer: Arc<RwLock<Self>>) {
         debug_assert!(self.peered_base.peer.is_none());
         debug_assert!(self.peered_base.peer_koid == Some(sys::FX_KOID_INVALID));
 
@@ -143,7 +143,7 @@ impl PeeredDispatcher for ChannelDispatcher {
         self.peered_base.peer = Some(peer);
     }
 
-    fn peer(&self) -> &Option<Rc<RwLock<Self>>> {
+    fn peer(&self) -> &Option<Arc<RwLock<Self>>> {
         &self.peered_base.peer
     }
 }
@@ -167,8 +167,48 @@ impl ChannelDispatcher {
         ),
         sys::fx_status_t,
     > {
-        unimplemented!()
+        let holder0: Arc<PeerHolder<ChannelDispatcher>> = Arc::new(PeerHolder::new());
+        let holder1 = holder0.clone();
+
+        let new_kernel_handle0 =
+            KernelHandle::new(GenericDispatcher::ChannelDispatcher(ChannelDispatcher::new(holder0)));
+        let new_kernel_handle1 =
+            KernelHandle::new(GenericDispatcher::ChannelDispatcher(ChannelDispatcher::new(holder1)));
+
+        let new_handle0 = new_kernel_handle0.dispatcher().as_channel_dispatcher().unwrap();
+        let new_handle1 = new_kernel_handle1.dispatcher().as_channel_dispatcher().unwrap();
+
+        //new_handle0.init(new_handle1);
+        //new_handle1.init(new_handle0);
+
+        let rights = ChannelDispatcher::default_rights();
+        let handle0 = new_handle0;
+        let handle1 = new_handle1;
+
+        Ok((new_kernel_handle0, new_kernel_handle1, rights))
     }
+
+    fn new(peer: Arc<PeerHolder<ChannelDispatcher>>) -> Arc<Self> {
+        let mut channel = Arc::new(ChannelDispatcher {
+            base: BaseDispatcher::new(0),
+            peered_base: PeeredDispatcherBase::new(peer),
+            waiters: Vec::new(),
+            messages: Vec::new(),
+            max_message_count: 0,
+            owner: sys::FX_KOID_INVALID,
+            txid: 0,
+            peer_has_closed: false,
+        });
+
+        channel
+    }
+
+    // This is called before either ChannelDispatcher is accessible from threads other than the one
+    // initializing the channel, so it does not need locking
+    //fn init(&self, other: Arc<ChannelDispatcher>) {
+    //    self.peered_base.peer = Some(other);
+    //    self.peered_base.peer_koid = self.peered_base.peer.get_koid();
+    //}
 
     /// Generate a unique txid to be used in a channel call.
     fn generate_txid() -> sys::fx_txid_t {

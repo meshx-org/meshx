@@ -1,15 +1,20 @@
+// Copyright 2016 The Fuchsia Authors
+//
+// Use of this source code is governed by a MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT
+
 use super::signal_observer::SignalObserver;
 use crate::koid;
 use fiber_sys as sys;
-use std::any::Any;
-use std::rc::Rc;
+use std::marker::PhantomData;
 use std::sync::atomic::{fence, AtomicU32, Ordering};
-use std::sync::{Mutex, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Debug)]
-struct BaseDispatcherInner {
+struct GuardedDispatcherState {
     // List of observers watching for changes in signals on this dispatcher.
-    observers: Vec<Box<dyn SignalObserver<Test>>>, // TA_GUARDED(get_lock());
+    observers: Vec<Box<dyn SignalObserver + Send + Sync>>,
 }
 
 #[derive(Debug)]
@@ -17,7 +22,7 @@ pub(crate) struct BaseDispatcher {
     koid: sys::fx_koid_t,
     handle_count: AtomicU32,
 
-    inner: RwLock<BaseDispatcherInner>,
+    guarded: RwLock<GuardedDispatcherState>, // TA_GUARDED(get_lock());
 
     // |signals| is the set of currently active signals.
     //
@@ -62,8 +67,6 @@ pub(crate) struct BaseDispatcher {
     signals: AtomicU32, // alias fx_signals_t
 }
 
-struct Test {}
-
 impl BaseDispatcher {
     pub(super) fn new(signals: sys::fx_signals_t) -> Self {
         // kcounter_add(dispatcher_create_count, 1);
@@ -71,7 +74,7 @@ impl BaseDispatcher {
             koid: koid::generate(),
             handle_count: AtomicU32::new(0),
             signals: AtomicU32::new(signals),
-            inner: RwLock::new(BaseDispatcherInner { observers: Vec::new() }),
+            guarded: RwLock::new(GuardedDispatcherState { observers: Vec::new() }),
         }
     }
 
@@ -122,7 +125,7 @@ impl BaseDispatcher {
     /// unlike UpdateState and UpdateStateLocked, this method does not modify the stored signal state.
     pub(super) fn notify_observers_locked(&self, signals: sys::fx_signals_t) {
         let mut i = 0;
-        let read_lock = self.inner.read().unwrap();
+        let read_lock = self.guarded.read().unwrap();
 
         for it in read_lock.observers.iter() {
             // Ignore observers that don't need to be notified.
@@ -134,16 +137,76 @@ impl BaseDispatcher {
             let to_remove = it;
             i += 1;
 
-            let mut write_lock = self.inner.write().unwrap();
+            let mut write_lock = self.guarded.write().unwrap();
             write_lock.observers.remove(i);
             to_remove.on_match(signals);
         }
     }
 }
 
+// PeeredDispatchers have opposing endpoints to coordinate state
+// with. For example, writing into one endpoint of a Channel needs to
+// modify zx_signals_t state (for the readability bit) on the opposite
+// side. To coordinate their state, they share a mutex, which is held
+// by the PeerHolder. Both endpoints have a RefPtr back to the
+// PeerHolder; no one else ever does.
+// Thus creating a pair of peered objects will typically look
+// something like
+//     // Make the two RefPtrs for each endpoint's handle to the mutex.
+//     auto holder0 = AdoptRef(new PeerHolder<Foo>(...));
+//     auto holder1 = peer_holder0;
+//     // Create the opposing sides.
+//     auto foo0 = AdoptRef(new Foo(ktl::move(holder0, ...));
+//     auto foo1 = AdoptRef(new Foo(ktl::move(holder1, ...));
+//     // Initialize the opposing sides, teaching them about each other.
+//     foo0->Init(&foo1);
+//     foo1->Init(&foo0);
+// A PeeredDispatcher object, in its |on_zero_handles| call must clear
+// out its peer's |peer_| field. This is needed to avoid leaks, and to
+// ensure that |user_signal| can correctly report ZX_ERR_PEER_CLOSED.
+// TODO(kulakowski) We should investigate turning this into one
+// allocation. This would mean PeerHolder would have two EndPoint
+// members, and that PeeredDispatcher would have custom refcounting.
+#[derive(Debug)]
+pub(crate) struct PeerHolder<T> {
+    phantom: PhantomData<T>,
+    mutex: Mutex<()>,
+}
+
+impl<T> PeerHolder<T> {
+    pub(crate) fn new() -> Self {
+        PeerHolder {
+            phantom: PhantomData,
+            mutex: Mutex::new(()),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct PeeredDispatcherBase<T> {
-    pub peer: Option<Rc<RwLock<T>>>,
+    holder: Arc<PeerHolder<T>>,
+
+    pub peer: Option<Arc<RwLock<T>>>,
     pub peer_koid: Option<sys::fx_koid_t>,
+}
+
+impl<T> PeeredDispatcherBase<T> {
+    pub(super) fn new(holder: Arc<PeerHolder<T>>) -> Self {
+        PeeredDispatcherBase {
+            holder,
+            peer: None,
+            peer_koid: None,
+        }
+    }
+
+    //pub(crate) fn init_peer(&mut self, peer: Arc<RwLock<T>>) {
+    //    self.peer = Some(peer);
+    //    self.peer_koid = Some(peer.read().unwrap().get_koid());
+    //}
+
+    pub(crate) fn peer(&self) -> &Option<Arc<RwLock<T>>> {
+        &self.peer
+    }
 }
 
 pub(crate) trait TypedDispatcher {
@@ -152,13 +215,11 @@ pub(crate) trait TypedDispatcher {
 }
 
 pub(crate) trait PeeredDispatcher: Dispatcher {
-    fn init_peer(&mut self, peer: Rc<RwLock<Self>>);
-    fn peer(&self) -> &Option<Rc<RwLock<Self>>>;
+    fn init_peer(&mut self, peer: Arc<RwLock<Self>>);
+    fn peer(&self) -> &Option<Arc<RwLock<Self>>>;
 }
 
-pub(crate) trait Dispatcher: Any {
-    fn as_any(&self) -> &dyn Any;
-
+pub(crate) trait Dispatcher: Send + Sync {
     fn get_koid(&self) -> sys::fx_koid_t;
     fn get_related_koid(&self) -> sys::fx_koid_t;
 

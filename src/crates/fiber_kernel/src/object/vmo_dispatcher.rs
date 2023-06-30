@@ -6,7 +6,7 @@
                 initial_mutability, handle, rights);
 }*/
 
-use std::{any::Any, rc::Rc};
+use std::{any::Any, sync::Arc};
 
 use super::{BaseDispatcher, Dispatcher, KernelHandle, TypedDispatcher};
 use fiber_sys as sys;
@@ -28,10 +28,6 @@ impl Dispatcher for VMODispatcher {
     fn base(&self) -> &super::BaseDispatcher {
         &self.base
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 impl TypedDispatcher for VMODispatcher {
@@ -46,15 +42,13 @@ impl TypedDispatcher for VMODispatcher {
 
 impl VMODispatcher {
     pub fn create() -> (sys::fx_status_t, Option<KernelHandle<VMODispatcher>>, sys::fx_rights_t) {
-        let new_handle = KernelHandle {
-            dispatcher: VMODispatcher::new().into(),
-        };
+        let new_handle = KernelHandle::new(super::GenericDispatcher::VMODispatcher(VMODispatcher::new().into()));
 
         (sys::FX_OK, Some(new_handle), VMODispatcher::default_rights())
     }
 
-    pub fn new() -> Rc<VMODispatcher> {
-        Rc::new(VMODispatcher {
+    pub fn new() -> Arc<VMODispatcher> {
+        Arc::new(VMODispatcher {
             base: BaseDispatcher::new(sys::FX_VMO_ZERO_CHILDREN),
         })
     }

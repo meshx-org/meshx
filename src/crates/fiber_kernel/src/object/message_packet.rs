@@ -23,13 +23,13 @@ const fn payload_offset(num_handles: u32) -> u32 {
     return HANDLES_OFFSET + num_handles * std::mem::size_of::<*const Handle>() as u32;
 }
 
+#[derive(Debug)]
 pub(crate) struct MessagePacket {
     data_size: usize,
     num_handles: u16,
     owns_handles: bool,
     data: Vec<u8>,
-    handles: Vec<*const Handle>,
-    // TODO: handles
+    handles: Vec<Option<Handle>>,
 }
 
 impl MessagePacket {
@@ -37,7 +37,7 @@ impl MessagePacket {
     // Create method to create a MessagePacket.  This, in turn, guarantees that
     // when a user creates a MessagePacket, they end up with the proper
     // MessagePacket::UPtr type for managing the message packet's life cycle.
-    fn new(data: Vec<u8>, data_size: usize, num_handles: u16, handles: Vec<*const Handle>) -> Self {
+    fn new(data: Vec<u8>, data_size: usize, num_handles: u16, handles: Vec<Option<Handle>>) -> Self {
         MessagePacket {
             data,
             handles,
@@ -62,7 +62,9 @@ impl MessagePacket {
         // MessagePackets lives *inside* a list of buffers. The first buffer holds the MessagePacket
         // object, followed by its handles (if any), and finally the payload data.
         let data = Vec::with_capacity(data_size);
-        let handles = Vec::with_capacity(num_handles as usize);
+
+        let mut handles = Vec::with_capacity(MAX_MESSAGE_HANDLES as usize);
+        handles.resize_with(num_handles as usize, || None); 
 
         // Construct the MessagePacket into the first buffer.
         // static_assert(kMaxMessageHandles <= UINT16_MAX, "");
@@ -109,11 +111,11 @@ impl MessagePacket {
         return self.num_handles;
     }
 
-    pub(crate) fn handles(&self) -> &Vec<*const Handle> {
+    pub(crate) fn handles(&self) -> &Vec<Option<Handle>> {
         self.handles.as_ref()
     }
 
-    pub(crate) fn mutable_handles(&mut self) -> &mut Vec<*const Handle> {
+    pub(crate) fn mutable_handles(&mut self) -> &mut Vec<Option<Handle>> {
         self.handles.as_mut()
     }
 

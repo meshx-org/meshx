@@ -5,16 +5,19 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT
 
-use std::any::Any;
 use std::arch::asm;
+use std::marker::PhantomData;
 use std::mem::size_of;
 use std::rc::Rc;
 use std::sync::atomic::AtomicU64;
+use std::{any::Any, sync::Arc};
 
 use crate::object::{BaseDispatcher, Dispatcher, HANDLE_TABLE};
 
 use fiber_sys::{fx_koid_t, fx_rights_t};
 use static_assertions::const_assert;
+
+use super::{GenericDispatcher};
 
 // HandleOwner wraps a Handle in a Box that has single
 // ownership of the Handle and deletes it whenever it falls out of scope.
@@ -36,22 +39,31 @@ pub(crate) type HandleOwner = Box<Handle>;
 /// This class is thread-unsafe and must be externally synchronized if used
 /// across multiple threads.
 pub(crate) struct KernelHandle<T> {
-    pub(super) dispatcher: Rc<T>,
+    phantom: PhantomData<T>,
+    pub(super) dispatcher: GenericDispatcher,
 }
 
 impl<T> KernelHandle<T> {
-    pub fn dispatcher(&self) -> &Rc<T> {
-        &self.dispatcher
+    pub fn new(dispatcher: GenericDispatcher) -> Self {
+        KernelHandle {
+            phantom: PhantomData,
+            dispatcher,
+        }
+    }
+
+    pub fn dispatcher(&self) -> GenericDispatcher {
+        self.dispatcher.clone()
     }
 }
 
 /// A Handle is how a specific process refers to a specific Dispatcher.
+#[derive(Debug)]
 pub(crate) struct Handle {
     // process_id_ is atomic because threads from different processes can
     // access it concurrently, while holding different instances of
     // handle_table_lock_.
     pub(super) process_id: AtomicU64,
-    pub(super) dispatcher: Rc<dyn Dispatcher>,
+    pub(super) dispatcher: GenericDispatcher,
     pub(super) handle_rights: fx_rights_t,
     pub(super) base_value: u32,
 }
@@ -76,7 +88,7 @@ const fn conditional_select_spec_eq(x: usize, y: usize, a: usize, b: usize) -> u
 
 impl Handle {
     // Called only by Make.
-    fn new(dispatcher: Rc<dyn Dispatcher>, rights: fx_rights_t, base_value: u32) -> Self {
+    fn new(dispatcher: GenericDispatcher, rights: fx_rights_t, base_value: u32) -> Self {
         Handle {
             process_id: AtomicU64::new(0),
             handle_rights: rights,
@@ -86,8 +98,8 @@ impl Handle {
     }
 
     // Called only by Dup.
-    fn new_from_raw(rhs: *const Handle, rights: fx_rights_t, base_value: u32) -> Self {
-        let dispatcher = unsafe { (*rhs).dispatcher().clone() };
+    fn new_from_raw(rhs: &Box<Handle>, rights: fx_rights_t, base_value: u32) -> Self {
+        let dispatcher = unsafe { (*rhs).dispatcher() };
 
         Handle {
             process_id: AtomicU64::new(0),
@@ -117,15 +129,15 @@ impl Handle {
     }
 
     // Handle should never be created by anything other than Make or Dup.
-    pub(crate) fn make_from_dispatcher<T: 'static + Dispatcher>(dispatcher: Rc<T>, rights: fx_rights_t) -> HandleOwner {
+    pub(crate) fn make_from_dispatcher(dispatcher: GenericDispatcher, rights: fx_rights_t) -> HandleOwner {
         Box::new(Handle::new(dispatcher, rights, 0))
     }
 
-    pub(crate) fn make<T: 'static + Dispatcher>(handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner {
-        Box::new(Handle::new(handle.dispatcher().clone(), rights, 0))
+    pub(crate) fn make<T>(handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner {
+        Box::new(Handle::new(handle.dispatcher(), rights, 0))
     }
 
-    pub(crate) fn dup(source: *const Handle, rights: fx_rights_t) -> HandleOwner {
+    pub(crate) fn dup(source: &Box<Handle>, rights: fx_rights_t) -> HandleOwner {
         Box::new(Handle::new_from_raw(source, rights, 0))
     }
 
@@ -147,8 +159,8 @@ impl Handle {
     }
 
     /// Returns the Dispatcher to which this instance points.
-    pub(crate) fn dispatcher(&self) -> &Rc<dyn Dispatcher> {
-         &self.dispatcher
+    pub(crate) fn dispatcher(&self) -> GenericDispatcher {
+        self.dispatcher.clone()
     }
 
     /// Returns the process that owns this instance. Used to guarantee

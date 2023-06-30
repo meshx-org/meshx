@@ -4,7 +4,7 @@ use fiber_sys as sys;
 /// a signal becomes active on a particular Dispatcher.
 ///
 /// Implementations must be thread compatible, but need not be thread safe.
-pub(crate) trait SignalObserver<T>: std::fmt::Debug + core::cmp::PartialEq<T> {
+pub(crate) trait SignalObserver: std::fmt::Debug + Send {
     // Called when the set of active signals matches an expected set.
     //
     // At the time this is call, it is safe to delete this object: the

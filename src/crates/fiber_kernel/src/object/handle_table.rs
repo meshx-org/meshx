@@ -1,7 +1,8 @@
-use std::{any::Any, sync::RwLock};
 use std::collections::VecDeque;
 use std::mem::size_of;
 use std::rc::Rc;
+use std::sync::{Arc, Weak};
+use std::{any::Any, sync::RwLock};
 
 use fiber_sys as sys;
 use generational_arena::{Arena, Index};
@@ -11,6 +12,8 @@ use crate::object::{
     Dispatcher, Handle, HandleOwner, ProcessDispatcher, HANDLE_GENERATION_MASK, HANDLE_GENERATION_SHIFT,
     HANDLE_INDEX_MASK, HANDLE_RESERVED_BITS, MAX_HANDLE_COUNT,
 };
+
+use super::{ChannelDispatcher, GenericDispatcher, JobDispatcher};
 
 pub(crate) struct HandleTableArena {
     pub arena: Arena<Handle>,
@@ -110,7 +113,7 @@ impl HandleTableArena {
     fn delete(&self, handle: *const Handle) {
         let handle = unsafe { &(*handle) };
 
-        let dispatcher = handle.dispatcher().clone();
+        let dispatcher = handle.dispatcher();
 
         let old_base_value = handle.base_value;
         let base_value = &handle.base_value;
@@ -153,22 +156,22 @@ pub(crate) const HANDLE_TABLE: Lazy<HandleTableArena> = Lazy::new(|| HandleTable
 struct GuardedState {
     // The actual handle table.  When removing one or more handles from this list, be sure to
     // advance or invalidate any cursors that might point to the handles being removed.
-    count: u32,                      // TA_GUARDED(lock_) = 0;
-    handles: VecDeque<Box<dyn Any>>, //TA_GUARDED(lock_);
+    count: u32,                     // TA_GUARDED(lock_) = 0;
+    handles: VecDeque<Box<Handle>>, //TA_GUARDED(lock_);
 }
 
 #[derive(Debug)]
-pub struct HandleTable {
+pub(crate) struct HandleTable {
     guarded: RwLock<GuardedState>,
 
-    // The containing ProcessDispatcher.
-    process: *const ProcessDispatcher,
+    // Normalized parent process koid.
+    process_koid: sys::fx_koid_t,
 }
 
 impl HandleTable {
-    pub(super) fn new(process: *const ProcessDispatcher) -> Self {
+    pub(super) fn new(process: &ProcessDispatcher) -> Self {
         HandleTable {
-            process,
+            process_koid: process.get_koid(),
             guarded: RwLock::new(GuardedState {
                 count: 0,
                 handles: VecDeque::new(),
@@ -206,9 +209,8 @@ impl HandleTable {
 
     pub(crate) fn add_handle_locked(&self, handle: HandleOwner) {
         // NOTE: We need to use unsafe and raw pointer here to access the parent so we can avoid circular dependency issues.
-        let koid = unsafe { (*self.process).get_koid() };
-        handle.set_process_id(koid);
-        
+        handle.set_process_id(self.process_koid);
+
         let mut guarded = self.guarded.write().unwrap();
 
         guarded.handles.push_front(handle);
@@ -236,7 +238,7 @@ impl HandleTable {
         let handle = map_value_to_handle(handle_value, 0);
 
         unsafe {
-            if !handle.is_null() && (*handle).process_id() == (*self.process).get_koid() {
+            if !handle.is_null() && (*handle).process_id() == self.process_koid {
                 handle
             } else {
                 std::ptr::null()
@@ -245,32 +247,26 @@ impl HandleTable {
     }
 
     // Get the dispatcher corresponding to this handle value.
-    pub fn get_dispatcher<T: 'static>(&self, handle_value: sys::fx_handle_t) -> Result<Rc<T>, sys::fx_status_t> {
+    pub fn get_dispatcher(&self, handle_value: sys::fx_handle_t) -> Result<GenericDispatcher, sys::fx_status_t> {
         self.get_dispatcher_with_rights(handle_value, sys::FX_RIGHT_NONE)
     }
 
     /// Get the dispatcher and the rights corresponding to this handle value.
-    pub fn get_dispatcher_with_rights<T: 'static>(
+    pub fn get_dispatcher_with_rights(
         &self,
         handle_value: sys::fx_handle_t,
         rights: sys::fx_rights_t,
-    ) -> Result<Rc<T>, sys::fx_status_t> {
+    ) -> Result<GenericDispatcher, sys::fx_status_t> {
         let generic_dispatcher = self.get_dispatcher_internal(handle_value, rights)?;
 
-        let dispatcher = generic_dispatcher.downcast::<T>();
-
-        if dispatcher.is_err() {
-            return Err(sys::FX_ERR_WRONG_TYPE);
-        }
-
-        return Ok(dispatcher.unwrap());
+        return Ok(generic_dispatcher);
     }
 
     fn get_dispatcher_internal(
         &self,
         handle_value: sys::fx_handle_t,
         rights: sys::fx_rights_t,
-    ) -> Result<Rc<dyn Any>, sys::fx_status_t> {
+    ) -> Result<GenericDispatcher, sys::fx_status_t> {
         //let dispatcher: Rc<dyn Any> = Rc::from(JobDispatcher::new(0, None, JobPolicy));
 
         //Guard<BrwLockPi, BrwLockPi::Reader> guard{&lock_};
@@ -284,6 +280,6 @@ impl HandleTable {
 
         let rights = handle.rights();
 
-        Ok(handle.dispatcher().clone())
+        Ok(handle.dispatcher())
     }
 }
