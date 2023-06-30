@@ -80,13 +80,24 @@ impl MessageWaiter {
 }
 
 #[derive(Debug)]
+struct ChannelGuardedState {
+    waiters: Vec<MessageWaiter>,
+    messages: Vec<MessagePacketPtr>,
+    max_message_count: u32,
+
+    txid: u32, // TA_GUARDED(get_lock()) = 0;
+
+    /// True if the this object's peer has been closed. This field exists so that
+    /// |Read| can check for peer closed without having to acquire |get_lock()|.
+    peer_has_closed: bool, // TA_GUARDED(channel_lock_) = false;
+}
+
+#[derive(Debug)]
 pub(crate) struct ChannelDispatcher {
     base: BaseDispatcher,
     peered_base: PeeredDispatcherBase<ChannelDispatcher>,
 
-    waiters: Vec<MessageWaiter>,
-    messages: Vec<MessagePacketPtr>,
-    max_message_count: u32,
+    guarded: RwLock<ChannelGuardedState>,
 
     /// Tracks the process that is allowed to issue calls, for example write
     /// to the opposite end. Without it, one can see writes out of order with
@@ -102,12 +113,6 @@ pub(crate) struct ChannelDispatcher {
     /// require that either |get_lock()| or channel_lock_ are held when reading
     /// this field and both are held when writing it.
     owner: sys::fx_koid_t, //= ZX_KOID_INVALID;
-
-    txid: u32, // TA_GUARDED(get_lock()) = 0;
-
-    /// True if the this object's peer has been closed. This field exists so that
-    /// |Read| can check for peer closed without having to acquire |get_lock()|.
-    peer_has_closed: bool, // TA_GUARDED(channel_lock_) = false;
 }
 
 impl Dispatcher for ChannelDispatcher {
@@ -131,20 +136,19 @@ impl PeeredDispatcher for ChannelDispatcher {
     /// initialization, prior to any other thread obtaining a reference to the object.  These
     /// constraints allow for an optimization where fields are accessed without acquiring the lock,
     /// hence the TA_NO_THREAD_SAFETY_ANALYSIS annotation.
-    fn init_peer(&mut self, peer: Arc<RwLock<Self>>) {
-        debug_assert!(self.peered_base.peer.is_none());
-        debug_assert!(self.peered_base.peer_koid == Some(sys::FX_KOID_INVALID));
+    fn init_peer(&self, peer: Arc<Self>) {
+        let mut peered_state = self.peered_base.guarded.lock().unwrap();
 
-        self.peered_base.peer_koid = {
-            let peer_lock = peer.read().unwrap();
-            Some(peer_lock.get_koid())
-        };
+        debug_assert!(peered_state.peer.is_none());
+        debug_assert!(peered_state.peer_koid == Some(sys::FX_KOID_INVALID));
 
-        self.peered_base.peer = Some(peer);
+        peered_state.peer_koid = Some(peer.get_koid());
+        peered_state.peer = Some(peer);
     }
 
-    fn peer(&self) -> &Option<Arc<RwLock<Self>>> {
-        &self.peered_base.peer
+    fn peer(&self) -> Option<Arc<Self>> {
+        let peered_state = self.peered_base.guarded.lock().unwrap();
+        peered_state.peer.clone()
     }
 }
 
@@ -178,26 +182,28 @@ impl ChannelDispatcher {
         let new_handle0 = new_kernel_handle0.dispatcher().as_channel_dispatcher().unwrap();
         let new_handle1 = new_kernel_handle1.dispatcher().as_channel_dispatcher().unwrap();
 
-        //new_handle0.init(new_handle1);
-        //new_handle1.init(new_handle0);
+        new_handle0.init_peer(new_handle1.clone());
+        new_handle1.init_peer(new_handle0);
 
         let rights = ChannelDispatcher::default_rights();
-        let handle0 = new_handle0;
-        let handle1 = new_handle1;
+        //let handle0 = new_handle0;
+        //let handle1 = new_handle1;
 
         Ok((new_kernel_handle0, new_kernel_handle1, rights))
     }
 
     fn new(peer: Arc<PeerHolder<ChannelDispatcher>>) -> Arc<Self> {
-        let mut channel = Arc::new(ChannelDispatcher {
+        let channel = Arc::new(ChannelDispatcher {
             base: BaseDispatcher::new(0),
             peered_base: PeeredDispatcherBase::new(peer),
-            waiters: Vec::new(),
-            messages: Vec::new(),
-            max_message_count: 0,
             owner: sys::FX_KOID_INVALID,
-            txid: 0,
-            peer_has_closed: false,
+            guarded: RwLock::new(ChannelGuardedState {
+                waiters: Vec::new(),
+                messages: Vec::new(),
+                max_message_count: 0,
+                txid: 0,
+                peer_has_closed: false,
+            }),
         });
 
         channel
@@ -228,27 +234,25 @@ impl ChannelDispatcher {
             return sys::FX_ERR_BAD_HANDLE;
         }
 
-        if self.peer().is_some() {
+        if self.peer().is_none() {
             return sys::FX_ERR_PEER_CLOSED;
         }
 
-        let peer = self.peer().as_ref().unwrap();
+        let peer = self.peer().unwrap();
 
         // AssertHeld(*self.peer().get_lock());
 
-        let mut peer_lock = peer.write().unwrap();
-
-        let result = peer_lock.try_write_to_message_waiter(msg);
+        let result = peer.try_write_to_message_waiter(msg);
 
         if result.is_ok() {
             return sys::FX_OK;
         }
 
-        peer_lock.write_self(result.unwrap_err());
+        peer.write_self(result.unwrap_err());
         sys::FX_OK
     }
 
-    fn write_self(&mut self, msg: MessagePacketPtr) {
+    fn write_self(&self, msg: MessagePacketPtr) {
         //canary_.Assert();
 
         // Once we've acquired the channel_lock_ we're going to make a copy of the previously active
@@ -270,13 +274,13 @@ impl ChannelDispatcher {
         let previous_signals: sys::fx_signals_t;
 
         {
-            // TODO: lock Guard<CriticalMutex> guard{&channel_lock_};
+            let mut lock = self.guarded.write().unwrap();
 
-            self.messages.push(msg);
+            lock.messages.push(msg);
             previous_signals = self.base().raise_signals_locked(sys::FX_CHANNEL_READABLE);
-            let size = self.messages.len() as u32;
-            if size > self.max_message_count {
-                self.max_message_count = size;
+            let size = lock.messages.len() as u32;
+            if size > lock.max_message_count {
+                lock.max_message_count = size;
             }
         }
 
@@ -288,9 +292,9 @@ impl ChannelDispatcher {
     }
 
     fn try_write_to_message_waiter(&self, msg: MessagePacketPtr) -> Result<(), MessagePacketPtr> {
-        // canary_.Assert();
+        let lock = self.guarded.read().unwrap();
 
-        if self.waiters.is_empty() {
+        if lock.waiters.is_empty() {
             return Err(msg);
         }
 
@@ -302,7 +306,7 @@ impl ChannelDispatcher {
             return Err(msg);
         }
 
-        for waiter in self.waiters.iter() {
+        for waiter in lock.waiters.iter() {
             // (3C) Deliver message to waiter.
             // Remove waiter from list.
             if waiter.get_txid() == txid {

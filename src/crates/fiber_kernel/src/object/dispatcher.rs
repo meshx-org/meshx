@@ -183,29 +183,26 @@ impl<T> PeerHolder<T> {
 }
 
 #[derive(Debug)]
+pub(crate) struct PeerState<T> {
+    pub peer: Option<Arc<T>>,
+    pub peer_koid: Option<sys::fx_koid_t>,
+}
+
+#[derive(Debug)]
 pub(crate) struct PeeredDispatcherBase<T> {
     holder: Arc<PeerHolder<T>>,
-
-    pub peer: Option<Arc<RwLock<T>>>,
-    pub peer_koid: Option<sys::fx_koid_t>,
+    pub(crate) guarded: Mutex<PeerState<T>>,
 }
 
 impl<T> PeeredDispatcherBase<T> {
     pub(super) fn new(holder: Arc<PeerHolder<T>>) -> Self {
         PeeredDispatcherBase {
             holder,
-            peer: None,
-            peer_koid: None,
+            guarded: Mutex::new(PeerState {
+                peer: None,
+                peer_koid: None,
+            }),
         }
-    }
-
-    //pub(crate) fn init_peer(&mut self, peer: Arc<RwLock<T>>) {
-    //    self.peer = Some(peer);
-    //    self.peer_koid = Some(peer.read().unwrap().get_koid());
-    //}
-
-    pub(crate) fn peer(&self) -> &Option<Arc<RwLock<T>>> {
-        &self.peer
     }
 }
 
@@ -215,8 +212,8 @@ pub(crate) trait TypedDispatcher {
 }
 
 pub(crate) trait PeeredDispatcher: Dispatcher {
-    fn init_peer(&mut self, peer: Arc<RwLock<Self>>);
-    fn peer(&self) -> &Option<Arc<RwLock<Self>>>;
+    fn init_peer(&self, peer: Arc<Self>);
+    fn peer(&self) -> Option<Arc<Self>>;
 }
 
 pub(crate) trait Dispatcher: Send + Sync {
