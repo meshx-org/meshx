@@ -636,6 +636,7 @@ dependencies = [
  "id-arena",
  "log",
  "once_cell",
+ "rand 0.8.5",
  "smol",
  "static_assertions",
  "typed-arena",

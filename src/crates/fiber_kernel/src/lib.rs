@@ -419,7 +419,7 @@ impl Kernel {
     /// Start the RootJobObserver. Must be called after the root job has at
     /// least one child process or child job.
     pub(crate) fn start_root_job_observer(&self) {
-        assert!(self.root_job_observer.get().is_some());
+        assert!(self.root_job_observer.get().is_none());
         debug_assert!(self.root_job.is_some());
 
         self.root_job_observer

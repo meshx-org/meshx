@@ -7,7 +7,9 @@ use std::{any::Any, sync::RwLock};
 use fiber_sys as sys;
 use generational_arena::{Arena, Index};
 use once_cell::unsync::Lazy;
+use rand::Rng;
 
+use crate::koid::generate;
 use crate::object::{
     Dispatcher, Handle, HandleOwner, ProcessDispatcher, HANDLE_GENERATION_MASK, HANDLE_GENERATION_SHIFT,
     HANDLE_INDEX_MASK, HANDLE_RESERVED_BITS, MAX_HANDLE_COUNT,
@@ -39,6 +41,20 @@ fn new_handle_value(index: u32, old_value: u32) -> u32 {
 
 const HANDLE_MUST_BE_ONE_MASK: u32 = (0x1 << HANDLE_RESERVED_BITS) - 1;
 //const_assert!(HANDLE_MUST_BE_ONE_MASK == sys::FX_HANDLE_FIXED_BITS_MASK); // kHandleMustBeOneMask must match ZX_HANDLE_FIXED_BITS_MASK!
+
+fn map_handle_to_value(handle: &Handle, mixer: u32) -> sys::fx_handle_t {
+    // Ensure that the last two bits of the result is not zero, and make sure we
+    // don't lose any base_value bits when shifting.
+    let base_value_must_be_zero_mask =
+        HANDLE_MUST_BE_ONE_MASK << ((std::mem::size_of_val(&handle.base_value()) as u32 * 8) - HANDLE_RESERVED_BITS);
+
+    debug_assert!((mixer & HANDLE_MUST_BE_ONE_MASK) == 0);
+    debug_assert!((handle.base_value() & base_value_must_be_zero_mask) == 0);
+
+    let handle_id = (handle.base_value() << HANDLE_RESERVED_BITS) | HANDLE_MUST_BE_ONE_MASK;
+
+    mixer ^ handle_id
+}
 
 fn map_value_to_handle(value: sys::fx_handle_t, mixer: u32) -> *const Handle {
     // Validate that the "must be one" bits are actually one.
@@ -166,11 +182,29 @@ pub(crate) struct HandleTable {
 
     // Normalized parent process koid.
     process_koid: sys::fx_koid_t,
+
+    // The koid of this handle table. Used to check whether or not a handle belongs to this handle
+    // table (and thus that it belongs to a process associated with this handle table).
+    koid: sys::fx_koid_t,
+
+    // Each handle table provides pseudorandom userspace handle
+    // values. This is the per-handle-table pseudorandom state.
+    random_value: u32, //  = 0;
 }
 
 impl HandleTable {
     pub(super) fn new(process: &ProcessDispatcher) -> Self {
+        // Generate handle XOR mask with top bit and bottom two bits cleared
+        let mut prng = rand::thread_rng();
+        let secret: u32 = prng.gen();
+
+        // Handle values must always have the low kHandleReservedBits set.  Do not
+        // ever attempt to toggle these bits using the random_value_ xor mask.
+        let random_value = secret << HANDLE_RESERVED_BITS;
+
         HandleTable {
+            koid: generate(),
+            random_value,
             process_koid: process.get_koid(),
             guarded: RwLock::new(GuardedState {
                 count: 0,
@@ -181,11 +215,11 @@ impl HandleTable {
 
     // Maps a |handle| to an integer which can be given to usermode as a
     // handle value. Uses Handle->base_value() plus additional mixing.
-    pub(crate) fn map_handle_to_value(&self, handle: *const Handle) -> sys::fx_handle_t {
-        unimplemented!()
+    pub(crate) fn map_handle_to_value(&self, handle: &Handle) -> sys::fx_handle_t {
+        return map_handle_to_value(handle, self.random_value);
     }
 
-    pub(crate) fn map_handle_owner_to_value<T>(handle: &HandleOwner) -> sys::fx_handle_t {
+    pub(crate) fn map_handle_owner_to_value<T>(&self, handle: &HandleOwner) -> sys::fx_handle_t {
         unimplemented!()
     }
 
