@@ -1,25 +1,126 @@
 use std::collections::VecDeque;
 use std::mem::size_of;
 use std::rc::Rc;
+use std::sync::RwLock;
 use std::sync::{Arc, Weak};
-use std::{any::Any, sync::RwLock};
 
 use fiber_sys as sys;
 use generational_arena::{Arena, Index};
 use once_cell::unsync::Lazy;
 use rand::Rng;
 
+use super::GenericDispatcher;
 use crate::koid::generate;
 use crate::object::{
     Dispatcher, Handle, HandleOwner, ProcessDispatcher, HANDLE_GENERATION_MASK, HANDLE_GENERATION_SHIFT,
     HANDLE_INDEX_MASK, HANDLE_RESERVED_BITS, MAX_HANDLE_COUNT,
 };
 
-use super::{ChannelDispatcher, GenericDispatcher, JobDispatcher};
-
 pub(crate) struct HandleTableArena {
-    pub arena: Arena<Handle>,
+    pub arena: Arena<Arc<Handle>>,
 }
+
+impl HandleTableArena {
+    pub(crate) fn handle_to_index(&self, handle: *const Handle) -> u32 {
+        // return handle - self.arena.base()
+
+        return handle as u32;
+    }
+
+    // Returns a new |base_value| based on the value stored in the free
+    // arena slot pointed to by |addr|. The new value will be different
+    // from the last |base_value| used by this slot.
+    pub(crate) fn get_new_base_value(&self, addr: *const ()) -> u32 {
+        // Get the index of this slot within the arena.
+        let handle_index = self.handle_to_index(addr as *const Handle);
+
+        // Check the free memory for a stashed base_value.
+        let v = unsafe { (*(addr as *const Handle)).base_value };
+
+        new_handle_value(handle_index, v)
+    }
+
+    /// Allocate space for a Handle from the arena, but don't instantiate the
+    /// object.  |base_value| gets the value for Handle::base_value_.  |what|
+    /// says whether this is allocation or duplication, for the error message.
+    pub(crate) fn alloc(&mut self, dispatcher: &Arc<dyn Dispatcher>, what: &str) -> Index {
+        // Attempt to allocate a handle.
+        let idx = self.arena.insert(Arc::new(Handle {
+            handle_table_id: sys::FX_KOID_INVALID.into(),
+            dispatcher: todo!(),
+            handle_rights: todo!(),
+            base_value: todo!(),
+        }));
+
+        let outstanding_handles = self.arena.len();
+
+        //if (unlikely(addr == nullptr)) {
+        //    kcounter_add(handle_count_alloc_failed, 1);
+        //    printf("WARNING: Could not allocate %s handle (%zu outstanding)\n", what, outstanding_handles);
+        //    return nullptr;
+        //}
+
+        // Emit a warning if too many handles have been created and we haven't recently logged
+        //if (unlikely(outstanding_handles > kHighHandleCount) && handle_count_high_log_.Ready()) {
+        //    printf("WARNING: High handle count: %zu / %zu handles\n", outstanding_handles,
+        //            kHighHandleCount);
+        //}
+
+        dispatcher.base().increment_handle_count();
+
+        // checking the process_id_ and dispatcher is really about trying to catch cases where this
+        // Handle might somehow already be in use.
+        //debug_assert!((addr).process_id().eq(&sys::FX_KOID_INVALID) == true);
+        //debug_assert!((addr).dispatcher() == nullptr);
+
+        // NOTE: we don't have a cocept to return bases here so instead we return the index
+        // *base_value = GetNewBaseValue(addr);
+        // return addr;
+
+        idx
+    }
+
+    pub(crate) fn delete(&self, handle: *const Handle) {
+        let handle = unsafe { &(*handle) };
+
+        let dispatcher = handle.dispatcher();
+
+        let old_base_value = handle.base_value;
+        let base_value = &handle.base_value;
+
+        // There may be stale pointers to this slot and they will look at process_id. We expect
+        // process_id to already have been cleared by the process dispatcher before the handle got to
+        // this point.
+        debug_assert!(handle.handle_table_id() == sys::FX_KOID_INVALID);
+
+        // TODO:
+        //if (dispatcher.is_waitable()) {
+        //    dispatcher.cancel(handle);
+        //}
+
+        // The destructor should not do anything interesting but call it for completeness.
+        std::mem::forget(handle);
+
+        // Make sure the base value was not altered by the destructor.
+        debug_assert!(unsafe { *base_value } == old_base_value);
+
+        let zero_handles = dispatcher.base().decrement_handle_count();
+        // self.arena.remove(handle);
+
+        // TODO: we need downcast for this
+        //if (zero_handles) {
+        //    dispatcher.on_zero_handles();
+        //}
+
+        // If |disp| is the last reference (which is likely) then the dispatcher object
+        // gets destroyed at the exit of this function.
+        //kcounter_add(handle_count_live, -1);
+    }
+}
+
+pub(crate) const HANDLE_TABLE_ARENA: Lazy<HandleTableArena> = Lazy::new(|| HandleTableArena {
+    arena: Arena::with_capacity(size_of::<Handle>() * MAX_HANDLE_COUNT as usize),
+});
 
 // |index| is the literal index into the table. |old_value| is the
 // |index mixed with the per-handle-lifetime state.
@@ -56,124 +157,23 @@ fn map_handle_to_value(handle: &Handle, mixer: u32) -> sys::fx_handle_t {
     mixer ^ handle_id
 }
 
-fn map_value_to_handle(value: sys::fx_handle_t, mixer: u32) -> *const Handle {
+fn map_value_to_handle(value: sys::fx_handle_t, mixer: u32) -> Option<Weak<Handle>> {
     // Validate that the "must be one" bits are actually one.
     if (value & HANDLE_MUST_BE_ONE_MASK) != HANDLE_MUST_BE_ONE_MASK {
-        return std::ptr::null();
+        return None;
     }
 
     let handle_id = ((value as u32) ^ mixer) >> HANDLE_RESERVED_BITS;
-    return Handle::from_u32(handle_id);
+
+    Handle::from_u32(handle_id)
 }
-
-impl HandleTableArena {
-    fn handle_to_index(&self, handle: *const Handle) -> u32 {
-        // return handle - self.arena.base()
-
-        return handle as u32;
-    }
-
-    // Returns a new |base_value| based on the value stored in the free
-    // arena slot pointed to by |addr|. The new value will be different
-    // from the last |base_value| used by this slot.
-    fn get_new_base_value(&self, addr: *const ()) -> u32 {
-        // Get the index of this slot within the arena.
-        let handle_index = self.handle_to_index(addr as *const Handle);
-
-        // Check the free memory for a stashed base_value.
-        let v = unsafe { (*(addr as *const Handle)).base_value };
-
-        new_handle_value(handle_index, v)
-    }
-
-    /// Allocate space for a Handle from the arena, but don't instantiate the
-    /// object.  |base_value| gets the value for Handle::base_value_.  |what|
-    /// says whether this is allocation or duplication, for the error message.
-    fn alloc(&mut self, dispatcher: &Rc<dyn Dispatcher>, what: &str) -> Index {
-        // Attempt to allocate a handle.
-        let idx = self.arena.insert(Handle {
-            process_id: sys::FX_KOID_INVALID.into(),
-            dispatcher: todo!(),
-            handle_rights: todo!(),
-            base_value: todo!(),
-        });
-
-        let outstanding_handles = self.arena.len();
-
-        //if (unlikely(addr == nullptr)) {
-        //    kcounter_add(handle_count_alloc_failed, 1);
-        //    printf("WARNING: Could not allocate %s handle (%zu outstanding)\n", what, outstanding_handles);
-        //    return nullptr;
-        //}
-
-        // Emit a warning if too many handles have been created and we haven't recently logged
-        //if (unlikely(outstanding_handles > kHighHandleCount) && handle_count_high_log_.Ready()) {
-        //    printf("WARNING: High handle count: %zu / %zu handles\n", outstanding_handles,
-        //            kHighHandleCount);
-        //}
-
-        dispatcher.base().increment_handle_count();
-
-        // checking the process_id_ and dispatcher is really about trying to catch cases where this
-        // Handle might somehow already be in use.
-        //debug_assert!((addr).process_id().eq(&sys::FX_KOID_INVALID) == true);
-        //debug_assert!((addr).dispatcher() == nullptr);
-
-        // NOTE: we don't have a cocept to return bases here so instead we return the index
-        // *base_value = GetNewBaseValue(addr);
-        // return addr;
-
-        idx
-    }
-
-    fn delete(&self, handle: *const Handle) {
-        let handle = unsafe { &(*handle) };
-
-        let dispatcher = handle.dispatcher();
-
-        let old_base_value = handle.base_value;
-        let base_value = &handle.base_value;
-
-        // There may be stale pointers to this slot and they will look at process_id. We expect
-        // process_id to already have been cleared by the process dispatcher before the handle got to
-        // this point.
-        debug_assert!(handle.process_id() == sys::FX_KOID_INVALID);
-
-        // TODO:
-        //if (dispatcher.is_waitable()) {
-        //    dispatcher.cancel(handle);
-        //}
-
-        // The destructor should not do anything interesting but call it for completeness.
-        std::mem::forget(handle);
-
-        // Make sure the base value was not altered by the destructor.
-        debug_assert!(unsafe { *base_value } == old_base_value);
-
-        let zero_handles = dispatcher.base().decrement_handle_count();
-        // self.arena.remove(handle);
-
-        // TODO: we need downcast for this
-        //if (zero_handles) {
-        //    dispatcher.on_zero_handles();
-        //}
-
-        // If |disp| is the last reference (which is likely) then the dispatcher object
-        // gets destroyed at the exit of this function.
-        //kcounter_add(handle_count_live, -1);
-    }
-}
-
-pub(crate) const HANDLE_TABLE: Lazy<HandleTableArena> = Lazy::new(|| HandleTableArena {
-    arena: Arena::with_capacity(size_of::<Handle>() * MAX_HANDLE_COUNT as usize),
-});
 
 #[derive(Debug)]
 struct GuardedState {
     // The actual handle table.  When removing one or more handles from this list, be sure to
     // advance or invalidate any cursors that might point to the handles being removed.
-    count: u32,                     // TA_GUARDED(lock_) = 0;
-    handles: VecDeque<Box<Handle>>, //TA_GUARDED(lock_);
+    count: u32,
+    handles: VecDeque<Weak<Handle>>,
 }
 
 #[derive(Debug)]
@@ -247,8 +247,39 @@ impl HandleTable {
 
         let mut guarded = self.guarded.write().unwrap();
 
-        guarded.handles.push_front(handle);
+        guarded.handles.push_front(Arc::downgrade(&handle));
         guarded.count += 1;
+    }
+
+    // Maps a handle value into a Handle as long we can verify that
+    // it belongs to this handle table.
+    pub(crate) fn get_handle_locked(
+        &self,
+        caller: &ProcessDispatcher,
+        handle_value: sys::fx_handle_t,
+    ) -> Option<Arc<Handle>> {
+        let handle = map_value_to_handle(handle_value, self.random_value);
+
+        if handle.is_none() {
+            return None;
+        }
+
+        let handle = handle.unwrap().upgrade().unwrap();
+
+        if handle.handle_table_id() != self.koid {
+            return None;
+        }
+
+        // TODO: enforce policy
+        //if caller {
+        // Handle lookup failed.  We potentially generate an exception or kill the process,
+        // depending on the job policy. Note that we don't use the return value from
+        // EnforceBasicPolicy() here: ZX_POL_ACTION_ALLOW and ZX_POL_ACTION_DENY are equivalent for
+        // ZX_POL_BAD_HANDLE.
+        // let result = caller.enforce_basic_policy(sys::FX_POL_BAD_HANDLE);
+        //}
+
+        Some(handle)
     }
 
     /*fn get_handle_locked<T>(&self, handle_value: sys::fx_handle_t, skip_policy: bool) -> *const Handle<T> {
@@ -268,49 +299,42 @@ impl HandleTable {
         return nullptr;
     }*/
 
-    fn get_handle_locked(&self, handle_value: sys::fx_handle_t, skip_policy: bool) -> *const Handle {
-        let handle = map_value_to_handle(handle_value, 0);
-
-        unsafe {
-            if !handle.is_null() && (*handle).process_id() == self.process_koid {
-                handle
-            } else {
-                std::ptr::null()
-            }
-        }
-    }
-
     // Get the dispatcher corresponding to this handle value.
-    pub fn get_dispatcher(&self, handle_value: sys::fx_handle_t) -> Result<GenericDispatcher, sys::fx_status_t> {
-        self.get_dispatcher_with_rights(handle_value, sys::FX_RIGHT_NONE)
+    pub fn get_dispatcher(
+        &self,
+        caller: &ProcessDispatcher,
+        handle_value: sys::fx_handle_t,
+    ) -> Result<GenericDispatcher, sys::fx_status_t> {
+        self.get_dispatcher_with_rights(caller, handle_value, sys::FX_RIGHT_NONE)
     }
 
     /// Get the dispatcher and the rights corresponding to this handle value.
     pub fn get_dispatcher_with_rights(
         &self,
+        caller: &ProcessDispatcher,
         handle_value: sys::fx_handle_t,
         rights: sys::fx_rights_t,
     ) -> Result<GenericDispatcher, sys::fx_status_t> {
-        let generic_dispatcher = self.get_dispatcher_internal(handle_value, rights)?;
+        let generic_dispatcher = self.get_dispatcher_internal(caller, handle_value, rights)?;
 
         return Ok(generic_dispatcher);
     }
 
     fn get_dispatcher_internal(
         &self,
+        caller: &ProcessDispatcher,
         handle_value: sys::fx_handle_t,
         rights: sys::fx_rights_t,
     ) -> Result<GenericDispatcher, sys::fx_status_t> {
         //let dispatcher: Rc<dyn Any> = Rc::from(JobDispatcher::new(0, None, JobPolicy));
 
-        //Guard<BrwLockPi, BrwLockPi::Reader> guard{&lock_};
-        let handle: *const Handle = self.get_handle_locked(handle_value, false);
+        let handle = self.get_handle_locked(caller, handle_value);
 
-        if handle == std::ptr::null() {
+        if handle.is_none() {
             return Err(sys::FX_ERR_BAD_HANDLE);
         }
 
-        let handle = unsafe { &*handle };
+        let handle = handle.unwrap();
 
         let rights = handle.rights();
 

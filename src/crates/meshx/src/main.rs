@@ -1,9 +1,9 @@
 // Copyright 2023 MeshX Contributors. All rights reserved.
 
-use std::sync::Arc;
 use fiber_kernel::Kernel;
 use fiber_rust::sys;
 use fiber_status as fx_status;
+use std::sync::Arc;
 
 fn main() -> Result<(), fx_status::Status> {
     env_logger::init();
@@ -33,7 +33,7 @@ fn main() -> Result<(), fx_status::Status> {
     let kernel = Arc::new(kernel);
     sys::SYSTEM.set(kernel.clone()).unwrap();
 
-    fiber_kernel::userboot::userboot_init(&kernel);
+    kernel.start();
 
     Ok(())
 }

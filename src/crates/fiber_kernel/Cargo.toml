@@ -10,6 +10,7 @@ crate-type = ["cdylib"]
 fiber_sys = {version = "0.1.0", path = "../fiber_sys"}
 fiber_rust = {version = "0.1.0", path = "../fiber_rust"}
 
+tokio = {version = "1.24.1", features = ["rt-multi-thread", "macros"]}
 rand="0.8.4"
 log="0.4.17"
 smol="1.2.5"

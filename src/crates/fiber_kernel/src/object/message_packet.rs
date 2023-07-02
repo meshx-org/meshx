@@ -1,3 +1,5 @@
+use std::sync::Weak;
+
 use super::Handle;
 use fiber_sys as sys;
 use static_assertions::const_assert;
@@ -29,7 +31,7 @@ pub(crate) struct MessagePacket {
     num_handles: u16,
     owns_handles: bool,
     data: Vec<u8>,
-    handles: Vec<Option<Handle>>,
+    handles: Vec<Option<Weak<Handle>>>,
 }
 
 impl MessagePacket {
@@ -37,7 +39,7 @@ impl MessagePacket {
     // Create method to create a MessagePacket.  This, in turn, guarantees that
     // when a user creates a MessagePacket, they end up with the proper
     // MessagePacket::UPtr type for managing the message packet's life cycle.
-    fn new(data: Vec<u8>, data_size: usize, num_handles: u16, handles: Vec<Option<Handle>>) -> Self {
+    fn new(data: Vec<u8>, data_size: usize, num_handles: u16, handles: Vec<Option<Weak<Handle>>>) -> Self {
         MessagePacket {
             data,
             handles,
@@ -111,11 +113,11 @@ impl MessagePacket {
         return self.num_handles;
     }
 
-    pub(crate) fn handles(&self) -> &Vec<Option<Handle>> {
+    pub(crate) fn handles(&self) -> &Vec<Option<Weak<Handle>>> {
         self.handles.as_ref()
     }
 
-    pub(crate) fn mutable_handles(&mut self) -> &mut Vec<Option<Handle>> {
+    pub(crate) fn mutable_handles(&mut self) -> &mut Vec<Option<Weak<Handle>>> {
         self.handles.as_mut()
     }
 

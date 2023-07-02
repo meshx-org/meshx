@@ -9,15 +9,19 @@ mod object;
 mod process_context;
 
 use log::trace;
-use object::HandleOwner;
+use object::{HandleOwner, PortDispatcher};
 use once_cell::sync::OnceCell;
 use process_context::process_scope;
-use std::{cell::Cell, fmt, sync::Arc};
+use std::{
+    cell::Cell,
+    fmt,
+    sync::{Arc, Mutex},
+};
 
 use fiber_sys as sys;
 
 use crate::object::{
-    GenericDispatcher, Handle, JobDispatcher, JobPolicy, KernelHandle, ProcessDispatcher, RootJobObserver,
+    Dispatcher, GenericDispatcher, Handle, JobDispatcher, JobPolicy, KernelHandle, ProcessDispatcher, RootJobObserver,
     TypedDispatcher,
 };
 
@@ -31,7 +35,7 @@ pub struct Kernel {
 
     // Watch the root job, taking action (such as a system reboot) if it ends up
     // with no children.
-    root_job_observer: OnceCell<RootJobObserver>,
+    root_job_observer: Mutex<Option<Arc<RootJobObserver>>>,
 }
 
 impl fmt::Debug for Kernel {
@@ -108,11 +112,11 @@ impl fiber_sys::System for Kernel {
         // NOTE: highly unsafe opertaion
         let name = unsafe { String::from_raw_parts(name as *mut u8, name_size, sys::FX_MAX_NAME_LEN) };
 
-        trace!("name = {}", name.clone());
+        log::trace!("name = {}", name.clone());
 
-        let result = up
-            .handle_table()
-            .get_dispatcher_with_rights(job_handle, sys::FX_RIGHT_MANAGE_PROCESS);
+        let result =
+            up.handle_table()
+                .get_dispatcher_with_rights(up.as_ref(), job_handle, sys::FX_RIGHT_MANAGE_PROCESS);
 
         if let Err(status) = result {
             return status;
@@ -148,7 +152,7 @@ impl fiber_sys::System for Kernel {
     ) -> sys::fx_status_t {
         let up = ProcessDispatcher::get_current();
 
-        let result = up.handle_table().get_dispatcher_with_rights(handle, 0);
+        let result = up.handle_table().get_dispatcher_with_rights(up.as_ref(), handle, 0);
 
         if let Err(status) = result {
             return status;
@@ -183,7 +187,7 @@ impl fiber_sys::System for Kernel {
 
         let result = up
             .handle_table()
-            .get_dispatcher_with_rights(parent_job, sys::FX_RIGHT_MANAGE_JOB);
+            .get_dispatcher_with_rights(up.as_ref(), parent_job, sys::FX_RIGHT_MANAGE_JOB);
 
         if let Err(status) = result {
             return status;
@@ -239,13 +243,65 @@ impl fiber_sys::System for Kernel {
 
     fn sys_object_wait_async(
         &self,
-        handle: sys::fx_handle_t,
-        port_handle: sys::fx_handle_t,
+        handle_value: sys::fx_handle_t,
+        port_handle_value: sys::fx_handle_t,
         key: u64,
         signals: sys::fx_signals_t,
         options: u32,
     ) -> sys::fx_status_t {
-        todo!()
+        if (options & !(sys::FX_WAIT_ASYNC_TIMESTAMP | sys::FX_WAIT_ASYNC_EDGE)) != 0 {
+            return sys::FX_ERR_INVALID_ARGS;
+        }
+
+        let up = ProcessDispatcher::get_current();
+
+        let observer = {
+            // let guard = { up.handle_table().get_lock() };
+
+            // Note, we're doing this all while holding the handle table lock for two reasons.
+            //
+            // First, this thread may be racing with another thread that's closing the last handle to
+            // the port. By holding the lock we can ensure that this syscall behaves as if the port was
+            // closed just *before* the syscall started or closed just *after* it has completed.
+            //
+            // Second, MakeObserver takes a Handle. By holding the lock we ensure the Handle isn't
+            // destroyed out from under it.
+
+            let port_handle = up.handle_table().get_handle_locked(up.as_ref(), port_handle_value);
+            if port_handle.is_none() {
+                return sys::FX_ERR_BAD_HANDLE;
+            }
+
+            let disp = port_handle.unwrap().dispatcher().as_port_dispatcher();
+            if disp.is_none() {
+                return sys::FX_ERR_WRONG_TYPE;
+            }
+
+            let port = disp.unwrap();
+
+            // TODO: we should check for rights here
+            //  if !port_handle.has_rights(sys::FX_RIGHT_WRITE) {
+            //      return sys::FX_ERR_ACCESS_DENIED;
+            //  }
+
+            let handle = up.handle_table().get_handle_locked(up.as_ref(), handle_value);
+
+            if handle.is_none() {
+                return sys::FX_ERR_BAD_HANDLE;
+            }
+
+            // TODO: we should check for rights here
+            // if !handle.has_rights(sys::FX_RIGHT_WAIT) {
+            //     return sys::FX_ERR_ACCESS_DENIED;
+            // }
+
+            PortDispatcher::make_observer(port, options, handle.unwrap(), key, signals)
+        };
+
+        // TODO spawn async task here that waits until signal recieved.
+        // tokio::task::spawn(observer)
+
+        sys::FX_OK
     }
 
     fn sys_channel_create(
@@ -381,7 +437,7 @@ impl Kernel {
 
             root_job: None,
             root_job_handle: None,
-            root_job_observer: OnceCell::new(),
+            root_job_observer: Mutex::new(None),
         }
     }
 
@@ -405,6 +461,19 @@ impl Kernel {
         assert!(self.root_job_handle.is_some());
     }
 
+    pub fn start(&self) {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        userboot::userboot_init(self);
+
+        rt.block_on(async {
+            println!("Hello world");
+        })
+    }
+
     // Returns the job that is the ancestor of all other tasks.
     pub(crate) fn get_root_job_dispatcher(&self) -> Arc<JobDispatcher> {
         debug_assert!(self.root_job.is_some());
@@ -412,21 +481,20 @@ impl Kernel {
         self.root_job.as_ref().unwrap().clone()
     }
 
-    pub(crate) fn get_root_job_handle(&self) -> &Box<Handle> {
-        self.root_job_handle.as_ref().unwrap()
+    pub(crate) fn get_root_job_handle(&self) -> HandleOwner {
+        self.root_job_handle.clone().unwrap()
     }
 
     /// Start the RootJobObserver. Must be called after the root job has at
     /// least one child process or child job.
     pub(crate) fn start_root_job_observer(&self) {
-        assert!(self.root_job_observer.get().is_none());
+        let mut locked = self.root_job_observer.lock().unwrap();
+
+        assert!(locked.is_none());
         debug_assert!(self.root_job.is_some());
 
-        self.root_job_observer
-            .set(RootJobObserver::new(
-                self.root_job.clone().unwrap(), /*,self.root_job_handle.get()*/
-            ))
-            .unwrap();
+        let observer = RootJobObserver::new(self.root_job.clone().unwrap(), self.root_job_handle.clone().unwrap());
+        *locked = Some(observer);
 
         //if !ac.check() {
         //    panic!("root-job: failed to allocate observer\n");

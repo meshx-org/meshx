@@ -47,7 +47,7 @@ impl Default for fx_packet_type_t {
 }
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Default)]
 pub struct fx_packet_signal_t {
     pub trigger: fx_signals_t,
     pub observed: fx_signals_t,
@@ -146,6 +146,32 @@ multiconst!(fx_rights_t, [
     FX_DEFAULT_CHANNEL_RIGHTS = (FX_RIGHTS_BASIC & (!FX_RIGHT_DUPLICATE)) | FX_RIGHTS_IO | FX_RIGHT_SIGNAL | FX_RIGHT_SIGNAL_PEER;
     FX_DEFAULT_PROCESS_RIGHTS    = FX_RIGHTS_BASIC | FX_RIGHTS_IO | FX_RIGHTS_PROPERTY | FX_RIGHT_ENUMERATE | FX_RIGHT_DESTROY | FX_RIGHT_SIGNAL | FX_RIGHT_MANAGE_PROCESS | FX_RIGHT_MANAGE_THREAD;
     FX_DEFAULT_VMO_RIGHTS  = FX_RIGHTS_BASIC | FX_RIGHTS_IO | FX_RIGHTS_PROPERTY | FX_RIGHT_MAP | FX_RIGHT_SIGNAL;
+    FX_DEFAULT_PORT_RIGHTS  = (FX_RIGHTS_BASIC & (!FX_RIGHT_WAIT)) | FX_RIGHTS_IO;
+]);
+
+pub type fx_excp_policy_code_t = u32;
+
+multiconst!(fx_excp_policy_code_t, [
+    FX_EXCP_POLICY_CODE_BAD_HANDLE              = 0;
+    FX_EXCP_POLICY_CODE_WRONG_OBJECT            = 1;
+    FX_EXCP_POLICY_CODE_VMAR_WX                 = 2;
+    FX_EXCP_POLICY_CODE_NEW_ANY                 = 3;
+    FX_EXCP_POLICY_CODE_NEW_VMO                 = 4;
+    FX_EXCP_POLICY_CODE_NEW_CHANNEL             = 5;
+    FX_EXCP_POLICY_CODE_NEW_EVENT               = 6;
+    FX_EXCP_POLICY_CODE_NEW_EVENTPAIR           = 7;
+    FX_EXCP_POLICY_CODE_NEW_PORT                = 8;
+    FX_EXCP_POLICY_CODE_NEW_SOCKET              = 9;
+    FX_EXCP_POLICY_CODE_NEW_FIFO                = 10;
+    FX_EXCP_POLICY_CODE_NEW_TIMER               = 11;
+    FX_EXCP_POLICY_CODE_NEW_PROCESS             = 12;
+    FX_EXCP_POLICY_CODE_NEW_PROFILE             = 13;
+    FX_EXCP_POLICY_CODE_NEW_PAGER               = 14;
+    FX_EXCP_POLICY_CODE_AMBIENT_MARK_VMO_EXEC   = 15;
+    FX_EXCP_POLICY_CODE_CHANNEL_FULL_WRITE      = 16;
+    FX_EXCP_POLICY_CODE_PORT_TOO_MANY_PACKETS   = 17;
+    FX_EXCP_POLICY_CODE_BAD_SYSCALL             = 18;
+    FX_EXCP_POLICY_CODE_PORT_TOO_MANY_OBSERVERS = 19;
 ]);
 
 multiconst!(u32, [

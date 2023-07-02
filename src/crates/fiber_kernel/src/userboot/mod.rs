@@ -1,5 +1,6 @@
 mod userboot;
-use fiber_rust::{sys, Process};
+use fiber_rust::sys;
+use std::sync::Arc;
 
 use crate::{
     object::{
@@ -46,12 +47,11 @@ pub fn userboot_init(kernel: &Kernel) {
     let mut msg = msg;
     let handles = msg.mutable_handles();
 
-
-    handles[userboot::PROC_SELF] = Some(*proc_handle_owner); // TODO: release
-                                                       // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
+    handles[userboot::PROC_SELF] = Some(Arc::downgrade(&proc_handle_owner)); // TODO: release
+    // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
 
     // It gets the root job handles.
-    handles[userboot::ROOT_JOB] = Some(*get_job_handle(kernel)); // TODO: release
+    handles[userboot::ROOT_JOB] = Some(Arc::downgrade(&get_job_handle(kernel))); // TODO: release
     assert!(handles.get(userboot::ROOT_JOB).is_some());
 
     // TODO: revisit this
@@ -87,6 +87,8 @@ pub fn userboot_init(kernel: &Kernel) {
     let hv = process.handle_table().map_handle_to_value(&*user_handle_owner);
     process.handle_table().add_handle(user_handle_owner);
 
+    log::debug!("userboot_init: hv={:?}", hv);
+
     // TODO: do we even need threads?
     // Create the user thread.
     //let thread: Rc<ThreadDispatcher>;
@@ -103,6 +105,7 @@ pub fn userboot_init(kernel: &Kernel) {
 
     // TODO: revisit this
     // Map in the userboot image along with the vDSO.
+    let entry = userboot::_start as *const () as usize;
     // KernelHandle<VmObjectDispatcher> userboot_vmo_kernel_handle;
     // UserbootImage userboot(vdso, &userboot_vmo_kernel_handle);
     // let vdso_base = 0;
@@ -113,20 +116,12 @@ pub fn userboot_init(kernel: &Kernel) {
     // Create a root job observer, restarting the system if the root job becomes childless.
     kernel.start_root_job_observer();
 
-    // FIXME: dprintf(SPEW, "userboot: %-23s @ %#" PRIxPTR "\n", "entry point", entry);
+    log::info!("userboot: entrypoint={:?}", entry);
 
-    // Start the process's initial thread.
-    // let arg1 = hv as usize;
-    // status = thread.start(
-    //     ThreadDispatcher::EntryState {
-    //         entry,
-    //         sp,
-    //         arg1,
-    //         vdso_base,
-    //     },
-    //     /* ensure_initial_thread= */ true,
-    // );
-    // assert!(status == sys::FX_OK);
+    // Start the process.
+    let arg1 = hv;
+    //let status = process.start(entry, arg1);
+    //assert!(status == sys::FX_OK);
 
     // TODO: counters
     // timeline_userboot.set(current_ticks());

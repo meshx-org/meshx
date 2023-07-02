@@ -1,4 +1,8 @@
+use std::sync::Arc;
+
 use fiber_sys as sys;
+
+use super::Handle;
 
 /// SignalObserver implementations may register to be called when
 /// a signal becomes active on a particular Dispatcher.
@@ -24,4 +28,9 @@ pub(crate) trait SignalObserver: std::fmt::Debug + Send {
     fn on_cancel(&self, signals: sys::fx_signals_t);
 
     fn get_triggering_signals(&self) -> sys::fx_signals_t;
+
+    fn set_triggeting_signals(&self, signals: sys::fx_signals_t);
+    fn set_handle(&self, handle: Arc<Handle>);
+
+    fn get_koid(&self) -> sys::fx_koid_t;
 }

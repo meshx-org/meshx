@@ -5,16 +5,23 @@
 // https://opensource.org/licenses/MIT
 
 use super::signal_observer::SignalObserver;
+use super::Handle;
 use crate::koid;
 use fiber_sys as sys;
 use std::marker::PhantomData;
 use std::sync::atomic::{fence, AtomicU32, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex, RwLock, Weak};
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum TriggerMode {
+    Level,
+    Edge
+}
 
 #[derive(Debug)]
-struct GuardedDispatcherState {
+pub(crate) struct GuardedDispatcherState {
     // List of observers watching for changes in signals on this dispatcher.
-    observers: Vec<Box<dyn SignalObserver + Send + Sync>>,
+    pub observers: Vec<Arc<dyn SignalObserver + Send + Sync>>,
 }
 
 #[derive(Debug)]
@@ -22,7 +29,7 @@ pub(crate) struct BaseDispatcher {
     koid: sys::fx_koid_t,
     handle_count: AtomicU32,
 
-    guarded: RwLock<GuardedDispatcherState>, // TA_GUARDED(get_lock());
+    pub(crate) guarded: RwLock<GuardedDispatcherState>, // TA_GUARDED(get_lock());
 
     // |signals| is the set of currently active signals.
     //
@@ -142,6 +149,69 @@ impl BaseDispatcher {
             to_remove.on_match(signals);
         }
     }
+
+    // Add a observer which will be triggered when any |signal| becomes active
+    // or cancelled when |handle| is destroyed.
+    //
+    // |observer| must be non-null, and |is_waitable| must report true.
+    //
+    // Be sure to |RemoveObserver| before the Dispatcher is destroyed.
+    //
+    // If |trigger_mode| is set to Edge, the signal state is not checked
+    // on entry and the observer is only triggered if a signal subsequently
+    // becomes active.
+    pub(crate) fn add_observer(
+        &self,
+        observer: Arc<dyn SignalObserver + Send + Sync + 'static>,
+        handle: Arc<Handle>,
+        signals: sys::fx_signals_t,
+        trigger_mode: TriggerMode,
+    ) -> sys::fx_status_t {
+        let mut guard = self.guarded.write().unwrap();
+
+        if trigger_mode == TriggerMode::Level {
+            // If the currently active signals already match the desired signals,
+            // just execute the match now.
+            let active_signals = self.signals.load(Ordering::Acquire);
+            if (active_signals & signals) != 0 {
+                observer.on_match(active_signals);
+                return sys::FX_OK;
+            }
+        }
+
+        // Otherwise, enqueue this observer.
+        observer.set_handle(handle);
+        observer.set_triggeting_signals(signals);
+
+        guard.observers.insert(0, observer);
+
+        sys::FX_OK
+    }
+
+    // Remove an observer.
+    //
+    // Returns true if the method removed |observer|, otherwise returns false. If
+    // provided, |signals| will be given the current state of the dispatcher's
+    // signals when the observer was removed.
+    //
+    // This method may return false if the observer was never added or has already been removed in
+    // preparation for its destruction.
+    //
+    // It is an error to call this method with an observer that's observing some other Dispatcher.
+    //
+    // May only be called when |is_waitable| reports true.
+    pub(crate) fn remove_observer(
+        &self,
+        observer: &Box<dyn SignalObserver + Send + Sync + 'static>,
+        out_signals: *mut sys::fx_signals_t,
+    ) {
+        if out_signals != std::ptr::null_mut() {
+            unsafe { *out_signals = self.signals.load(Ordering::Acquire) };
+        }
+
+        let mut guard: std::sync::RwLockWriteGuard<'_, GuardedDispatcherState> = self.guarded.write().unwrap();
+        guard.observers.retain(|x| observer.get_koid() != x.get_koid());
+    }
 }
 
 // PeeredDispatchers have opposing endpoints to coordinate state
@@ -224,11 +294,27 @@ pub(crate) trait Dispatcher: Send + Sync {
         unreachable!()
     }
 
-    fn is_waitable() -> bool
-    where
-        Self: Sized,
-    {
+    fn is_waitable(&self) -> bool {
         false
+    }
+
+    fn add_observer(
+        &self,
+        observer: Arc<dyn SignalObserver + Send + Sync + 'static>,
+        handle: Arc<Handle>,
+        signals: sys::fx_signals_t,
+        trigger_mode: TriggerMode,
+    ) -> sys::fx_status_t {
+        if !self.is_waitable() {
+            return sys::FX_ERR_NOT_SUPPORTED;
+        }
+
+        self.base().add_observer(observer, handle, signals, trigger_mode)
+    }
+
+    fn remove_observer(&self, observer: &Box<dyn SignalObserver + Send + Sync>, out_signals: *mut sys::fx_signals_t) {
+        debug_assert!(self.is_waitable());
+        self.base().remove_observer(observer, out_signals)
     }
 
     fn base(&self) -> &BaseDispatcher;

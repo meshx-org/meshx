@@ -5,23 +5,23 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT
 
-use std::arch::asm;
 use std::marker::PhantomData;
-use std::mem::size_of;
+
 use std::rc::Rc;
 use std::sync::atomic::AtomicU64;
-use std::{any::Any, sync::Arc};
+use std::sync::Arc;
+use std::sync::Weak;
 
-use crate::object::{BaseDispatcher, Dispatcher, HANDLE_TABLE};
+use crate::object::Dispatcher;
 
 use fiber_sys::{fx_koid_t, fx_rights_t};
 use static_assertions::const_assert;
 
-use super::{GenericDispatcher};
+use super::GenericDispatcher;
 
-// HandleOwner wraps a Handle in a Box that has single
+// HandleOwner wraps a Handle in an Arc that has shared
 // ownership of the Handle and deletes it whenever it falls out of scope.
-pub(crate) type HandleOwner = Box<Handle>;
+pub(crate) type HandleOwner = Arc<Handle>;
 
 /// A minimal wrapper around a Dispatcher which is owned by the kernel.
 ///
@@ -59,38 +59,29 @@ impl<T> KernelHandle<T> {
 /// A Handle is how a specific process refers to a specific Dispatcher.
 #[derive(Debug)]
 pub(crate) struct Handle {
-    // process_id_ is atomic because threads from different processes can
+    // handle_table_id_ is atomic because threads from different processes can
     // access it concurrently, while holding different instances of
     // handle_table_lock_.
-    pub(super) process_id: AtomicU64,
+    pub(super) handle_table_id: AtomicU64,
+
     pub(super) dispatcher: GenericDispatcher,
     pub(super) handle_rights: fx_rights_t,
     pub(super) base_value: u32,
 }
 
-fn index_to_handle(index: usize) -> *const u32 {
-    &0
+fn index_to_handle(index: usize) -> Weak<Handle> {
+    Weak::new()
 }
 
 fn handle_value_to_index(value: u32) -> u32 {
     value & HANDLE_INDEX_MASK
 }
 
-/// (x == y) ? a : b
-#[inline]
-const fn conditional_select_spec_eq(x: usize, y: usize, a: usize, b: usize) -> usize {
-    if x == y {
-        a
-    } else {
-        b
-    }
-}
-
 impl Handle {
     // Called only by Make.
     fn new(dispatcher: GenericDispatcher, rights: fx_rights_t, base_value: u32) -> Self {
         Handle {
-            process_id: AtomicU64::new(0),
+            handle_table_id: AtomicU64::new(0),
             handle_rights: rights,
             dispatcher,
             base_value: 0,
@@ -98,11 +89,11 @@ impl Handle {
     }
 
     // Called only by Dup.
-    fn new_from_raw(rhs: &Box<Handle>, rights: fx_rights_t, base_value: u32) -> Self {
-        let dispatcher = unsafe { (*rhs).dispatcher() };
+    fn new_from_raw(rhs: Arc<Handle>, rights: fx_rights_t, base_value: u32) -> Self {
+        let dispatcher = rhs.dispatcher();
 
         Handle {
-            process_id: AtomicU64::new(0),
+            handle_table_id: AtomicU64::new(0),
             handle_rights: rights,
             dispatcher,
             base_value: 0,
@@ -110,11 +101,11 @@ impl Handle {
     }
 
     /// Maps an integer obtained by Handle::base_value() back to a Handle.
-    pub(super) fn from_u32(value: u32) -> *const Self {
+    pub(super) fn from_u32(value: u32) -> Option<Weak<Self>> {
         let index = handle_value_to_index(value);
-        let handle_addr = index_to_handle(index as usize);
+        let handle_ref = index_to_handle(index as usize);
 
-        let handle_addr = handle_addr as *const Self;
+        let handle = handle_ref.upgrade().unwrap();
 
         // if !HANDLE_TABLE.arena.committed(handle_addr as *const ()) {
         //     return std::ptr::null();
@@ -122,23 +113,26 @@ impl Handle {
 
         // let handle_addr = gHandleTableArena.arena.Confine(handle_addr);
 
-        let handle = unsafe { &*handle_addr };
-        let handle_addr = handle_addr as usize;
+        let handle = if handle.base_value() as usize == value as usize {
+            Some(handle_ref)
+        } else {
+            None
+        };
 
-        conditional_select_spec_eq(handle.base_value() as usize, value as usize, handle_addr, 0) as *const Handle
+        handle
     }
 
     // Handle should never be created by anything other than Make or Dup.
     pub(crate) fn make_from_dispatcher(dispatcher: GenericDispatcher, rights: fx_rights_t) -> HandleOwner {
-        Box::new(Handle::new(dispatcher, rights, 0))
+        Arc::new(Handle::new(dispatcher, rights, 0))
     }
 
     pub(crate) fn make<T>(handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner {
-        Box::new(Handle::new(handle.dispatcher(), rights, 0))
+        Arc::new(Handle::new(handle.dispatcher(), rights, 0))
     }
 
-    pub(crate) fn dup(source: &Box<Handle>, rights: fx_rights_t) -> HandleOwner {
-        Box::new(Handle::new_from_raw(source, rights, 0))
+    pub(crate) fn dup(source: Arc<Handle>, rights: fx_rights_t) -> HandleOwner {
+        Arc::new(Handle::new_from_raw(source, rights, 0))
     }
 
     /// Returns a value that can be decoded by Handle::FromU32() to derive a
@@ -163,10 +157,15 @@ impl Handle {
         self.dispatcher.clone()
     }
 
-    /// Returns the process that owns this instance. Used to guarantee
-    /// that one process may not access a handle owned by a different process.
-    pub(crate) fn process_id(&self) -> fx_koid_t {
-        self.process_id.load(std::sync::atomic::Ordering::Relaxed)
+    // Returns the handle table that owns this instance. Used to guarantee
+    // that a process may only access handles in its own handle table.
+    pub(crate) fn handle_table_id(&self) -> fx_koid_t {
+        return self.handle_table_id.load(std::sync::atomic::Ordering::Relaxed);
+    }
+
+    // Sets the value returned by handle_table_id().
+    pub(crate) fn set_handle_table_id(pid: fx_koid_t) {
+        todo!()
     }
 
     /// Sets the value returned by process_id().
