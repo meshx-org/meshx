@@ -6,9 +6,6 @@
 // https://opensource.org/licenses/MIT
 
 use fiber_rust as fx;
-use fiber_sys as sys;
-
-use fx::HandleBased;
 
 const FX_PROCARGS_PROTOCOL: u32 = 0x4150585d;
 const FX_PROCARGS_VERSION: u32 = 0x0001000;
@@ -159,19 +156,3 @@ fn bootstrap(channel: fx::Channel) {
     fx::Process::exit(0);
 }
 */
-
-fn bootstrap(channel: fx::Channel) {
-    println!("Hello, world from user space!");
-
-    let ptr = _start as *const ();
-    let code: extern "C" fn(fx::sys::fx_handle_t) = unsafe { std::mem::transmute(ptr) };
-
-    (code)(0)
-}
-
-// This is the entry point for the whole show, the very first bit of code
-// to run in user mode.
-pub async fn _start(arg: fx::sys::fx_handle_t) {
-    let handle = unsafe { fx::Handle::from_raw(arg) };
-    bootstrap(fx::Channel::from_handle(handle));
-}

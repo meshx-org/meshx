@@ -1,11 +1,12 @@
 use std::any::Any;
+use std::future::IntoFuture;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use crate::object::{
     BaseDispatcher, Dispatcher, HandleTable, JobDispatcher, JobPolicy, KernelHandle, TypedDispatcher, VMODispatcher,
 };
-use crate::process_context::{with_context, get_last_process};
+use crate::process_context::{get_last_process, with_context};
 use fiber_sys as sys;
 
 use super::GenericDispatcher;
@@ -121,6 +122,18 @@ impl ProcessDispatcher {
         //}
 
         return sys::FX_OK;
+    }
+
+    // Start this process running with the provided entry state, only
+    // valid to be called on a thread in the INITIALIZED state that has not yet been started. If
+    // `ensure_initial_thread` is true, the thread will only start if it is the first thread in the
+    // process.
+    pub(crate) fn start(&self, entry_fp: *const (), arg1: sys::fx_handle_t, arg2: sys::fx_handle_t) {
+        let start_fn: extern "C" fn(arg1: sys::fx_handle_t) = unsafe { std::mem::transmute(entry_fp) };
+
+        log::debug!("ProcessDispatcher::start({:?})", self.name);
+
+        let handle = tokio::task::spawn_blocking(move || (start_fn)(arg1));
     }
 
     pub(crate) fn get_current() -> Arc<ProcessDispatcher> {

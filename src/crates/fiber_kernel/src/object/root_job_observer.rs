@@ -35,7 +35,7 @@ impl SignalObserver for RootJobObserver {
         // this method. Take care to avoid calling anything that might attempt to
         // acquire that lock.
 
-        println!("on match: {:x}", signals);
+        log::debug!("on match: {:x}", signals);
 
         // self.callback_();
     }

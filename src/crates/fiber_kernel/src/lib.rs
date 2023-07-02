@@ -324,7 +324,7 @@ impl fiber_sys::System for Kernel {
         actual_bytes: *mut u32,
         actual_handles: *mut u32,
     ) -> sys::fx_status_t {
-        todo!()
+        sys::FX_OK
     }
 
     fn sys_channel_read_etc(
@@ -429,6 +429,23 @@ impl fiber_sys::System for Kernel {
 
 type OnProcessStartHook = fn(&object::ProcessObject);
 
+use std::{
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
+
+pub struct DumbFuture {}
+
+impl Future for DumbFuture {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+        log::info!("Hello from a dumb future!");
+        Poll::Ready(())
+    }
+}
+
 impl Kernel {
     pub fn new(on_process_start_cb: OnProcessStartHook) -> Self {
         Self {
@@ -461,15 +478,23 @@ impl Kernel {
         assert!(self.root_job_handle.is_some());
     }
 
+    async fn drive() {
+        
+    }
+
     pub fn start(&self) {
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()
             .unwrap();
 
-        userboot::userboot_init(self);
-
         rt.block_on(async {
+            userboot::userboot_init(self);
+
+            DumbFuture {}.await;
+
+            log::info!("Now wait until the root job is childless.");
+
             println!("Hello world");
         })
     }

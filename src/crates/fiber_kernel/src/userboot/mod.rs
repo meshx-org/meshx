@@ -1,10 +1,12 @@
 mod userboot;
+mod main;
+
 use fiber_rust::sys;
 use std::sync::Arc;
 
 use crate::{
     object::{
-        ChannelDispatcher, GenericDispatcher, Handle, HandleOwner, JobDispatcher, MessagePacket, ProcessDispatcher,
+        ChannelDispatcher,  Handle, HandleOwner, JobDispatcher, MessagePacket, ProcessDispatcher,
         TypedDispatcher,
     },
     Kernel,
@@ -105,7 +107,7 @@ pub fn userboot_init(kernel: &Kernel) {
 
     // TODO: revisit this
     // Map in the userboot image along with the vDSO.
-    let entry = userboot::_start as *const () as usize;
+    let entry = main::_start as *const ();
     // KernelHandle<VmObjectDispatcher> userboot_vmo_kernel_handle;
     // UserbootImage userboot(vdso, &userboot_vmo_kernel_handle);
     // let vdso_base = 0;
@@ -120,7 +122,7 @@ pub fn userboot_init(kernel: &Kernel) {
 
     // Start the process.
     let arg1 = hv;
-    //let status = process.start(entry, arg1);
+    let status = process.start(entry, arg1, 0);
     //assert!(status == sys::FX_OK);
 
     // TODO: counters
