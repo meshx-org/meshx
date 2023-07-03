@@ -2,6 +2,7 @@ mod userboot;
 mod main;
 
 use fiber_rust::sys;
+use tracing::instrument;
 use std::sync::Arc;
 
 use crate::{
@@ -18,10 +19,8 @@ fn get_job_handle(kernel: &Kernel) -> HandleOwner {
 
 // KCOUNTER(timeline_userboot, "boot.timeline.userboot")
 // KCOUNTER(init_time, "init.userboot.time.msec")
-
+#[instrument(skip(kernel))]
 pub fn userboot_init(kernel: &Kernel) {
-    log::info!("userboot_init()");
-
     // Prepare the bootstrap message packet. This allocates space for its
     // handles, which we'll fill in as we create things.
     let result = MessagePacket::create(std::ptr::null(), 0, userboot::HANDLE_COUNT as u16);
@@ -122,7 +121,7 @@ pub fn userboot_init(kernel: &Kernel) {
 
     // Start the process.
     let arg1 = hv;
-    let status = process.start(entry, arg1, 0);
+    let status = process.start(main::_start, arg1, 0);
     //assert!(status == sys::FX_OK);
 
     // TODO: counters

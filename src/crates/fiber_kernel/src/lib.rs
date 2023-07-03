@@ -8,15 +8,13 @@ pub mod userboot;
 mod object;
 mod process_context;
 
-use log::trace;
 use object::{HandleOwner, PortDispatcher};
-use once_cell::sync::OnceCell;
-use process_context::process_scope;
 use std::{
     cell::Cell,
     fmt,
     sync::{Arc, Mutex},
 };
+use tracing::{event, instrument, Level};
 
 use fiber_sys as sys;
 
@@ -86,14 +84,13 @@ impl fiber_sys::System for Kernel {
         proc_handle: *mut sys::fx_handle_t,
         vmar_handle: *mut sys::fx_handle_t,
     ) -> sys::fx_status_t {
-        trace!("job handle = {}, options = {:?}\n", job_handle, options);
-
         // currently, the only valid option value is 0
         if options != 0 {
             return sys::FX_ERR_INVALID_ARGS;
         }
 
-        let up = ProcessDispatcher::get_current();
+        let current = ProcessDispatcher::get_current();
+        let up = current.process.clone();
 
         // We check the policy against the process calling zx_process_create, which
         // is the operative policy, rather than against |job_handle|. Access to
@@ -107,9 +104,9 @@ impl fiber_sys::System for Kernel {
         if name_size > sys::FX_MAX_NAME_LEN {
             name_size = sys::FX_MAX_NAME_LEN;
         }
-        trace!("name_size = {}", name_size);
+        log::trace!("name_size = {}", name_size);
 
-        // NOTE: highly unsafe opertaion
+        // TODO: remove unsafe opertaion
         let name = unsafe { String::from_raw_parts(name as *mut u8, name_size, sys::FX_MAX_NAME_LEN) };
 
         log::trace!("name = {}", name.clone());
@@ -150,7 +147,8 @@ impl fiber_sys::System for Kernel {
         entry: sys::fx_vaddr_t,
         arg1: sys::fx_handle_t,
     ) -> sys::fx_status_t {
-        let up = ProcessDispatcher::get_current();
+        let current = ProcessDispatcher::get_current();
+        let up = current.process.clone();
 
         let result = up.handle_table().get_dispatcher_with_rights(up.as_ref(), handle, 0);
 
@@ -169,21 +167,19 @@ impl fiber_sys::System for Kernel {
         0
     }
 
+    #[instrument(skip(self))]
     fn sys_job_create(
         &self,
         parent_job: sys::fx_handle_t,
         options: u32,
         out: *const sys::fx_handle_t,
     ) -> sys::fx_status_t {
-        trace!("klog sys_job_create: {}", parent_job);
-
         if options != 0 {
             return sys::FX_ERR_INVALID_ARGS;
         }
 
-        let up = ProcessDispatcher::get_current();
-
-        trace!("klog up: {:?}", up);
+        let current = ProcessDispatcher::get_current();
+        let up = current.process.clone();
 
         let result = up
             .handle_table()
@@ -253,7 +249,8 @@ impl fiber_sys::System for Kernel {
             return sys::FX_ERR_INVALID_ARGS;
         }
 
-        let up = ProcessDispatcher::get_current();
+        let current = ProcessDispatcher::get_current();
+        let up = current.process.clone();
 
         let observer = {
             // let guard = { up.handle_table().get_lock() };
@@ -313,6 +310,7 @@ impl fiber_sys::System for Kernel {
         todo!()
     }
 
+    #[instrument(target = "klog", skip(self, handles, bytes))]
     fn sys_channel_read(
         &self,
         handle: sys::fx_handle_t,
@@ -324,9 +322,12 @@ impl fiber_sys::System for Kernel {
         actual_bytes: *mut u32,
         actual_handles: *mut u32,
     ) -> sys::fx_status_t {
+        let up = ProcessDispatcher::get_current();
+
         sys::FX_OK
     }
 
+    #[tracing::instrument]
     fn sys_channel_read_etc(
         &self,
         handle: sys::fx_handle_t,
@@ -435,17 +436,6 @@ use std::{
     task::{Context, Poll},
 };
 
-pub struct DumbFuture {}
-
-impl Future for DumbFuture {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
-        log::info!("Hello from a dumb future!");
-        Poll::Ready(())
-    }
-}
-
 impl Kernel {
     pub fn new(on_process_start_cb: OnProcessStartHook) -> Self {
         Self {
@@ -478,10 +468,6 @@ impl Kernel {
         assert!(self.root_job_handle.is_some());
     }
 
-    async fn drive() {
-        
-    }
-
     pub fn start(&self) {
         let rt = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
@@ -490,8 +476,6 @@ impl Kernel {
 
         rt.block_on(async {
             userboot::userboot_init(self);
-
-            DumbFuture {}.await;
 
             log::info!("Now wait until the root job is childless.");
 
@@ -539,25 +523,5 @@ impl Kernel {
             .dispatcher();
 
         self.boot_process = Some(Arc::new(f));
-    }
-
-    pub fn run_root(&self) {
-        let refer = self.boot_process.clone();
-
-        // TODO: do not create a process here, but use the current process
-        let dispatcher = ProcessDispatcher::create(JobDispatcher::new(0, None, JobPolicy), String::from(""), 0)
-            .unwrap()
-            .0
-            .dispatcher();
-
-        let process = dispatcher.as_process_dispatcher().unwrap();
-
-        process_scope(
-            move || {
-                let entry = refer.as_ref().unwrap();
-                entry()
-            },
-            process,
-        );
     }
 }

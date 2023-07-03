@@ -6,10 +6,13 @@ use std::sync::Arc;
 use crate::object::{
     BaseDispatcher, Dispatcher, HandleTable, JobDispatcher, JobPolicy, KernelHandle, TypedDispatcher, VMODispatcher,
 };
-use crate::process_context::{get_last_process, with_context};
+use crate::process_context::{self, get_last_process, Context, ScopeGuard};
 use fiber_sys as sys;
 
 use super::GenericDispatcher;
+
+use switcheroo::Generator;
+use switcheroo::{stack::*, Yielder};
 
 // state of the process
 #[derive(Debug, PartialEq)]
@@ -128,17 +131,42 @@ impl ProcessDispatcher {
     // valid to be called on a thread in the INITIALIZED state that has not yet been started. If
     // `ensure_initial_thread` is true, the thread will only start if it is the first thread in the
     // process.
-    pub(crate) fn start(&self, entry_fp: *const (), arg1: sys::fx_handle_t, arg2: sys::fx_handle_t) {
-        let start_fn: extern "C" fn(arg1: sys::fx_handle_t) = unsafe { std::mem::transmute(entry_fp) };
+    pub(crate) fn start(
+        self: Arc<Self>,
+        entry: fn(arg1: sys::fx_handle_t, arg2: sys::fx_handle_t),
+        arg1: sys::fx_handle_t,
+        arg2: sys::fx_handle_t,
+    ) {
+        log::debug!("ProcessDispatcher::start({:?}, {:?})", entry, self.name);
 
-        log::debug!("ProcessDispatcher::start({:?})", self.name);
+        let stack = OneMbStack::new().unwrap();
 
-        let handle = tokio::task::spawn_blocking(move || (start_fn)(arg1));
+        let mut task = Generator::<_, _, OneMbStack>::new(stack, |yielder, input: u32| {
+            let context = Context {
+                process: self,
+                yielder: yielder as *const Yielder<u32, u32>,
+            };
+
+            // Make sure to save the guard, see documentation for more information
+            let _guard = ScopeGuard::new(context);
+
+            fn test(yielder: &Yielder<u32, u32>) {
+                yielder.suspend(0);
+                yielder.suspend(2);
+            }
+
+            test(yielder);
+
+            entry(arg1, input);
+        });
+
+        log::debug!("{:?}", task.resume(0));
+        log::debug!("{:?}", task.resume(1));
+        log::debug!("{:?}", task.resume(1));
     }
 
-    pub(crate) fn get_current() -> Arc<ProcessDispatcher> {
+    pub(crate) fn get_current() -> Context {
         log::trace!("ProcessDispatcher::get_current()");
-
         get_last_process()
     }
 

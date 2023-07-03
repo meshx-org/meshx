@@ -4,25 +4,25 @@ mod handle;
 mod handle_table;
 mod job_dispatcher;
 mod message_packet;
+mod port_dispatcher;
 mod process_dispatcher;
 mod root_job_observer;
 mod signal_observer;
 mod vmo_dispatcher;
-mod port_dispatcher;
 
 use std::{ops::Deref, sync::Arc};
 
+pub(crate) use channel_dispatcher::*;
 pub(crate) use dispatcher::*;
 pub(crate) use handle::*;
 pub(crate) use handle_table::*;
-pub(crate) use message_packet::*;
 pub(crate) use job_dispatcher::*;
-pub(crate) use process_dispatcher::*;
-pub(crate) use vmo_dispatcher::*;
-pub(crate) use channel_dispatcher::*;
+pub(crate) use message_packet::*;
 pub(crate) use port_dispatcher::*;
+pub(crate) use process_dispatcher::*;
 pub(crate) use root_job_observer::*;
 pub(crate) use signal_observer::*;
+pub(crate) use vmo_dispatcher::*;
 
 #[derive(Debug, Clone)]
 pub(crate) enum GenericDispatcher {

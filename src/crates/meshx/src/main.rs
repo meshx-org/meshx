@@ -6,7 +6,8 @@ use fiber_status as fx_status;
 use std::sync::Arc;
 
 fn main() -> Result<(), fx_status::Status> {
-    env_logger::init();
+    // install global collector configured based on RUST_LOG env var.
+    tracing_subscriber::fmt::init();
 
     let mut kernel = Kernel::new(|process| {
         let _vmo = process.get_vmo();
