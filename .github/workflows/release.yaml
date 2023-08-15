@@ -37,7 +37,7 @@ jobs:
               run: npm install --frozen-lockfile
 
             - name: Create Release Pull Request or Publish to npm
-              uses: changesets/action@master
+              uses: changesets/action@v1
               with:
                   title: Release Tracking
                   # this expects you to have a script called release which does a build for your packages and calls changeset publish
