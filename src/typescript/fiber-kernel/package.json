@@ -2,11 +2,9 @@
     "name": "@meshx-org/fiber-kernel",
     "version": "0.0.1",
     "type": "commonjs",
-    "description": "use-viewport-size",
     "author": "Sz.Kovács Roland <Roland.Szarka-Kovacs@meshx.co>",
     "homepage": "https://github.com/meshx-org/meshx#readme",
     "publishConfig": {
-        "directory": "dist",
         "registry": "https://npm.pkg.github.com"
     },
     "repository": {
