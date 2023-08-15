@@ -6,8 +6,8 @@
         "start": "nx run-many -t serve --all",
         "build": "nx run-many -t build  --projects=tag:lang:ts",
         "test": "nx run-many -t test --all",
-        "version-packages": "changeset version",
-        "release": "npm run build && changeset publish"
+        "version-packages": "npx changeset version",
+        "release": "npm run build && npx changeset publish"
     },
     "dependencies": {
         "@nxrs/cargo": "^0.3.3",
