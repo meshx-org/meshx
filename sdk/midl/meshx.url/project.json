@@ -7,11 +7,8 @@
         "build": {
             "executor": "./dist/tools/nx-midl:build",
             "dependsOn": ["^build"],
-            "inputs": [
-                "{workspaceRoot}/sdk/midl/meshx.url/midl.json",
-                "{workspaceRoot}/sdk/midl/meshx.url/*.midl"
-            ],
-            "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.url/ir.json", "./ir.json"],
+            "inputs": ["{workspaceRoot}/sdk/midl/meshx.url/midl.json", "{workspaceRoot}/sdk/midl/meshx.url/*.midl"],
+            "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.url/ir.json", "{projectRoot}/ir.json"],
             "options": {
                 "outDir": "dist/sdk/midl/meshx.url",
                 "midlJson": "./midl.json",

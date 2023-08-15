@@ -80,11 +80,12 @@ export class Handle {
         return new Handle(dispatcher, rights, base_value)
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     public destructor(): void {}
 
     public static make(kernel_handle: KernelHandle<Dispatcher>, rights: fx_rights_t): HandleOwner {
         const base_value = new Ref(0)
-        const addr = gHandleTableArena.alloc(kernel_handle.dispatcher(), "new", base_value)
+        const addr = gHandleTableArena.alloc(kernel_handle.dispatcher()!, "new", base_value)
 
         if (!addr) {
             throw "alloc failed"

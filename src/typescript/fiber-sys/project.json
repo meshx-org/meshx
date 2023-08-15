@@ -5,13 +5,14 @@
     "projectType": "library",
     "targets": {
         "build": {
-            "executor": "@nrwl/js:tsc",
+            "executor": "@nx/js:tsc",
             "outputs": ["{options.outputPath}"],
             "options": {
                 "outputPath": "dist/./src/typescript/fiber-sys",
                 "main": "src/typescript/fiber-sys/src/index.ts",
                 "tsConfig": "src/typescript/fiber-sys/tsconfig.lib.json",
-                "assets": ["src/typescript/fiber-sys/*.md"]
+                "assets": ["src/typescript/fiber-sys/*.md"],
+                "updateBuildableProjectDepsInPackageJson": true
             }
         },
         "publish": {
@@ -22,19 +23,20 @@
             "dependsOn": ["build"]
         },
         "lint": {
-            "executor": "@nrwl/linter:eslint",
+            "executor": "@nx/linter:eslint",
             "outputs": ["{options.outputFile}"],
             "options": {
                 "lintFilePatterns": ["src/typescript/fiber-sys/**/*.ts"]
             }
         },
         "test": {
-            "executor": "@nrwl/vite:test",
-            "outputs": ["coverage/src/typescript/fiber-sys"],
+            "executor": "@nx/vite:test",
+            "outputs": ["{workspaceRoot}/coverage/src/typescript/fiber-sys"],
             "options": {
                 "passWithNoTests": true,
                 "reportsDirectory": "../../../coverage/src/typescript/fiber-sys"
             }
         }
-    }
+    },
+    "tags": ["lang:ts"]
 }

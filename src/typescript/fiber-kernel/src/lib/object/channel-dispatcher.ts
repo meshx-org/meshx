@@ -123,6 +123,7 @@ export class ChannelDispatcher extends PeeredDispatcher<ChannelDispatcher> {
         const lock = this._guarded
 
         lock.messages.push(msg)
+        // eslint-disable-next-line prefer-const
         previous_signals = this.raise_signals_locked(FX_CHANNEL_READABLE)
 
         const size = lock.messages.length
@@ -135,6 +136,14 @@ export class ChannelDispatcher extends PeeredDispatcher<ChannelDispatcher> {
             this.notify_observers_locked(previous_signals | FX_CHANNEL_READABLE)
         }
     }
+
+    private raise_signals_locked(signals: fx_signals_t): fx_signals_t {
+        // TODO: remove this
+        return FX_CHANNEL_READABLE
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    private notify_observers_locked(signals: fx_signals_t) {}
 
     private try_write_to_message_waiter(msg: MessagePacketPtr): Result<null, MessagePacketPtr> {
         const lock = this._guarded

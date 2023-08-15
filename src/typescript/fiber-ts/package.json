@@ -2,5 +2,9 @@
     "name": "@meshx-org/fiber-ts",
     "version": "0.0.1",
     "private": true,
-    "type": "commonjs"
+    "type": "commonjs",
+    "dependencies": {
+        "@meshx-org/fiber-types": "*",
+        "@meshx-org/fiber-sys": "*"
+    }
 }

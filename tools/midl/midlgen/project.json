@@ -1,6 +1,6 @@
 {
     "name": "tools/midl/midlgen",
-    "root": "tools/midl/midlgen",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "projectType": "application",
     "implicitDependencies": ["tools/nx_rust"],
     "targets": {

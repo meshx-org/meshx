@@ -9,7 +9,7 @@ import { Kernel } from ".."
 import { JobDispatcher } from "../object/job-dispatcher"
 
 function get_job_handle(kernel: Kernel): HandleOwner {
-    return Handle.dup(kernel.get_root_job_handle(), JobDispatcher.default_rights())
+    return Handle.dup(kernel.get_root_job_handle().handle, JobDispatcher.default_rights())
 }
 
 // KCOUNTER(timeline_userboot, "boot.timeline.userboot")
@@ -41,11 +41,11 @@ export function userboot_init(kernel: Kernel) {
 
     const handles = msg.handles()
 
-    handles[PROC_SELF] = proc_handle_owner
+    handles[PROC_SELF] = proc_handle_owner.handle
     // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
 
     // It gets the root job handles.
-    handles[ROOT_JOB] = get_job_handle(kernel)
+    handles[ROOT_JOB] = get_job_handle(kernel).handle
     assert(handles[ROOT_JOB] !== null)
 
     // TODO: revisit this

@@ -5,13 +5,14 @@
     "projectType": "library",
     "targets": {
         "build": {
-            "executor": "@nrwl/js:tsc",
+            "executor": "@nx/js:tsc",
             "outputs": ["{options.outputPath}"],
             "options": {
                 "outputPath": "dist/./src/typescript/fiber-types",
                 "main": "src/typescript/fiber-types/src/index.ts",
                 "tsConfig": "src/typescript/fiber-types/tsconfig.lib.json",
-                "assets": ["src/typescript/fiber-types/*.md"]
+                "assets": ["src/typescript/fiber-types/*.md"],
+                "updateBuildableProjectDepsInPackageJson": true
             }
         },
         "publish": {
@@ -22,7 +23,7 @@
             "dependsOn": ["build"]
         },
         "lint": {
-            "executor": "@nrwl/linter:eslint",
+            "executor": "@nx/linter:eslint",
             "outputs": ["{options.outputFile}"],
             "options": {
                 "lintFilePatterns": ["src/typescript/fiber-types/**/*.ts"]

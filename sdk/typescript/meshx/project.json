@@ -1,17 +1,41 @@
 {
     "name": "sdk/typescript/meshx",
     "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-    "sourceRoot": "sdk/typescript/meshx/src",
     "projectType": "library",
+    "implicitDependencies": ["fiber_kernel"],
     "targets": {
         "build": {
-            "executor": "@nrwl/js:tsc",
+            "executor": "@nx/js:tsc",
             "outputs": ["{options.outputPath}"],
             "options": {
                 "outputPath": "dist/./sdk/typescript/meshx",
                 "main": "sdk/typescript/meshx/src/index.ts",
                 "tsConfig": "sdk/typescript/meshx/tsconfig.lib.json",
-                "assets": ["sdk/typescript/meshx/*.md"]
+                "assets": ["sdk/typescript/meshx/*.md"],
+                "updateBuildableProjectDepsInPackageJson": true
+            }
+        },
+        "run": {
+            "executor": "@nxrs/cargo:build",
+            "options": {
+                "toolchain": "nightly",
+                "release": false,
+                "run": true
+            }
+        },
+        "test": {
+            "executor": "@nx/vite:test",
+            "outputs": ["{workspaceRoot}/coverage/sdk/typescript/meshx"],
+            "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../../coverage/sdk/typescript/meshx"
+            }
+        },
+        "lint": {
+            "executor": "@nx/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": ["sdk/typescript/meshx/**/*.ts"]
             }
         },
         "publish": {
@@ -20,22 +44,8 @@
                 "command": "node tools/scripts/publish.mjs sdk-typescript-meshx {args.ver} {args.tag}"
             },
             "dependsOn": ["build"]
-        },
-        "lint": {
-            "executor": "@nrwl/linter:eslint",
-            "outputs": ["{options.outputFile}"],
-            "options": {
-                "lintFilePatterns": ["sdk/typescript/meshx/**/*.ts"]
-            }
-        },
-        "test": {
-            "executor": "@nrwl/vite:test",
-            "outputs": ["coverage/sdk/typescript/meshx"],
-            "options": {
-                "passWithNoTests": true,
-                "reportsDirectory": "../../../coverage/sdk/typescript/meshx"
-            }
         }
     },
-    "tags": []
+    "tags": [],
+    "sourceRoot": "sdk/typescript/meshx/src"
 }

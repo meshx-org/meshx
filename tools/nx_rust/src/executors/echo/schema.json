@@ -1,10 +1,9 @@
 {
-    "$schema": "http://json-schema.org/schema",
-    "version": 2,
-    "cli": "nx",
-    "title": "Echo executor",
-    "description": "",
-    "type": "object",
-    "properties": {},
-    "required": []
+  "$schema": "http://json-schema.org/schema",
+  "version": 2,
+  "title": "Echo executor",
+  "description": "",
+  "type": "object",
+  "properties": {},
+  "required": []
 }

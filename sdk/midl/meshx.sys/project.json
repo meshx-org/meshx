@@ -7,7 +7,7 @@
         "build": {
             "executor": "./dist/tools/nx-midl:build",
             "dependsOn": ["^build"],
-            "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.sys", "./ir.json"],
+            "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.sys", "{projectRoot}/ir.json"],
             "options": {
                 "outDir": "dist/sdk/midl/meshx.sys",
                 "path": "./launcher.midl",

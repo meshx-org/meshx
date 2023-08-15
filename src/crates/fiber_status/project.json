@@ -1,6 +1,6 @@
 {
     "name": "fiber_status",
-    "root": "./src/crates/fiber_status",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "projectType": "library",
     "targets": {
         "test": {

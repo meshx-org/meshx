@@ -1,17 +1,17 @@
 {
     "name": "tools/nx_rust",
-    "root": "tools/nx_rust",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "sourceRoot": "tools/nx_rust/src",
     "projectType": "library",
     "targets": {
         "lint": {
-            "executor": "@nrwl/linter:eslint",
+            "executor": "@nx/linter:eslint",
             "options": {
                 "lintFilePatterns": ["tools/nx_rust/**/*.ts"]
             }
         },
         "build": {
-            "executor": "@nrwl/js:tsc",
+            "executor": "@nx/js:tsc",
             "outputs": ["{options.outputPath}"],
             "options": {
                 "outputPath": "dist/./tools/nx_rust",
@@ -39,7 +39,8 @@
                         "glob": "executors.json",
                         "output": "."
                     }
-                ]
+                ],
+                "updateBuildableProjectDepsInPackageJson": true
             }
         }
     }

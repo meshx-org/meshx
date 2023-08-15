@@ -1,6 +1,6 @@
 {
     "name": "midl",
-    "root": "./src/crates/midl",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "projectType": "application",
     "implicitDependencies": ["fiber_kernel"],
     "targets": {

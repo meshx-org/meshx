@@ -87,7 +87,7 @@ export class HandleTableArena {
         // assert(base_value == old_base_value);
 
         const zero_handles = dispatcher.decrement_handle_count()
-        this._arena.free(handle)
+        // TODO: this._arena.free(handle)
 
         // TODO:
         if (zero_handles) {
@@ -117,7 +117,7 @@ export class HandleTable {
     // The actual handle table. When removing one or more handles from this list, be sure to
     // advance or invalidate any cursors that might point to the handles being removed.
     private _count: number
-    private _handles: Handle[]
+    private _handles: HandleOwner[]
 
     constructor(process: ProcessDispatcher) {
         // Generate handle XOR mask with top bit and bottom two bits cleared
@@ -150,7 +150,7 @@ export class HandleTable {
     /** Maps a |handle| to an integer which can be given to usermode as a
      *  handle value. Uses Handle->base_value() plus additional mixing.
      */
-    public map_handle_to_value(handle: Handle): fx_handle_t {
+    public map_handle_to_value(handle: HandleOwner): fx_handle_t {
         return map_handle_to_value(handle, this._random_value)
     }
 }
@@ -158,7 +158,7 @@ export class HandleTable {
 const HANDLE_MUST_BE_ONE_MASK = (0x1 << HANDLE_RESERVED_BITS) - 1
 // assert(HANDLE_MUST_BE_ONE_MASK == FX_HANDLE_FIXED_BITS_MASK); // kHandleMustBeOneMask must match ZX_HANDLE_FIXED_BITS_MASK!
 
-function map_handle_to_value(handle: Handle, mixer: number): fx_handle_t {
+function map_handle_to_value(handle: HandleOwner, mixer: number): fx_handle_t {
     // Ensure that the last two bits of the result is not zero, and make sure we
     // don't lose any base_value bits when shifting.
     const base_value_must_be_zero_mask = HANDLE_MUST_BE_ONE_MASK << (4 * 8 - HANDLE_RESERVED_BITS)

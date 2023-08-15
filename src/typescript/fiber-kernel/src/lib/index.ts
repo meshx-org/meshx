@@ -10,7 +10,7 @@ import assert from "assert"
 export class Kernel implements System {
     private _boot_process: null
     private _root_job: null | JobDispatcher
-    private _root_job_handle: null | Handle
+    private _root_job_handle: null | HandleOwner
     private _root_job_observer: null
 
     constructor() {
