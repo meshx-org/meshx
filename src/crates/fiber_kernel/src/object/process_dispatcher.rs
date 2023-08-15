@@ -150,19 +150,12 @@ impl ProcessDispatcher {
             // Make sure to save the guard, see documentation for more information
             let _guard = ScopeGuard::new(context);
 
-            fn test(yielder: &Yielder<u32, u32>) {
-                yielder.suspend(0);
-                yielder.suspend(2);
-            }
-
-            test(yielder);
-
             entry(arg1, input);
         });
 
         log::debug!("{:?}", task.resume(0));
         log::debug!("{:?}", task.resume(1));
-        log::debug!("{:?}", task.resume(1));
+        //log::debug!("{:?}", task.resume(1));
     }
 
     pub(crate) fn get_current() -> Context {

@@ -1,60 +1,52 @@
-mod userboot;
-mod start;
-mod message;
+import assert from "assert"
+import { Handle, HandleOwner } from "../object/handle"
+import { FX_KOID_INVALID, FX_OK } from "@meshx-org/fiber-types"
+import { ProcessDispatcher } from "../object/process-dispatcher"
+import { ChannelDispatcher } from "../object/channel-dispatcher"
+import { HANDLE_COUNT, ROOT_JOB, PROC_SELF, _start } from "./userboot"
+import { MessagePacket } from "../object/message-packet"
+import { Kernel } from ".."
+import { JobDispatcher } from "../object/job-dispatcher"
 
-use fiber_rust::sys;
-use tracing::instrument;
-use std::sync::Arc;
-
-use crate::{
-    object::{
-        ChannelDispatcher,  Handle, HandleOwner, JobDispatcher, MessagePacket, ProcessDispatcher,
-        TypedDispatcher,
-    },
-    Kernel,
-};
-
-fn get_job_handle(kernel: &Kernel) -> HandleOwner {
-    Handle::dup(kernel.get_root_job_handle(), JobDispatcher::default_rights())
+function get_job_handle(kernel: Kernel): HandleOwner {
+    return Handle.dup(kernel.get_root_job_handle(), JobDispatcher.default_rights())
 }
 
 // KCOUNTER(timeline_userboot, "boot.timeline.userboot")
 // KCOUNTER(init_time, "init.userboot.time.msec")
-#[instrument(skip(kernel))]
-pub fn userboot_init(kernel: &Kernel) {
+export function userboot_init(kernel: Kernel) {
     // Prepare the bootstrap message packet. This allocates space for its
     // handles, which we'll fill in as we create things.
-    let result = MessagePacket::create(std::ptr::null(), 0, userboot::HANDLE_COUNT as u16);
-    assert!(result.is_ok());
-    let msg = result.unwrap();
+    const msg_result = MessagePacket.create(null, 0, HANDLE_COUNT)
+    if (!msg_result.ok) throw new Error("panic")
+    const msg = msg_result.value
 
-    debug_assert!(msg.num_handles() == userboot::HANDLE_COUNT as u16);
+    assert(msg.num_handles() == HANDLE_COUNT)
 
-    log::debug!("userboot_init: msg={:?}", msg);
+    console.debug(`userboot_init: msg=${msg}`)
 
     // Create the process.
     // let vmar_handle:  KernelHandle<VmAddressRegionDispatcher> ;
-    let result = ProcessDispatcher::create(kernel.get_root_job_dispatcher(), "userboot".to_owned(), 0);
-    assert!(result.is_ok());
-    let (process_handle, process_rights) = result.unwrap();
+    const result = ProcessDispatcher.create(kernel.get_root_job_dispatcher(), "userboot", 0)
+    if (!result.ok) throw new Error("panic")
+    const [process_handle, process_rights] = result.value
 
     // It needs its own process and root VMAR handles.
 
-    let proc_handle_owner = Handle::make(process_handle, process_rights);
-    let process = proc_handle_owner.dispatcher().as_process_dispatcher().unwrap();
+    const proc_handle_owner = Handle.make(process_handle, process_rights)
+    const process = proc_handle_owner.dispatcher() as ProcessDispatcher
 
     // let vmar = vmar_handle.dispatcher();
     // let vmar_handle_owner = Handle::make( vmar_handle, vmar_rights);
 
-    let mut msg = msg;
-    let handles = msg.mutable_handles();
+    const handles = msg.handles()
 
-    handles[userboot::PROC_SELF] = Some(Arc::downgrade(&proc_handle_owner)); // TODO: release
+    handles[PROC_SELF] = proc_handle_owner
     // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
 
     // It gets the root job handles.
-    handles[userboot::ROOT_JOB] = Some(Arc::downgrade(&get_job_handle(kernel))); // TODO: release
-    assert!(handles.get(userboot::ROOT_JOB).is_some());
+    handles[ROOT_JOB] = get_job_handle(kernel)
+    assert(handles[ROOT_JOB] !== null)
 
     // TODO: revisit this
     // It also gets many VMOs for VDSOs and other things.
@@ -74,22 +66,24 @@ pub fn userboot_init(kernel: &Kernel) {
 
     // Make the channel that will hold the message.
 
-    let result = ChannelDispatcher::create();
-    assert!(result.is_ok());
-    let (user_handle, channel_handle, channel_rights) = result.unwrap();
+    const result2 = ChannelDispatcher.create()
+    if (!result2.ok) throw new Error("panic")
+    const [user_handle, channel_handle, channel_rights] = result2.value
 
-    let channel_dispatcher = channel_handle.dispatcher().as_channel_dispatcher().unwrap();
+    console.debug(user_handle, channel_handle)
+
+    const channel_dispatcher = channel_handle.dispatcher() as ChannelDispatcher
 
     // Transfer it in.
-    let status = channel_dispatcher.write(sys::FX_KOID_INVALID, msg);
-    assert!(status == sys::FX_OK);
+    const status1 = channel_dispatcher.write(FX_KOID_INVALID, msg)
+    assert(status1 == FX_OK)
 
     // Inject the user-side channel handle into the process.
-    let user_handle_owner = Handle::make(user_handle, channel_rights);
-    let hv = process.handle_table().map_handle_to_value(&*user_handle_owner);
-    process.handle_table().add_handle(user_handle_owner);
+    const user_handle_owner = Handle.make(user_handle, channel_rights)
+    const hv = process.handle_table().map_handle_to_value(user_handle_owner)
+    process.handle_table().add_handle(user_handle_owner)
 
-    log::debug!("userboot_init: hv={:?}", hv);
+    console.debug(`userboot_init: hv=${hv}`)
 
     // TODO: do we even need threads?
     // Create the user thread.
@@ -107,7 +101,6 @@ pub fn userboot_init(kernel: &Kernel) {
 
     // TODO: revisit this
     // Map in the userboot image along with the vDSO.
-    let entry = start::_start as *const ();
     // KernelHandle<VmObjectDispatcher> userboot_vmo_kernel_handle;
     // UserbootImage userboot(vdso, &userboot_vmo_kernel_handle);
     // let vdso_base = 0;
@@ -116,14 +109,14 @@ pub fn userboot_init(kernel: &Kernel) {
     // ASSERT(status == ZX_OK);
 
     // Create a root job observer, restarting the system if the root job becomes childless.
-    kernel.start_root_job_observer();
+    kernel.start_root_job_observer()
 
-    log::info!("userboot: entrypoint={:?}", entry);
+    console.info(`userboot: entrypoint=${_start.name}`)
 
     // Start the process.
-    let arg1 = hv;
-    let status = process.start(start::_start, arg1, 0);
-    //assert!(status == sys::FX_OK);
+    const arg1 = hv
+    const status2 = process.start(_start, arg1, 0)
+    assert(status2 == FX_OK)
 
     // TODO: counters
     // timeline_userboot.set(current_ticks());

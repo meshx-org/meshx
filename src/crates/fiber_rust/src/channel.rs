@@ -495,6 +495,11 @@ impl MessageBuf {
         })
     }
 
+    // take all handles from the message buffer.
+    pub fn take_handles(&mut self) -> Vec<Handle> {
+        mem::replace(&mut self.handles, Vec::new())
+    }
+
     /// Clear the bytes and handles contained in the buf. This will drop any
     /// contained handles, resulting in their resources being freed.
     pub fn clear(&mut self) {

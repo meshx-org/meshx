@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 use std::mem::size_of;
-use std::rc::Rc;
 use std::sync::RwLock;
 use std::sync::{Arc, Weak};
 

@@ -742,11 +742,15 @@ dependencies = [
  "generational-arena",
  "id-arena",
  "log",
+ "memoffset",
+ "num-derive 0.4.0",
+ "num-traits",
  "once_cell",
  "rand 0.8.5",
  "smol",
  "static_assertions",
  "switcheroo",
+ "thiserror",
  "tokio",
  "tracing",
  "typed-arena",
@@ -1611,6 +1615,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "num-derive"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e6a0fd4f737c707bd9086cc16c925f294943eb62eb71499e9fd4cf71f8b9f4e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.22",
 ]
 
 [[package]]
@@ -3089,7 +3104,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e30b3d1a423ee62c0016bbfd07bdca4669a30cd167d7ff528caff559b467c17b"
 dependencies = [
  "anyhow",
- "num-derive",
+ "num-derive 0.3.3",
  "num-traits",
  "thiserror",
  "wasmedge-macro",

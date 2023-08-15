@@ -223,7 +223,7 @@ impl<'a, T: HandleBased> AsHandleRef for Unowned<'a, T> {
 /// interface.
 pub trait HandleBased: AsHandleRef + From<Handle> + Into<Handle> {
     /// Duplicate a handle, possibly reducing the rights available. Wraps the
-    /// [zx_handle_duplicate](https://fuchsia.dev/fuchsia-src/reference/syscalls/handle_duplicate.md)
+    /// [fx_handle_duplicate](https://fuchsia.dev/fuchsia-src/reference/syscalls/handle_duplicate.md)
     /// syscall.
     fn duplicate_handle(&self, rights: Rights) -> Result<Self, Status> {
         self.as_handle_ref().duplicate(rights).map(|handle| Self::from(handle))
@@ -231,7 +231,7 @@ pub trait HandleBased: AsHandleRef + From<Handle> + Into<Handle> {
 
     /// Create a replacement for a handle, possibly reducing the rights available. This invalidates
     /// the original handle. Wraps the
-    /// [zx_handle_replace](https://fuchsia.dev/fuchsia-src/reference/syscalls/handle_replace.md)
+    /// [fx_handle_replace](https://fuchsia.dev/fuchsia-src/reference/syscalls/handle_replace.md)
     /// syscall.
     fn replace_handle(self, rights: Rights) -> Result<Self, Status> {
         <Self as Into<Handle>>::into(self)

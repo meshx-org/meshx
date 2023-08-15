@@ -143,18 +143,62 @@ export type fx_packet_signal_t = {
     count: u64
 }
 
+export const FX_OK: fx_status_t = 0
+export const FX_ERR_INTERNAL = -1
+export const FX_ERR_NOT_SUPPORTED = -2
+export const FX_ERR_NO_RESOURCES = -3
+export const FX_ERR_NO_MEMORY = -4
+export const FX_ERR_INTERRUPTED_RETRY = -6
+export const FX_ERR_INVALID_ARGS = -10
+export const FX_ERR_BAD_HANDLE = -11
+export const FX_ERR_WRONG_TYPE = -12
+export const FX_ERR_BAD_SYSCALL = -13
+export const FX_ERR_OUT_OF_RANGE = -14
+export const FX_ERR_BUFFER_TOO_SMALL = -15
+export const FX_ERR_BAD_STATE = -20
+export const FX_ERR_TIMED_OUT = -21
+export const FX_ERR_SHOULD_WAIT = -22
+export const FX_ERR_CANCELED = -23
+export const FX_ERR_PEER_CLOSED = -24
+export const FX_ERR_NOT_FOUND = -25
+export const FX_ERR_ALREADY_EXISTS = -26
+export const FX_ERR_ALREADY_BOUND = -27
+export const FX_ERR_UNAVAILABLE = -28
+export const FX_ERR_ACCESS_DENIED = -30
+export const FX_ERR_IO = -40
+export const FX_ERR_IO_REFUSED = -41
+export const FX_ERR_IO_DATA_INTEGRITY = -42
+export const FX_ERR_IO_DATA_LOSS = -43
+export const FX_ERR_IO_NOT_PRESENT = -44
+export const FX_ERR_IO_OVERRUN = -45
+export const FX_ERR_IO_MISSED_DEADLINE = -46
+export const FX_ERR_IO_INVALID = -47
+export const FX_ERR_BAD_PATH = -50
+export const FX_ERR_NOT_DIR = -51
+export const FX_ERR_NOT_FILE = -52
+export const FX_ERR_FILE_BIG = -53
+export const FX_ERR_NO_SPACE = -54
+export const FX_ERR_NOT_EMPTY = -55
+export const FX_ERR_STOP = -60
+export const FX_ERR_NEXT = -61
+export const FX_ERR_ASYNC = -62
+export const FX_ERR_PROTOCOL_NOT_SUPPORTED = -70
+export const FX_ERR_ADDRESS_UNREACHABLE = -71
+export const FX_ERR_ADDRESS_IN_USE = -72
+export const FX_ERR_NOT_CONNECTED = -73
+
 export enum Status {
-    OK = 1,
-    ERR_UNSUPPORTED = 2,
-    ERR_NOT_SUPPORTED = 3,
-    ERR_CANCELED = 3,
-    ERR_OUT_OF_RANGE = 4,
-    ERR_BAD_STATE = 5,
-    ERR_BUFFER_TOO_SMALL = 6,
-    ERR_BAD_HANDLE = 7,
-    ERR_SHOULD_WAIT = 8,
-    ERR_PEER_CLOSED = 9,
-    ERR_INVALID_ARGS = 10,
+    OK = FX_OK,
+    // ERR_UNSUPPORTED = FX_ERR_UNSUPPORTED,
+    ERR_NOT_SUPPORTED = FX_ERR_NOT_SUPPORTED,
+    ERR_CANCELED = FX_ERR_CANCELED,
+    ERR_OUT_OF_RANGE = FX_ERR_OUT_OF_RANGE,
+    ERR_BAD_STATE = FX_ERR_BAD_STATE,
+    ERR_BUFFER_TOO_SMALL = FX_ERR_BUFFER_TOO_SMALL,
+    ERR_BAD_HANDLE = FX_ERR_BAD_HANDLE,
+    ERR_SHOULD_WAIT = FX_ERR_SHOULD_WAIT,
+    ERR_PEER_CLOSED = FX_ERR_PEER_CLOSED,
+    ERR_INVALID_ARGS = FX_ERR_INVALID_ARGS,
 }
 
 export class Ref<T> {

@@ -2,7 +2,13 @@
     "name": "meshx",
     "version": "0.0.0",
     "private": true,
-    "scripts": {},
+    "scripts": {
+        "start": "nx serve",
+        "build": "nx build",
+        "test": "nx test",
+        "version-packages": "changeset version",
+        "release": "npm run build && changeset publish"
+    },
     "dependencies": {
         "@nxrs/cargo": "^0.3.3",
         "@swc-node/register": "^1.5.5",
@@ -45,7 +51,7 @@
     "workspaces": [
         "packages/*",
         "sdk/typescript/*",
-        "src/*",
+        "src/typescript/*",
         "tools/*"
     ]
 }

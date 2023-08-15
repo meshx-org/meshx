@@ -137,7 +137,7 @@ impl Handle {
 
     /// Returns a value that can be decoded by Handle::FromU32() to derive a
     /// pointer to this instance.  ProcessDispatcher will XOR this with its
-    /// |handle_rand_| to create the zx_handle_t value that user space sees.
+    /// |handle_rand_| to create the fx_handle_t value that user space sees.
     pub(crate) fn base_value(&self) -> u32 {
         return self.base_value;
     }

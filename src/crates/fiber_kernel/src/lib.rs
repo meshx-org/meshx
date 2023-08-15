@@ -324,6 +324,8 @@ impl fiber_sys::System for Kernel {
     ) -> sys::fx_status_t {
         let up = ProcessDispatcher::get_current();
 
+        unsafe { up.yielder.read().suspend(0); }
+
         sys::FX_OK
     }
 
