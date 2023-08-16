@@ -2,7 +2,18 @@
     "name": "@meshx-org/fiber-sys",
     "version": "0.0.1",
     "type": "commonjs",
-    "private": true,
+    "author": "Sz.Kovács Roland <Roland.Szarka-Kovacs@meshx.co>",
+    "homepage": "https://github.com/meshx-org/meshx#readme",
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/meshx-org/meshx.git"
+    },
+    "bugs": {
+        "url": "https://github.com/meshx-org/meshx/issues"
+    },
     "dependencies": {
         "@meshx-org/fiber-types": "*"
     }

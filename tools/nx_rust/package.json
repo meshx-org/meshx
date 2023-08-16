@@ -1,6 +1,7 @@
 {
     "name": "@meshx-org/nx-rust",
     "version": "0.0.1",
+    "private": true,
     "executors": "./executors.json",
     "devDependencies": {
         "webpack": "^5.75.0"
