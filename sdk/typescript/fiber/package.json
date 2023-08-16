@@ -1,6 +1,6 @@
 {
     "name": "@meshx-org/fiber",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "type": "commonjs",
     "peerDependencies": {
         "@meshx-org/fiber-kernel": "*"
