@@ -8,7 +8,7 @@
             "executor": "@nx/js:tsc",
             "outputs": ["{options.outputPath}"],
             "options": {
-                "outputPath": "dist/./src/typescript/fiber-sys",
+                "outputPath": "src/typescript/fiber-sys/dist",
                 "main": "src/typescript/fiber-sys/src/index.ts",
                 "tsConfig": "src/typescript/fiber-sys/tsconfig.lib.json",
                 "assets": ["src/typescript/fiber-sys/*.md"],
