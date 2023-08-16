@@ -16,7 +16,7 @@
         "url": "https://github.com/meshx-org/meshx/issues"
     },
     "dependencies": {
-        "@meshx-org/fiber-types": "*",
-        "@meshx-org/fiber-sys": "*"
+        "@meshx-org/fiber-types": "0.1.0",
+        "@meshx-org/fiber-sys": "0.1.0"
     }
 }
