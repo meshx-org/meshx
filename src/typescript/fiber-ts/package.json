@@ -1,6 +1,6 @@
 {
     "name": "@meshx-org/fiber-ts",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "type": "commonjs",
     "author": "Sz.Kovács Roland <Roland.Szarka-Kovacs@meshx.co>",
     "homepage": "https://github.com/meshx-org/meshx#readme",
