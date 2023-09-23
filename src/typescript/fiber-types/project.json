@@ -26,9 +26,13 @@
             "executor": "@nx/linter:eslint",
             "outputs": ["{options.outputFile}"],
             "options": {
-                "lintFilePatterns": ["src/typescript/fiber-types/**/*.ts"]
+                "lintFilePatterns": [
+                    "src/typescript/fiber-types/src/**/*.ts",
+                    "src/typescript/fiber-types/project.json",
+                    "src/typescript/fiber-types/package.json"
+                ]
             }
         }
     },
-    "tags": []
+    "tags": ["lang:ts"]
 }

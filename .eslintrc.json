@@ -4,6 +4,22 @@
     "plugins": ["@nx"],
     "overrides": [
         {
+            "files": ["{package,project}.json"],
+            "parser": "jsonc-eslint-parser",
+            "rules": {
+                "@nx/dependency-checks": [
+                    "error",
+                    {
+                        "ignoredDependencies": ["vite", "vite-tsconfig-paths"],
+                        "ignoredFiles": ["vite.config.ts"],
+                        "checkMissingDependencies": true,
+                        "checkObsoleteDependencies": true,
+                        "checkVersionMismatches": true
+                    }
+                ]
+            }
+        },
+        {
             "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
             "rules": {
                 "@nx/enforce-module-boundaries": [

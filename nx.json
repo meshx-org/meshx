@@ -19,6 +19,11 @@
             "inputs": ["default", "^default", "{workspaceRoot}/jest.preset.js"]
         }
     },
+    "pluginsConfig": {
+        "@nx/js": {
+            "analyzeSourceFiles": true
+        }
+    },
     "extends": "nx/presets/npm.json",
-    "plugins": [ ]
+    "plugins": []
 }

@@ -12,7 +12,7 @@ describe("Fiber Kernel", () => {
         kernel.init()
         await kernel.start()
 
-        let handle = kernel.get_root_job_handle()
+        const handle = kernel.get_root_job_handle()
 
         expect(handle.dispatcher()).toEqual(kernel.get_root_job_dispatcher())
     })

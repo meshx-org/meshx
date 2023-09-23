@@ -15,18 +15,15 @@
                 "updateBuildableProjectDepsInPackageJson": true
             }
         },
-        "publish": {
-            "executor": "nx:run-commands",
-            "options": {
-                "command": "node tools/scripts/publish.mjs src-typescript-fiber-sys {args.ver} {args.tag}"
-            },
-            "dependsOn": ["build"]
-        },
         "lint": {
             "executor": "@nx/linter:eslint",
             "outputs": ["{options.outputFile}"],
             "options": {
-                "lintFilePatterns": ["src/typescript/fiber-sys/**/*.ts"]
+                "lintFilePatterns": [
+                    "src/typescript/fiber-sys/src/**/*.ts",
+                    "src/typescript/fiber-sys/project.json",
+                    "src/typescript/fiber-sys/package.json"
+                ]
             }
         },
         "test": {
