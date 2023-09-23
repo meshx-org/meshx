@@ -1,5 +1,11 @@
 # @meshx-org/fiber-types
 
+## 0.1.2
+
+### Patch Changes
+
+- e13add3: Updated dependencies
+
 ## 0.1.1
 
 ### Patch Changes

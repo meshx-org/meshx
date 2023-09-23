@@ -1,5 +1,15 @@
 # @meshx-org/fiber-kernel
 
+## 0.2.1
+
+### Patch Changes
+
+- e13add3: Updated dependencies
+- Updated dependencies [e13add3]
+  - @meshx-org/fiber-types@0.1.2
+  - @meshx-org/fiber-sys@0.1.2
+  - @meshx-org/fiber-ts@0.1.2
+
 ## 0.2.0
 
 ### Minor Changes
