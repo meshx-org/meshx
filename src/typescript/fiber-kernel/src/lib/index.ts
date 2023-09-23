@@ -5,7 +5,7 @@ import { Ref, fx_handle_t, fx_port_packet_t, fx_rights_t, fx_status_t } from "@m
 import { JobDispatcher } from "./object/job-dispatcher"
 import { Handle, HandleOwner, KernelHandle } from "./object/handle"
 import { userboot_init } from "./userboot"
-import assert from "assert"
+import invariant from "tiny-invariant"
 
 export class Kernel implements System {
     private _boot_process: null
@@ -28,7 +28,7 @@ export class Kernel implements System {
         // Create handle.
         this._root_job_handle = Handle.make(new KernelHandle(root_job), JobDispatcher.default_rights())
 
-        assert.notEqual(this._root_job_handle, null)
+        invariant(this._root_job_handle !== null)
     }
 
     public async start() {
@@ -39,12 +39,12 @@ export class Kernel implements System {
     }
 
     public get_root_job_dispatcher() {
-        assert.notEqual(this._root_job, null)
+        invariant(this._root_job !== null)
         return this._root_job!
     }
 
     public get_root_job_handle(): HandleOwner {
-        assert.notEqual(this._root_job, null)
+        invariant(this._root_job !== null)
         return this._root_job_handle!
     }
 

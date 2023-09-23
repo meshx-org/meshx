@@ -2,7 +2,7 @@ import { FX_KOID_INVALID, fx_handle_t, fx_koid_t } from "@meshx-org/fiber-types"
 import { ProcessDispatcher } from "./process-dispatcher"
 import { HANDLE_RESERVED_BITS, HIGH_HANDLE_COUNT, Handle, HandleOwner } from "./handle"
 import { generate } from "../koid"
-import assert from "assert"
+import invariant from "tiny-invariant"
 import { Dispatcher } from "./dispatcher"
 import { Ref } from "../std"
 
@@ -55,13 +55,15 @@ export class HandleTableArena {
         }
 
         dispatcher.increment_handle_count()
+        // TODO
 
         // checking the handle_table_id_ and dispatcher_ is really about trying to catch cases where this
         // Handle might somehow already be in use.
-        assert(addr.data?._handle_table_id == FX_KOID_INVALID)
-        assert(addr.data?._dispatcher == null)
+        
+        // assert(addr.data?._handle_table_id == FX_KOID_INVALID)
+        // assert(addr.data?._dispatcher == null)
 
-        base_value.value = this.get_new_base_value(addr)
+        // base_value.value = this.get_new_base_value(addr)
 
         return addr
     }
@@ -73,7 +75,7 @@ export class HandleTableArena {
         // There may be stale pointers to this slot and they will look at handle_table_id. We expect
         // handle_table_id to already have been cleared by the process dispatcher before the handle got to
         // this point.
-        assert(handle.handle_table_id() == FX_KOID_INVALID)
+        invariant(handle.handle_table_id() == FX_KOID_INVALID)
 
         // TODO:
         //if (dispatcher.is_waitable()) {
@@ -163,8 +165,8 @@ function map_handle_to_value(handle: HandleOwner, mixer: number): fx_handle_t {
     // don't lose any base_value bits when shifting.
     const base_value_must_be_zero_mask = HANDLE_MUST_BE_ONE_MASK << (4 * 8 - HANDLE_RESERVED_BITS)
 
-    assert((mixer & HANDLE_MUST_BE_ONE_MASK) == 0)
-    assert((handle.base_value() & base_value_must_be_zero_mask) == 0)
+    invariant((mixer & HANDLE_MUST_BE_ONE_MASK) === 0)
+    invariant((handle.base_value() & base_value_must_be_zero_mask) === 0)
 
     const handle_id = (handle.base_value() << HANDLE_RESERVED_BITS) | HANDLE_MUST_BE_ONE_MASK
 

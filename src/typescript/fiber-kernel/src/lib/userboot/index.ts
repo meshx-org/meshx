@@ -1,4 +1,4 @@
-import assert from "assert"
+import invariant from "tiny-invariant"
 import { Handle, HandleOwner } from "../object/handle"
 import { FX_KOID_INVALID, FX_OK } from "@meshx-org/fiber-types"
 import { ProcessDispatcher } from "../object/process-dispatcher"
@@ -21,7 +21,7 @@ export function userboot_init(kernel: Kernel) {
     if (!msg_result.ok) throw new Error("panic")
     const msg = msg_result.value
 
-    assert(msg.num_handles() == HANDLE_COUNT)
+    invariant(msg.num_handles() === HANDLE_COUNT)
 
     console.debug(`userboot_init: msg=${msg}`)
 
@@ -46,7 +46,7 @@ export function userboot_init(kernel: Kernel) {
 
     // It gets the root job handles.
     handles[ROOT_JOB] = get_job_handle(kernel).handle
-    assert(handles[ROOT_JOB] !== null)
+    invariant(handles[ROOT_JOB] !== null)
 
     // TODO: revisit this
     // It also gets many VMOs for VDSOs and other things.
@@ -76,7 +76,7 @@ export function userboot_init(kernel: Kernel) {
 
     // Transfer it in.
     const status1 = channel_dispatcher.write(FX_KOID_INVALID, msg)
-    assert(status1 == FX_OK)
+    invariant(status1 === FX_OK)
 
     // Inject the user-side channel handle into the process.
     const user_handle_owner = Handle.make(user_handle, channel_rights)
@@ -116,7 +116,7 @@ export function userboot_init(kernel: Kernel) {
     // Start the process.
     const arg1 = hv
     const status2 = process.start(_start, arg1, 0)
-    assert(status2 == FX_OK)
+    invariant(status2 === FX_OK)
 
     // TODO: counters
     // timeline_userboot.set(current_ticks());

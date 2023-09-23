@@ -31,10 +31,11 @@
         },
         "test": {
             "executor": "@nx/vite:test",
-            "outputs": ["{workspaceRoot}/coverage/src/typescript/kernel"],
+            "outputs": ["{workspaceRoot}/coverage/src/typescript/fiber-kernel"],
             "options": {
-                "passWithNoTests": true,
-                "reportsDirectory": "../../../coverage/src/typescript/kernel"
+                "config": "src/typescript/fiber-kernel/vite.config.ts",
+                "passWithNoTests": false,
+                "reportsDirectory": "../../../coverage/src/typescript/fiber-kernel"
             }
         }
     },

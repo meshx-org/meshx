@@ -1,6 +1,6 @@
 import { fx_koid_t, fx_rights_t } from "@meshx-org/fiber-types"
 import { Dispatcher } from "./dispatcher"
-import assert from "assert"
+import invariant from "tiny-invariant"
 import { Ref } from "../std"
 import { HandleTableArena } from "./handle-table"
 
@@ -203,11 +203,11 @@ export const HIGH_HANDLE_COUNT = (MAX_HANDLE_COUNT * 7) / 8
 //   [HANDLE_GENERATION_SHIFT-1..0]                         : Index into handle_arena
 //
 
-assert.equal(0, log2_uint_floor(0))
-assert.equal(0, log2_uint_floor(1))
-assert.equal(1, log2_uint_floor(2))
-assert.equal(1, log2_uint_floor(3))
-assert.equal(2, log2_uint_floor(4))
+invariant(0 == log2_uint_floor(0))
+invariant(0 == log2_uint_floor(1))
+invariant(1 == log2_uint_floor(2))
+invariant(1 == log2_uint_floor(3))
+invariant(2 == log2_uint_floor(4))
 
 export const HANDLE_RESERVED_BITS = 2
 export const HANDLE_INDEX_MASK = MAX_HANDLE_COUNT - 1
@@ -215,12 +215,10 @@ export const HANDLE_RESERVED_BITS_MASK = ((1 << HANDLE_RESERVED_BITS) - 1) << (3
 export const HANDLE_GENERATION_MASK = ~HANDLE_INDEX_MASK & ~HANDLE_RESERVED_BITS_MASK
 export const HANDLE_GENERATION_SHIFT = log2_uint_floor(MAX_HANDLE_COUNT)
 
-console.log(HANDLE_GENERATION_SHIFT, 0xffffffff, Math.pow(2, 31) - 1)
-
-assert((HANDLE_INDEX_MASK & MAX_HANDLE_COUNT) == 0) //kMaxHandleCount must be a power of 2
-assert(((3 << (HANDLE_GENERATION_SHIFT - 1)) & HANDLE_GENERATION_MASK) == 1 << HANDLE_GENERATION_SHIFT) //Shift is wrong
-assert(HANDLE_GENERATION_MASK >> HANDLE_GENERATION_SHIFT >= 255) // Not enough room for a useful generation count
-assert((HANDLE_RESERVED_BITS_MASK & HANDLE_GENERATION_MASK) == 0) // Handle Mask Overlap!
-assert((HANDLE_RESERVED_BITS_MASK & HANDLE_INDEX_MASK) == 0) // Handle Mask Overlap!
-assert((HANDLE_GENERATION_MASK & HANDLE_INDEX_MASK) == 0) // Handle Mask Overlap!
+invariant((HANDLE_INDEX_MASK & MAX_HANDLE_COUNT) == 0) //kMaxHandleCount must be a power of 2
+invariant(((3 << (HANDLE_GENERATION_SHIFT - 1)) & HANDLE_GENERATION_MASK) == 1 << HANDLE_GENERATION_SHIFT) //Shift is wrong
+invariant(HANDLE_GENERATION_MASK >> HANDLE_GENERATION_SHIFT >= 255) // Not enough room for a useful generation count
+invariant((HANDLE_RESERVED_BITS_MASK & HANDLE_GENERATION_MASK) == 0) // Handle Mask Overlap!
+invariant((HANDLE_RESERVED_BITS_MASK & HANDLE_INDEX_MASK) == 0) // Handle Mask Overlap!
+invariant((HANDLE_GENERATION_MASK & HANDLE_INDEX_MASK) == 0) // Handle Mask Overlap!
 // assert((HANDLE_RESERVED_BITS_MASK | HANDLE_GENERATION_MASK | HANDLE_INDEX_MASK) == 0xffffffff) // Handle masks do not cover all bits!

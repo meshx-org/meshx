@@ -96,7 +96,7 @@ class Executor {
     }
 }
 
-self.executor = new Executor()
+globalThis.executor = new Executor()
 
 declare global {
     // eslint-disable-next-line no-var
@@ -110,7 +110,7 @@ export class HandleWaiter implements PacketReceiver {
     constructor(handle: Handle, signals: fx_signals_t, callback: AsyncWaitCallback) {
         this.handle = handle
 
-        const registration = self.executor.register_receiver(this)
+        const registration = globalThis.executor.register_receiver(this)
 
         const status = fx_object_wait_async(
             this.handle.raw,

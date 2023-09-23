@@ -4,7 +4,7 @@ import { defineConfig } from "vite"
 import viteTsConfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
-    cacheDir: "../../../node_modules/.vite/src-typescript-kernel",
+    cacheDir: "../../../node_modules/.vite/src-typescript-fiber-kernel",
 
     plugins: [
         viteTsConfigPaths({
@@ -23,10 +23,10 @@ export default defineConfig({
 
     test: {
         globals: true,
+        environment: "node",
+        include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
         cache: {
             dir: "../../../node_modules/.vitest",
         },
-        environment: "jsdom",
-        include: ["src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
     },
 })

@@ -7,7 +7,7 @@ import {
     fx_status_t,
 } from "@meshx-org/fiber-types"
 import { Err, Ref, Result } from "../std"
-import assert from "assert"
+import invariant from "tiny-invariant"
 import * as koid from "../koid"
 
 export abstract class Dispatcher {
@@ -175,14 +175,14 @@ export class PeerHolder<T> {}
 export class PeeredDispatcher<T extends Dispatcher> extends Dispatcher {
     private _holder: PeerHolder<T>
     private _peer: Ref<T> | null
-    private _peer_koid: fx_koid_t | null
+    private _peer_koid: fx_koid_t
 
     constructor(holder: PeerHolder<T>, signals: fx_signals_t = 0) {
         super(signals)
 
         this._holder = holder
         this._peer = null
-        this._peer_koid = null
+        this._peer_koid = FX_KOID_INVALID
     }
 
     public peer_koid(): fx_koid_t | null {
@@ -194,7 +194,7 @@ export class PeeredDispatcher<T extends Dispatcher> extends Dispatcher {
     }
 
     override get_related_koid(): fx_koid_t {
-        assert.notEqual(this._peer_koid, null)
+        invariant(this._peer_koid !== null)
         return this._peer_koid!
     }
 
@@ -206,7 +206,7 @@ export class PeeredDispatcher<T extends Dispatcher> extends Dispatcher {
     // hence the TA_NO_THREAD_SAFETY_ANALYSIS annotation.
     init_peer(peer: Ref<T>): void {
         //assert(!peer_);
-        assert.equal(this._peer_koid, FX_KOID_INVALID)
+        invariant(this._peer_koid === FX_KOID_INVALID)
         this._peer = peer
         this._peer_koid = this._peer.value.get_koid()
     }

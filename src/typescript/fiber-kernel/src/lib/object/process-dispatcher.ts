@@ -1,7 +1,7 @@
 import { FX_ERR_BAD_STATE, FX_OK, fx_handle_t, fx_rights_t, fx_status_t } from "@meshx-org/fiber-types"
 import { SoloDispatcher } from "./dispatcher"
 import { HandleTable } from "./handle-table"
-import assert from "assert"
+import invariant from "tiny-invariant"
 import { Err, Ok, Result } from "../std"
 import { KernelHandle } from "./handle"
 import { JobDispatcher, JobPolicy } from "./job-dispatcher"
@@ -60,7 +60,7 @@ export class ProcessDispatcher extends SoloDispatcher {
 
     init(): fx_status_t {
         //Guard<Mutex> guard{get_lock()};
-        assert.equal(this._state, State.INITIAL)
+        invariant(this._state == State.INITIAL)
 
         // create an address space for this process, named after the process's koid.
         //let aspace_name: [u8; ZX_MAX_NAME_LEN] = format!("proc:{}", self.get_koid()).into();
@@ -80,7 +80,7 @@ export class ProcessDispatcher extends SoloDispatcher {
     // `ensure_initial_thread` is true, the thread will only start if it is the first thread in the
     // process.
     public start(entry: (arg1: fx_handle_t, arg2: fx_handle_t) => void, arg1: fx_handle_t, arg2: fx_handle_t) {
-        console.debug("ProcessDispatcher::start({:?}, {:?})", entry, self.name)
+        console.debug("ProcessDispatcher::start({:?}, {:?})", entry, this._name)
 
         //const stack = new OneMbStack.unwrap()
 

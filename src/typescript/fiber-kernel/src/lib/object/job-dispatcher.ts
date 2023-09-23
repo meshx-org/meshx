@@ -1,5 +1,5 @@
 import { fx_rights_t } from "@meshx-org/fiber-types"
-import { Dispatcher, SoloDispatcher } from "./dispatcher"
+import { SoloDispatcher } from "./dispatcher"
 import { ProcessDispatcher } from "./process-dispatcher"
 
 // The starting max_height value of the root job.
