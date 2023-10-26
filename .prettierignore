@@ -6,3 +6,4 @@
 /out
 
 **/*.hbs
+/.nx/cache
