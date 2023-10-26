@@ -1,0 +1,38 @@
+{
+    "name": "meshx_flow",
+    "root": "./src/crates/meshx_flow",
+    "projectType": "library",
+    "targets": {
+        "test": {
+            "executor": "@nxrs/cargo:test",
+            "options": {}
+        },
+        "run": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "RUST_LOG=debug cargo run --bin meshx_flow"
+            }
+        },
+        "build": {
+            "executor": "@nxrs/cargo:build",
+            "options": {
+                "toolchain": "nightly",
+                "release": false
+            },
+            "configurations": {
+                "production": {
+                    "release": true
+                }
+            }
+        },
+        "lint": {
+            "executor": "@nxrs/cargo:clippy",
+            "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+            }
+        }
+    },
+    "tags": []
+}

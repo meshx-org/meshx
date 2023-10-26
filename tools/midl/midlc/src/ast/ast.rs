@@ -1,4 +1,4 @@
-use super::{CompoundIdentifier, Span};
+use super::{CompoundIdentifier, Span, WithSpan};
 
 /// Represents arbitrary values.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -13,22 +13,24 @@ pub enum Literal {
 impl Literal {
     pub fn as_numeric_value(&self) -> Option<(&str, Span)> {
         match self {
-            Literal::NumericValue(s, span) => Some((s, *span)),
+            Literal::NumericValue(val, span) => Some((val, span.clone())),
             _ => None,
         }
     }
 
     pub fn as_string_value(&self) -> Option<(&str, Span)> {
         match self {
-            Literal::StringValue(s, span) => Some((s, *span)),
+            Literal::StringValue(val, span) => Some((val, span.clone())),
             _ => None,
         }
     }
+}
 
-    pub fn span(&self) -> Span {
+impl WithSpan for Literal {
+    fn span(&self) -> Span {
         match &self {
-            Self::NumericValue(_, span) => *span,
-            Self::StringValue(_, span) => *span,
+            Self::NumericValue(_, span) => span.clone(),
+            Self::StringValue(_, span) => span.clone(),
         }
     }
 }

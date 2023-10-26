@@ -30,17 +30,17 @@ impl<'src> SourceFile<'src> {
 }
 
 #[derive(Debug)]
-pub(crate) struct SourceFiles<'files> {
+pub(crate) struct SourceManager<'files> {
     pub files: Vec<SourceFile<'files>>,
 }
 
-impl<'files> From<Vec<SourceFile<'files>>> for SourceFiles<'files> {
+impl<'files> From<Vec<SourceFile<'files>>> for SourceManager<'files> {
     fn from(files: Vec<SourceFile<'files>>) -> Self {
         Self { files }
     }
 }
 
-impl<'files> SourceFiles<'files> {
+impl<'files> SourceManager<'files> {
     pub(crate) fn get(&self, filename: &str) -> Option<&SourceFile<'_>> {
         self.files.iter().find(|f| f.filename == filename)
     }
@@ -57,7 +57,7 @@ impl<'files> SourceFiles<'files> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SourceId(pub usize);
 
-impl<'files> std::ops::Index<SourceId> for SourceFiles<'files> {
+impl<'files> std::ops::Index<SourceId> for SourceManager<'files> {
     type Output = SourceFile<'files>;
 
     fn index(&self, index: SourceId) -> &Self::Output {

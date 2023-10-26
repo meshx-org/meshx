@@ -62,10 +62,10 @@ export function userboot_init(kernel: Kernel) {
     // if (gBootOptions->always_use_next_vdso) {
     //     std::swap(handles[userboot::kFirstVdso], handles[userboot::kFirstVdso + 1]);
     // }
+
     // bootstrap_vmos(handles);
 
     // Make the channel that will hold the message.
-
     const result2 = ChannelDispatcher.create()
     if (!result2.ok) throw new Error("panic")
     const [user_handle, channel_handle, channel_rights] = result2.value

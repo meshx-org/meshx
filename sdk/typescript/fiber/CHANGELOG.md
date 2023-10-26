@@ -1,5 +1,12 @@
 # @meshx-org/fiber
 
+## 3.0.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @meshx-org/fiber-kernel@0.3.0
+
 ## 2.0.0
 
 ### Minor Changes

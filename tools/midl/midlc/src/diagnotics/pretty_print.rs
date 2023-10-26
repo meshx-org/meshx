@@ -13,7 +13,7 @@ pub(crate) fn pretty_print(
     f: &mut dyn std::io::Write,
     file_name: &str,
     text: &str,
-    span: Span,
+    span: &Span,
     description: &str,
     colorer: &'static dyn DiagnosticColorer,
 ) -> std::io::Result<()> {
@@ -39,7 +39,7 @@ pub(crate) fn pretty_print(
 
     writeln!(
         f,
-        "{} {}",
+        "{}: {}",
         colorer.primary_color(colorer.title()).bold(),
         description.bold()
     )?;
@@ -66,16 +66,16 @@ pub(crate) fn pretty_print(
             colorer.primary_color("^ Unexpected token.").bold()
         )?;
     } else {
-        // let spacing = " ".repeat(prefix.len());
-        // let offending = "^".repeat(offending.len()).red();
-        //  writeln!(
-        //     f,
-        //     "{}{}{} {}",
-        //     format_line_number(0),
-        //     spacing,
-        //     offending,
-        //     "this is not good".red().bold()
-        // )?;
+        let spacing = " ".repeat(prefix.len());
+        let offending = "^".repeat(offending.len()).red();
+        writeln!(
+            f,
+            "{}{}{}",
+            format_line_number(0),
+            spacing,
+            offending,
+            // "this is not good".red().bold()
+        )?;
     }
 
     for line_number in start_line_number + 2..end_line_number + 2 {

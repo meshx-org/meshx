@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    Attribute, Comment, Declaration, Identifier, Span, TypeConstructor, WithAttributes, WithDocumentation,
-    WithIdentifier, WithSpan,
+    Attribute, Comment, Declaration, Element, Identifier, Name, Span, TypeConstructor, WithAttributes,
+    WithDocumentation, WithIdentifier, WithName, WithSpan,
 };
 
 /// An opaque identifier for a field in an AST model. Use the
@@ -18,7 +18,7 @@ impl StructMemberId {
 }
 
 impl std::ops::Index<StructMemberId> for Struct {
-    type Output = StructMember;
+    type Output = Element;
 
     fn index(&self, index: StructMemberId) -> &Self::Output {
         &self.members[index.0 as usize]
@@ -43,7 +43,7 @@ pub struct StructMember {
     pub(crate) attributes: Vec<Attribute>,
 
     /// The documentation for this struct member.
-    /// 
+    ///
     /// ```ignore
     /// struct Foo {
     ///  /// Lorem ipsum
@@ -61,13 +61,16 @@ pub struct StructMember {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Struct {
     /// The name of the struct.
+    pub(crate) name: Name,
+
+    /// The identifier of the struct.
     /// NOTE: inline structs get their name automatically from the complier
     ///
     /// ```ignore
     /// struct Foo { .. }
     ///        ^^^
     /// ```
-    pub(crate) name: Identifier,
+    pub(crate) identifier: Identifier,
 
     /// The members of the struct.
     ///
@@ -79,7 +82,7 @@ pub struct Struct {
     ///   ^^^^^^^^^^^^^^
     /// }
     /// ```
-    pub(crate) members: Vec<StructMember>,
+    pub(crate) members: Vec<Element>,
 
     /// The attributes of this struct.
     ///
@@ -116,7 +119,7 @@ impl Into<Declaration> for Struct {
 }
 
 impl Struct {
-    pub fn iter_members(&self) -> impl ExactSizeIterator<Item = (StructMemberId, &StructMember)> + Clone {
+    pub fn iter_members(&self) -> impl ExactSizeIterator<Item = (StructMemberId, &Element)> + Clone {
         self.members
             .iter()
             .enumerate()
@@ -126,13 +129,13 @@ impl Struct {
 
 impl WithIdentifier for Struct {
     fn identifier(&self) -> &Identifier {
-        &self.name
+        &self.identifier
     }
 }
 
 impl WithSpan for Struct {
     fn span(&self) -> Span {
-        self.span
+        self.span.clone()
     }
 }
 
@@ -145,5 +148,11 @@ impl WithAttributes for Struct {
 impl WithDocumentation for Struct {
     fn documentation(&self) -> Option<&str> {
         self.documentation.as_ref().map(|doc| doc.text.as_str())
+    }
+}
+
+impl WithName for Struct {
+    fn name(&self) -> &Name {
+        &self.name
     }
 }

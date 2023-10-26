@@ -37,17 +37,9 @@ impl PartialEq for Identifier {
     }
 }
 
-impl Deref for Identifier {
-    type Target = Identifier;
-
-    fn deref(&self) -> &Self::Target {
-        &self
-    }
-}
-
 impl WithSpan for Identifier {
     fn span(&self) -> Span {
-        self.span
+        self.span.clone()
     }
 }
 
@@ -55,6 +47,17 @@ impl WithSpan for Identifier {
 pub struct CompoundIdentifier {
     pub components: Vec<Identifier>,
     pub span: Span,
+}
+
+impl CompoundIdentifier {
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        self.components.len()
+    }
+
+    pub fn to_vec(&self) -> Vec<String> {
+        self.components.iter().map(|i| i.value.clone()).collect()
+    }
 }
 
 impl PartialEq for CompoundIdentifier {

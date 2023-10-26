@@ -1,11 +1,12 @@
 use crate::source_file::SourceId;
 
 /// Represents a location in a MIDL's text representation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
     pub source: SourceId,
+    pub data: String,
 }
 
 impl Span {
@@ -14,12 +15,13 @@ impl Span {
             start: span.start(),
             end: span.end(),
             source,
+            data: span.as_str().to_owned(),
         }
     }
 
     /// Constructor.
     pub fn new(start: usize, end: usize, source: SourceId) -> Span {
-        Span { start, end, source }
+        Span { start, end, source, data: String::new() }
     }
 
     /// Creates a new empty span.
@@ -28,6 +30,7 @@ impl Span {
             start: 0,
             end: 0,
             source: SourceId(0),
+            data: String::new()
         }
     }
 

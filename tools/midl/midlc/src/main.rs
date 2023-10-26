@@ -5,34 +5,35 @@
 #![feature(iter_next_chunk)]
 #![feature(option_result_contains)]
 #![feature(extend_one)]
+#![feature(once_cell)]
+
+#[macro_use]
+extern crate pest_derive;
 
 mod ast;
-mod database;
+mod compiler;
+mod consumption;
 mod diagnotics;
 mod error;
-mod parse;
 mod source_file;
 
 use clap::{ArgAction, Command};
-
+use core::panic;
 use std::cell::RefCell;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-#[macro_use]
-extern crate pest_derive;
-
-use crate::database::{Libraries, ParserDatabase};
-use crate::diagnotics::pretty_print_error_text;
+use crate::compiler::{Compiler, Libraries};
+use crate::consumption::parse_source;
+use crate::diagnotics::{pretty_print_error_text, Diagnostics};
 use crate::error::ErrorColorer;
-use crate::parse::parse_source;
-use crate::source_file::{SourceFile, SourceFiles};
+use crate::source_file::{SourceFile, SourceManager};
 
 fn cli() -> Command {
-    Command::new("git")
-        .about("A fictional versioning CLI")
+    Command::new("midlc")
+        .about("A MIDL file compiler")
         .subcommand_required(true)
         .arg_required_else_help(true)
         .allow_external_subcommands(true)
@@ -40,6 +41,7 @@ fn cli() -> Command {
             Command::new("compile")
                 .about("adds things")
                 .arg_required_else_help(true)
+                .arg(clap::Arg::new("NAME").long("name").short('n').action(ArgAction::Set))
                 .arg(
                     clap::Arg::new("OUT")
                         .long("out")
@@ -58,21 +60,80 @@ fn cli() -> Command {
         )
 }
 
+fn compile(source_managers: &Vec<SourceManager<'_>>) -> Result<(), std::io::Error> {
+    let mut stderr = Box::new(std::io::stderr()) as Box<dyn Write>;
+    let all_libraries = Rc::new(RefCell::from(Libraries::new()));
+    let mut success = true;
+
+    for manager in source_managers {
+        let compiler = Compiler::new(all_libraries.clone()).unwrap();
+
+        log::info!(
+            "Compiling files: {:#?}",
+            manager.files.iter().map(|f| f.filename()).collect::<Vec<_>>()
+        );
+
+        for (source_id, source) in manager.iter() {
+            log::info!("Parsing {:?}", source.filename());
+
+            let diagnostics = compiler.consume_file(source_id, source);
+
+            if diagnostics.has_errors() {
+                success = false;
+                diagnostics.errors().iter().for_each(|e| {
+                    let source: &SourceFile<'_> = &manager[e.span().source];
+                    e.pretty_print(&mut stderr, source.filename(), source.as_str()).unwrap();
+                });
+            }
+        }
+
+        let mut diagnostics = Diagnostics::new();
+
+        if !compiler.compile(&mut diagnostics) {
+            diagnostics.errors().iter().for_each(|e| {
+                let source = &manager[e.span().source];
+                e.pretty_print(&mut stderr, source.filename(), source.as_str()).unwrap();
+            });
+
+            panic!("failed to compile")
+        }
+    }
+
+    if all_libraries.borrow().is_empty() {
+        panic!("No library was produced.\n");
+    }
+
+    if !success {
+        return Err(std::io::Error::new(std::io::ErrorKind::Other, "Compilation failed"));
+    }
+
+    log::debug!("{:#?}", all_libraries);
+
+    Ok(())
+}
+
 fn main() -> std::io::Result<()> {
+    env_logger::init();
+
     let matches = cli().get_matches();
 
     match matches.subcommand() {
         Some(("compile", sub_matches)) => {
+            let name = sub_matches.get_one::<String>("NAME").unwrap();
             let paths = sub_matches.get_occurrences::<PathBuf>("FILES").unwrap();
             let output = sub_matches.get_one::<PathBuf>("OUT").unwrap();
 
             let mut stdout = Box::new(std::io::stdout()) as Box<dyn Write>;
-            let mut sources = vec![];
+
+            log::debug!("compiling {}", name);
+
+            // Prepare source files.
+            let mut source_managers = vec![];
 
             paths.collect::<Vec<_>>().into_iter().for_each(|path| {
                 let lib_sources = path
                     .map(|path| {
-                        println!("read file: {}", path.file_name().unwrap().to_str().unwrap());
+                        log::debug!("read file: {}", path.file_name().unwrap().to_str().unwrap());
 
                         let source_file = SourceFile::new(path.as_path());
 
@@ -91,58 +152,16 @@ fn main() -> std::io::Result<()> {
                     })
                     .collect::<Vec<_>>();
 
-                let source_files = SourceFiles::from(lib_sources);
-                sources.push(source_files);
+                let source_manager = SourceManager::from(lib_sources);
+                source_managers.push(source_manager);
             });
 
-            let all_libraries = Rc::new(RefCell::from(Libraries::new()));
-            let mut success = true;
-
-            for source_files in sources {
-                log::info!(
-                    "Compiling files: {:#?}",
-                    source_files.files.iter().map(|f| f.filename()).collect::<Vec<_>>()
-                );
-
-                let compiler = ParserDatabase::new(all_libraries.clone()).unwrap();
-
-                for (source_id, source) in source_files.iter() {
-                    log::info!("Parsing {:?}", source.filename());
-
-                    let diagnostics = compiler.parse_file(source_id, source);
-
-                    if diagnostics.has_errors() {
-                        success = false;
-                        diagnostics.errors().iter().for_each(|e| {
-                            let source = &source_files[e.span().source];
-                            e.pretty_print(&mut stdout, source.filename(), source.as_str()).unwrap();
-                        });
-                    }
-                }
-
-                let diagnostics = compiler.compile();
-
-                if diagnostics.has_errors() {
-                    success = false;
-                    diagnostics.errors().iter().for_each(|e| {
-                        let source = &source_files[e.span().source];
-                        let mut stdout = Box::new(std::io::stdout()) as Box<dyn Write>;
-                        e.pretty_print(&mut stdout, source.filename(), source.as_str()).unwrap();
-                    });
-                }
-            }
-
-            // println!("Success: {:#?}", all_libraries);
-
-            if !success {
-                return Err(std::io::Error::new(std::io::ErrorKind::Other, "Compilation failed"));
-            }
+            compile(&source_managers);
 
             let ir = midlgen::ir::Root {
-                name: "S".to_owned(),
+                name: name.clone(),
                 documentation: None,
                 attributes: vec![],
-
                 table_declarations: vec![],
                 const_declarations: vec![],
                 enum_declarations: vec![],
@@ -152,7 +171,7 @@ fn main() -> std::io::Result<()> {
                 bits_declarations: vec![],
             };
 
-            println!("IR: {:#?}", output.clone().display());
+            log::debug!("Generated IR output: {:#?}", output.clone().display());
 
             let ir_str = serde_json::to_string(&ir)?;
             std::fs::create_dir_all(output.clone().parent().unwrap())?;

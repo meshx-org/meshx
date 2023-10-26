@@ -3,6 +3,7 @@ members = [
     "src/crates/meshx",
     "src/crates/midl",
     "src/crates/fiber_rust",
+    "src/crates/meshx_flow",
     "src/crates/component_dummy",
     "src/crates/fiber_sys",
     "src/crates/fiber_types",

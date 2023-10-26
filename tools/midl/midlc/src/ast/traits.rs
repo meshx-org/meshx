@@ -1,4 +1,4 @@
-use super::{Attribute, Identifier, Span};
+use super::{Attribute, Identifier, Name, Span};
 
 /// An AST node with a span.
 pub trait WithSpan {
@@ -9,7 +9,7 @@ pub trait WithSpan {
 /// An AST node with a name (from the identifier).
 pub trait WithName {
     /// The name of the item.
-    fn name(&self) -> &str;
+    fn name(&self) -> &Name;
 }
 
 /// An AST node with an identifier.
@@ -28,15 +28,4 @@ pub trait WithAttributes {
 pub trait WithDocumentation {
     /// The documentation string, if defined.
     fn documentation(&self) -> Option<&str>;
-}
-
-/// An AST node with a name.
-impl<T> WithName for T
-where
-    T: WithIdentifier,
-{
-    /// The name token of the node.
-    fn name(&self) -> &str {
-        &self.identifier().value
-    }
 }

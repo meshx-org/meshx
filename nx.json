@@ -7,6 +7,11 @@
             }
         }
     },
+    "pluginsConfig": {
+        "@nx/js": {
+            "analyzeSourceFiles": true
+        }
+    },
     "npmScope": "meshx-org",
     "targetDefaults": {
         "build": {
@@ -17,11 +22,6 @@
         },
         "test": {
             "inputs": ["default", "^default", "{workspaceRoot}/jest.preset.js"]
-        }
-    },
-    "pluginsConfig": {
-        "@nx/js": {
-            "analyzeSourceFiles": true
         }
     },
     "extends": "nx/presets/npm.json",

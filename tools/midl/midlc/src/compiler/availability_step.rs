@@ -1,0 +1,190 @@
+use std::collections::BTreeMap;
+
+use crate::ast::{self, AttributeArg, TypeConstructor};
+
+use super::Context;
+
+/// The AvailabilityStep sets element.availability for every element in the
+/// library based on @available attributes and inheritance rules. If the library
+/// is versioned, it sets library.platform. Otherwise, it leaves it null, and
+/// all element availabilities will be unbounded. This step also checks for name
+/// collisions on overlapping availabilities for top level declarations (but not
+/// their members; they are checked in the CompileStep).
+pub(crate) struct AvailabilityStep<'ctx, 'd> {
+    ctx: &'ctx mut Context<'d>,
+
+    // Maps members to the Decl they occur in, and anonymous layouts to the
+    // struct/table/union member whose type constructor they occur in.
+    lexical_parents: BTreeMap<ast::Element, ast::Element>,
+}
+
+impl<'ctx, 'd> AvailabilityStep<'ctx, 'd> {
+    pub fn new(ctx: &'ctx mut Context<'d>) -> Self {
+        Self {
+            ctx,
+            lexical_parents: BTreeMap::new(),
+        }
+    }
+
+    pub(crate) fn run(&self) -> bool {
+        let checkpoint = self.ctx.diagnostics.checkpoint();
+        self.run_impl();
+        checkpoint.no_new_errors()
+    }
+
+    pub(crate) fn run_impl(&self) -> bool {
+        self.populate_lexical_parents();
+        self.ctx.library.traverse_elements(&mut |element| {
+            self.compile_availability(&element);
+        });
+        self.verify_no_decl_overlaps();
+        true
+    }
+
+    fn populate_lexical_parents(&self) {
+        // First, map members to the Decl they occur in.
+        for (_, decl) in self.ctx.library.declarations.borrow().all.iter() {
+            decl.for_each_member(&mut |member| {
+                self.lexical_parents.insert(member, decl.clone().into());
+            });
+        }
+
+        // Second, map anonymous layouts to the struct/table/union member or method
+        // whose type constructor they occur in. We do this with a helpful function
+        // that recursively visits all anonymous types in `type_ctor`.
+        let link_anonymous = |member: &ast::Element, type_ctor: &ast::TypeConstructor| {
+            fn helper(
+                member: &ast::Element,
+                type_ctor: &ast::TypeConstructor,
+                lexical_parents: BTreeMap<ast::Element, ast::Element>,
+            ) {
+                if type_ctor.layout.is_synthetic() {
+                    let anon_layout = type_ctor.layout.raw_synthetic().unwrap().target.element;
+                    lexical_parents.insert(anon_layout, member.clone());
+                }
+                for param in type_ctor.parameters.items {
+                    if let param_type_ctor = param.as_type_ctor() {
+                        helper(member, &param_type_ctor.unwrap(), lexical_parents);
+                    }
+                }
+            }
+
+            helper(member, type_ctor, self.lexical_parents)
+        };
+
+        for struct_decl in self.ctx.library.declarations.borrow().structs {
+            if let ast::Declaration::Struct(decl) = *struct_decl {
+                for member in decl.borrow().members {
+                    if let ast::Element::StructMember(concrete_member) = member {
+                        link_anonymous(&member, &concrete_member.member_type_ctor);
+                    }
+                }
+            }
+        }
+
+        // TODO: tables, unions, resources
+
+        for protocol_decl in self.ctx.library.declarations.borrow().structs {
+            if let ast::Declaration::Protocol(protocol) = *protocol_decl {
+                for method in protocol.borrow().methods {
+                    if let Some(request) = method.maybe_request {
+                        link_anonymous(&method, &request);
+                    }
+                    if let Some(response) = method.maybe_response {
+                        link_anonymous(&method, &response);
+                    }
+                }
+            }
+        }
+    }
+
+    /// Sets `element.availability` from the @available attribute, inheriting
+    /// unset fields from `AvailabilityToInheritFrom(element)`.
+    fn compile_availability(&self, element: &ast::Element) {}
+
+    /// Helper function for `CompileAvailability`.
+    fn compile_availability_from_attribute(&self, element: &ast::Element, attribute: &ast::Attribute) {}
+
+    /// Returns the default platform (the first component of the library name).
+    fn get_default_platform(&self) -> ast::Platform {
+        let platform = ast::Platform::parse(self.ctx.library.name.get().unwrap().first().unwrap());
+        assert!(platform.is_some(), "library component should be valid platform");
+        return platform.unwrap();
+    }
+
+    /// Parses the argument value as a platform. Reports an error on failure.
+    /*  fn get_platform(&self, maybe_arg: &Option<ast::AttributeArg>) -> Option<ast::Platform> {
+        if !(maybe_arg.is_some() && maybe_arg.unwrap().value.is_resolved()) {
+            return None;
+        }
+
+        let arg_value = maybe_arg.unwrap().value;
+
+        assert!(arg_value.value().kind == ConstantValue::Kind::String);
+        let ConstantValue::String(string) = &arg_value.value().make_contents();
+
+        let platform = ast::Platform::parse(string);
+
+        if platform.is_none() {
+            panic!("ErrInvalidPlatform");
+            // Fail(ErrInvalidPlatform, arg_value.span, string);
+            return None;
+        }
+
+        return platform;
+    }*/
+
+    /// Parses the argument value as a version. Reports an error on failure.
+    fn get_version(&self, maybe_arg: &Option<ast::AttributeArg>) -> Option<ast::Version> {
+        None
+    }
+    /// Returns the availability that `element` should inherit from, or null
+    /// if it should not attempt inheriting.
+    fn availability_to_inherit_from(&self, element: &ast::Element) -> Option<ast::Availability> {
+        None
+    }
+
+    /// Given an argument name, returns the nearest ancestor argument that
+    /// `element` inherited its value from. Requires that such an argument exists.
+    /// For example, consider this FIDL:
+    ///
+    ///     1 | @available(added=2)     // <-- ancestor
+    ///     2 | library test
+    ///     3 |
+    ///     4 | type Foo = struct {
+    ///     5 |    @available(added=1)  // <-- arg
+    ///     6 |    bar uint32;
+    ///     7 | };
+    ///
+    /// The `added=2` flows from `library test` to `type Foo` to `bar uint32`. But
+    /// we want the error ("can't add bar at version 1 when its parent isn't added
+    /// until version 2") to point to line 1, not to line 3.
+    fn ancestor_argument<'a>(&self, element: &ast::Element, arg_name: &String) -> &'a ast::AttributeArg {
+        &AttributeArg::new(todo!(), todo!())
+    }
+
+    /// Returns the lexical parent of `element`, or null for the root.
+    ///
+    /// The lexical parent differs from the scope in which an `element` exists
+    /// in the case of anonymous layouts: the lexical parent is the direct
+    /// container in which an `element` was defined, whereas they are hoisted
+    /// to library-scope. For example:
+    ///
+    ///     @available(added=1)
+    ///     library test;            // scope: null,    lexical parent: null
+    ///
+    ///     @available(added=2)
+    ///     type Foo = struct {      // scope: library, lexical parent: library
+    ///         @available(added=3)
+    ///         bar                  // scope: Foo,     lexical parent: Foo
+    ///             struct {};       // scope: library, lexical parent: bar
+    ///     };
+    ///
+    /// After consuming the raw AST, the anonymous layout `struct {}` gets treated
+    /// like a top-level declaration alongside `Foo`. But we inherit from its
+    /// lexical parent, the member `bar` (added at version 3).
+    fn lexical_parent(&self, element: &ast::Element) -> &ast::Element {}
+
+    /// Reports errors for all decl name collisions on overlapping availabilities.
+    fn verify_no_decl_overlaps(&self) {}
+}

@@ -25,6 +25,25 @@ impl DiagnosticsError {
         Self::new(format!("UnknownLibrary: {message}"), span)
     }
 
+    pub fn new_name_not_found(span: Span, name: &String, library_name: &Vec<String>) -> Self {
+        Self::new(format!("Cannot find '{}' in library '{}'", name, library_name.join(".")), span)
+    }
+
+    pub fn new_unknown_dependent_library(
+        span: Span,
+        long_library_name: &Vec<String>,
+        short_library_name: &Vec<String>,
+    ) -> Self {
+        Self::new(
+            format!(
+                "Unknown dependent library {} or reference to member of library {}. Did you imported it with `import`?",
+                long_library_name.join("."),
+                short_library_name.join(".")
+            ),
+            span,
+        )
+    }
+
     pub fn new_duplicate_import(message: &str, span: Span) -> Self {
         Self::new(format!("Error importing: {message}"), span)
     }
@@ -57,8 +76,8 @@ impl DiagnosticsError {
         )
     }
 
-    pub fn span(&self) -> Span {
-        self.span
+    pub fn span(&self) -> &Span {
+        &self.span
     }
 
     pub fn message(&self) -> &str {

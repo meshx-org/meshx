@@ -31,7 +31,7 @@ export class Kernel implements System {
         invariant(this._root_job_handle !== null)
     }
 
-    public async start() {
+    public async boot() {
         userboot_init(this)
 
         console.info("Now wait until the root job is childless.")
@@ -62,8 +62,7 @@ export class Kernel implements System {
 
     sys_process_create(
         parent: fx_handle_t,
-        name: Uint8Array,
-        name_size: number,
+        name: string,
         options: number,
         proc_handle_out: Ref<fx_handle_t>,
         vmar_handle_out: Ref<fx_handle_t>

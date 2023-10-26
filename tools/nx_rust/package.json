@@ -1,6 +1,6 @@
 {
     "name": "@meshx-org/nx-rust",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "private": true,
     "executors": "./executors.json",
     "devDependencies": {

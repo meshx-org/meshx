@@ -24,8 +24,7 @@ export interface System {
     /** Process operations */
     sys_process_create(
         parent: fx_handle_t,
-        name: Uint8Array,
-        name_size: u32,
+        name: string,
         options: u32,
         proc_handle_out: Ref<fx_handle_t>,
         vmar_handle_out: Ref<fx_handle_t>
@@ -72,8 +71,7 @@ declare global {
     var sys_process_create:
         | ((
               parent: fx_handle_t,
-              name: Uint8Array,
-              name_size: u32,
+              name: string,
               options: u32,
               proc_handle_out: Ref<fx_handle_t>,
               vmar_handle_out: Ref<fx_handle_t>
@@ -131,15 +129,13 @@ export function fx_object_wait_async(
 
 export function fx_process_create(
     parent: fx_handle_t,
-    name: Uint8Array,
-    name_size: u32,
+    name: string,
     options: u32,
     proc_handle_out: Ref<fx_handle_t>,
     vmar_handle_out: Ref<fx_handle_t>
 ): fx_status_t {
-    if (self.sys_process_create)
-        return self.sys_process_create(parent, name, name_size, options, proc_handle_out, vmar_handle_out)
-    else if (sys) return sys.sys_process_create(parent, name, name_size, options, proc_handle_out, vmar_handle_out)
+    if (self.sys_process_create) return self.sys_process_create(parent, name, options, proc_handle_out, vmar_handle_out)
+    else if (sys) return sys.sys_process_create(parent, name, options, proc_handle_out, vmar_handle_out)
     else throw new Error("system is not initialized")
 }
 

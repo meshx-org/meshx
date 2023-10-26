@@ -101,7 +101,7 @@ type_constraints     =  { type_constraint | "<" ~ type_constraint_list ~ ">" }
 type_constraint_list = _{ type_constraint | type_constraint ~ "," ~ type_constraint_list }
 
 type_constraint      =  { constant }
-constant             =  { compound_identifier | literal }
+constant             =  { literal | compound_identifier }
 
 layout_type          =  { inline_layout }
  

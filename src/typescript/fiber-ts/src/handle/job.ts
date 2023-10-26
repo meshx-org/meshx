@@ -43,16 +43,11 @@ export class Job extends HandleWrapper {
     public createChildProcess(name: string): Process {
         const parent_job_raw = this.raw
 
-        const enc = new TextEncoder() // always utf-8
-
-        const name_data = enc.encode(name)
-        const name_size = name.length
-
         const options = 0
         const process_out = new Ref(FX_INVALID_HANDLE)
         const vmar_out = new Ref(FX_INVALID_HANDLE)
 
-        const status = fx_process_create(parent_job_raw, name_data, name_size, options, process_out, vmar_out)
+        const status = fx_process_create(parent_job_raw, name, options, process_out, vmar_out)
 
         return new Process(process_out.value)
     }

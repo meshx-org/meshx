@@ -1,0 +1,37 @@
+{
+    "name": "src/typescript/component-manager",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "src/typescript/component-manager/src",
+    "projectType": "library",
+    "targets": {
+        "build": {
+            "executor": "@nx/js:tsc",
+            "outputs": ["{options.outputPath}"],
+            "options": {
+                "outputPath": "src/typescript/component-manager/dist",
+                "main": "src/typescript/component-manager/src/index.ts",
+                "tsConfig": "src/typescript/component-manager/tsconfig.lib.json",
+                "assets": ["src/typescript/component-manager/*.md"]
+            }
+        },
+        "lint": {
+            "executor": "@nx/linter:eslint",
+            "outputs": ["{options.outputFile}"],
+            "options": {
+                "lintFilePatterns": [
+                    "src/typescript/component-manager/**/*.ts",
+                    "src/typescript/component-manager/package.json"
+                ]
+            }
+        },
+        "test": {
+            "executor": "@nx/vite:test",
+            "outputs": ["{options.reportsDirectory}"],
+            "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../../coverage/src/typescript/component-manager"
+            }
+        }
+    },
+    "tags": ["lang:ts"]
+}

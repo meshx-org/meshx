@@ -1,7 +1,7 @@
 use hcl::Identifier;
 
-use super::{Constant, Reference, Span};
-use std::str::FromStr;
+use super::{ast, Const, ConstantValue, Element, LiteralConstant, Reference, Span};
+use std::{cell::RefCell, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum PrimitiveSubtype {
@@ -32,6 +32,8 @@ impl FromStr for PrimitiveSubtype {
             "i16" => Ok(PrimitiveSubtype::Int16),
             "i32" => Ok(PrimitiveSubtype::Int32),
             "i64" => Ok(PrimitiveSubtype::Int64),
+            "f32" => Ok(PrimitiveSubtype::Float32),
+            "f64" => Ok(PrimitiveSubtype::Float64),
             _ => Err("invalid primitive type"),
         }
     }
@@ -58,14 +60,69 @@ struct TypeInternal {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct IdentifierLayoutParameter {
+    pub reference: Reference,
+
+    as_type_ctor: RefCell<Option<TypeConstructor>>,
+    as_constant: RefCell<Option<Const>>,
+}
+
+impl IdentifierLayoutParameter {
+    // Disambiguates between type constructor and constant. Must call after
+    // resolving the reference, but before calling AsTypeCtor or AsConstant.
+    pub fn disambiguate(&self) {
+        let resolved = self.reference.resolved();
+
+        match resolved.unwrap().element {
+            Element::Const(_) => {}
+            // Element::BitsMember => {}
+            // Element::EnumMember(_) => {
+            //    self.as_constant =  IdentifierConstant (source_signature(), reference, span);
+            //
+            // }
+            _ => {
+                self.as_type_ctor.replace(Some(TypeConstructor {
+                    layout: self.reference.clone(),
+                    parameters: LayoutParameterList {
+                        items: vec![],
+                        span: None,
+                    },
+                    constraints: LayoutConstraints {},
+                    r#type: None,
+                }));
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TypeLayoutParameter {
+    pub type_ctor: TypeConstructor,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LiteralLayoutParameter {
+    pub literal: LiteralConstant,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LayoutParameter {
-    TypeConstructor(TypeConstructor),
-    Constant(Constant),
+    Identifier(IdentifierLayoutParameter),
+    Type(TypeLayoutParameter),
+    Literal(LiteralLayoutParameter),
+}
+
+impl LayoutParameter {
+    // A layout parameter is either a type constructor or a constant. One of these
+    // two methods must return non-null, and the other one must return null.
+    pub(crate) fn as_type_ctor(&self) -> Option<TypeConstructor> {
+        None
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LayoutParameterList {
-    pub parameters: Vec<LayoutParameter>,
+    pub items: Vec<LayoutParameter>,
 
     /// The location of this parameter list in the text representation.
     pub span: Option<Span>,

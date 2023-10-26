@@ -51,12 +51,17 @@ async function buildIR(options: Options, context: ExecutorContext): Promise<void
         filesFlags += `--files ${files.join(" ")} `
     })
 
+    const command = `${context.root}/dist/tools/midl/midlc/midlc compile -n ${midlJson.name} -o=${outDir}/ir.json ${filesFlags}`
+
+    console.log(command)
+
     return new Promise((resolve, reject) => {
         exec(
-            `${context.root}/dist/tools/midl/midlc/midlc compile -o=${outDir}/ir.json ${filesFlags}`,
+            command,
             {
                 env: {
                     CLICOLOR_FORCE: "1",
+                    RUST_LOG: "debug",
                 },
                 cwd: options.cwd ? options.cwd : projectRoot,
             },

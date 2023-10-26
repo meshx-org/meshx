@@ -1,0 +1,76 @@
+{
+    "library": "meshx.flow.example",
+    "compose": {
+        "fx": "./fx.flow"
+    },
+    "structs": [
+        {
+            "name": "User",
+            "metadata": {
+                "midl.meshx.io/name": "meshx.flow.example.User"
+            },
+            "members": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        }
+    ],
+    "nodes": [
+        {
+            "id": "fx.TEST_CONST",
+            "type": "variable",
+            "metadata": {},
+            "output_ports": {
+                "value": {
+                    "type": "data",
+                    "type": ""
+                }
+            }
+        },
+        {
+            "id": "fx.Protocol/call",
+            "type": "method",
+            "metadata": {
+                "midl.meshx.io/method-ordinal": "0x60e700e002995ef8",
+                "fn_name": "ProtocolCallNode"
+            },
+            "input_ports": {
+                "in": {
+                    "type": "io"
+                },
+                "arg1": {
+                    "type": "data",
+                    "optional": true,
+                    "of": "User"
+                },
+                "arg2": {
+                    "type": "data",
+                    "optional": true,
+                    "of": "User"
+                }
+            },
+            "output_ports": {
+                "out": {
+                    "type": "io"
+                },
+                "result": {
+                    "name": "result"
+                }
+            }
+        }
+    ],
+    "flow": {
+        "0x1234": {
+            "instanceId": "0x1234",
+            "nodeId": "fx.Protocol/call",
+            "inputs": {
+                "in": {
+                    "instanceId": "string",
+                    "port": "out"
+                }
+            },
+            "outputs": {}
+        }
+    }
+}

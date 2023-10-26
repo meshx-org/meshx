@@ -2,9 +2,33 @@ mod error;
 mod pretty_print;
 mod warning;
 
+use std::cell::{Ref, RefCell};
+
 pub(crate) use error::DiagnosticsError;
 pub(crate) use pretty_print::{pretty_print_error_text, DiagnosticColorer};
 pub(crate) use warning::DiagnosticsWarning;
+
+pub(crate) struct Counts<'d> {
+    diagnostics: &'d Diagnostics,
+    num_errors: usize,
+}
+
+impl<'d> Counts<'d> {
+    fn new(diagnostics: &'d Diagnostics) -> Self {
+        Self {
+            diagnostics,
+            num_errors: diagnostics.errors().len(),
+        }
+    }
+
+    pub(crate) fn num_new_errors(&self) -> usize {
+        self.diagnostics.errors().len() - self.num_errors
+    }
+
+    pub(crate) fn no_new_errors(&self) -> bool {
+        self.num_new_errors() == 0
+    }
+}
 
 /// Represents a list of validation or parser errors and warnings.
 ///
@@ -12,37 +36,41 @@ pub(crate) use warning::DiagnosticsWarning;
 /// It is used to not error out early and instead show multiple errors at once.
 #[derive(Debug)]
 pub(crate) struct Diagnostics {
-    errors: Vec<DiagnosticsError>,
-    warnings: Vec<DiagnosticsWarning>,
+    errors: RefCell<Vec<DiagnosticsError>>,
+    warnings: RefCell<Vec<DiagnosticsWarning>>,
 }
 
 impl Diagnostics {
-    pub fn new() -> Diagnostics {
+    pub(crate) fn new() -> Diagnostics {
         Diagnostics {
-            errors: Vec::new(),
-            warnings: Vec::new(),
+            errors: RefCell::new(Vec::new()),
+            warnings: RefCell::new(Vec::new()),
         }
     }
 
-    pub fn warnings(&self) -> &[DiagnosticsWarning] {
-        &self.warnings
+    pub(crate) fn warnings(&self) -> Ref<'_, Vec<DiagnosticsWarning>> {
+        self.warnings.borrow()
     }
 
-    pub fn errors(&self) -> &[DiagnosticsError] {
-        &self.errors
+    pub(crate) fn errors(&self) -> Ref<'_, Vec<DiagnosticsError>> {
+        self.errors.borrow()
     }
 
-    pub fn push_error(&mut self, err: DiagnosticsError) {
-        self.errors.push(err)
+    pub(crate) fn push_error(&self, err: DiagnosticsError) {
+        self.errors.borrow_mut().push(err)
     }
 
-    pub fn push_warning(&mut self, warning: DiagnosticsWarning) {
-        self.warnings.push(warning)
+    pub(crate) fn push_warning(&self, warning: DiagnosticsWarning) {
+        self.warnings.borrow_mut().push(warning)
     }
 
     /// Returns true, if there is at least one error in this collection.
-    pub fn has_errors(&self) -> bool {
-        !self.errors.is_empty()
+    pub(crate) fn has_errors(&self) -> bool {
+        !self.errors.borrow().is_empty()
+    }
+
+    pub(crate) fn checkpoint(&self) -> Counts<'_> {
+        Counts::new(self)
     }
 }
 

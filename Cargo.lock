@@ -1441,6 +1441,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "meshx_flow"
+version = "0.1.0"
+dependencies = [
+ "env_logger 0.10.0",
+ "log",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "midl"
 version = "0.1.0"
 dependencies = [
@@ -1465,9 +1477,11 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "colored",
+ "env_logger 0.10.0",
  "hcl-rs",
  "log",
  "midlgen",
+ "multimap 0.9.0",
  "pest",
  "pest_derive",
  "petgraph 0.6.3",
@@ -1557,6 +1571,15 @@ name = "multimap"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5ce46fe64a9d73be07dcbe690a38ce1b293be448fd8ce1e6c1b8062c9f72c6a"
+
+[[package]]
+name = "multimap"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70db9248a93dc36a36d9a47898caa007a32755c7ad140ec64eeeb50d5a730631"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "native-tls"
@@ -2049,7 +2072,7 @@ dependencies = [
  "heck 0.3.3",
  "itertools 0.9.0",
  "log",
- "multimap",
+ "multimap 0.8.3",
  "petgraph 0.5.1",
  "prost 0.7.0",
  "prost-types 0.7.0",
@@ -2068,7 +2091,7 @@ dependencies = [
  "itertools 0.10.5",
  "lazy_static",
  "log",
- "multimap",
+ "multimap 0.8.3",
  "petgraph 0.6.3",
  "prettyplease 0.1.25",
  "prost 0.11.9",

@@ -1,59 +1,150 @@
 mod ast;
-mod attribute;
+mod attributes;
 mod comment;
 mod r#const;
 mod identifier;
+mod name;
 mod protocol;
 mod reference;
 mod span;
 mod r#struct;
 mod traits;
+mod versioning_types;
 mod type_constructor;
 
-use std::cell::RefCell;
+use std::cell::{OnceCell, RefCell};
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 pub use ast::*;
 
-pub use attribute::Attribute;
+pub use versioning_types::{Platform, Version, Availability};
+pub use attributes::{Attribute, AttributeArg};
 pub use comment::Comment;
 pub use identifier::{CompoundIdentifier, Identifier};
+use multimap::MultiMap;
+pub use name::Name;
 pub use protocol::{Protocol, ProtocolMethod};
-pub use r#const::{Const, Constant};
+pub use r#const::{Const, ConstantValue, IdentifierConstant, LiteralConstant};
 pub use r#struct::{Struct, StructMember};
-pub use reference::Reference;
+pub use reference::{Reference, Target, ReferenceKey, ReferenceState};
 pub use span::Span;
 pub use traits::{WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
 pub use type_constructor::{
-    LayoutConstraints, LayoutParameter, LayoutParameterList, PrimitiveSubtype, Type, TypeConstructor,
+    IdentifierLayoutParameter, LayoutConstraints, LayoutParameter, LayoutParameterList, LiteralLayoutParameter,
+    PrimitiveSubtype, Type, TypeConstructor, TypeLayoutParameter,
 };
 
 use crate::source_file::SourceId;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Element {
+    Bits,
+    Enum,
+    Builtin(Rc<RefCell<Builtin>>),
+    Struct(Rc<RefCell<Struct>>),
+    Protocol(Rc<RefCell<Protocol>>),
+    Const(Rc<RefCell<Const>>),
+
+    // Elements that are not declarations
+    StructMember(Rc<StructMember>),
+    ProtocolMethod(Rc<ProtocolMethod>),
+}
+
+impl Element {
+    fn is_decl(&self) -> bool {
+        match self {
+            Element::Const(_) | Element::Struct(_) | Element::Protocol(_) | Element::Builtin(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn as_decl(&self) -> Option<Declaration> {
+        match self {
+            Element::Const(element) => Some(Declaration::Const(element.clone())),
+            Element::Builtin(element) => Some(Declaration::Builtin(element.clone())),
+            Element::Struct(element) => Some(Declaration::Struct(element.clone())),
+            Element::Protocol(element) => Some(Declaration::Protocol(element.clone())),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Declaration {
-    Import(Rc<RefCell<ImportDeclaration>>),
+    Bits,
+    Enum,
     Const(Rc<RefCell<Const>>),
     Struct(Rc<RefCell<Struct>>),
     Protocol(Rc<RefCell<Protocol>>),
     Builtin(Rc<RefCell<Builtin>>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Element {
-    Builtin(Rc<RefCell<Builtin>>),
+impl Into<Element> for Declaration {
+    fn into(self) -> Element {
+        match self {
+            Declaration::Const(ref decl) => Element::Const(decl.clone()),
+            Declaration::Struct(_) => todo!(),
+            Declaration::Protocol(_) => todo!(),
+            Declaration::Builtin(ref decl) => Element::Builtin(decl.clone()),
+            Declaration::Bits => todo!(),
+            Declaration::Enum => todo!(),
+        }
+    }
 }
 
-//#[derive(Debug)]
-//pub enum Element {
-//    Builtin(Builtin),
-//    NewType(NewType)
-//}
+impl Into<Element> for Rc<Declaration> {
+    fn into(self) -> Element {
+        match &*self {
+            Declaration::Const(ref decl) => Element::Const(decl.clone()),
+            Declaration::Struct(_) => todo!(),
+            Declaration::Protocol(_) => todo!(),
+            Declaration::Builtin(ref decl) => Element::Builtin(decl.clone()),
+            Declaration::Bits => todo!(),
+            Declaration::Enum => todo!(),
+        }
+    }
+}
+
+impl Declaration {
+    pub fn name(&self) -> Name {
+        match self {
+            Declaration::Struct(decl) => decl.borrow().name().to_owned(),
+            Declaration::Protocol(decl) => decl.borrow().name().to_owned(),
+            Declaration::Const(decl) => decl.borrow().name().to_owned(),
+            Declaration::Builtin(decl) => decl.borrow().name().to_owned(),
+            Declaration::Bits => todo!(),
+            Declaration::Enum => todo!(),
+        }
+    }
+
+    // Runs a function on every member of the decl, if it has any. Note that
+    // unlike Library::traverse_elements, it does not call `visit(self)`.
+    pub(crate) fn for_each_member(&self, visitor: &mut dyn FnMut(Element)) {
+        match self {
+            Declaration::Struct(decl) => {
+                for (_, member) in decl.borrow().iter_members() {
+                    visitor(member.clone());
+                }
+            }
+            Declaration::Protocol(decl) => {
+                for (_, method) in decl.borrow().iter_methods() {
+                    visitor(Element::ProtocolMethod(method.clone()));
+                }
+            }
+            Declaration::Const(_) => {}
+            Declaration::Builtin(_) => {}
+            Declaration::Bits => todo!(),
+            Declaration::Enum => todo!(),
+        };
+    }
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum BuiltinIdentity {
-    #[default] bool,
+    #[default]
+    bool,
     i8,
     i16,
     i32,
@@ -77,44 +168,84 @@ enum BuiltinIdentity {
     HEAD,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct Name;
-
-impl Name {
-    fn new_intrinsic(library: &Library, name: &str) -> Self {
-        Self {}
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Builtin {
-    identity: BuiltinIdentity,
+    id: BuiltinIdentity,
     name: Name,
 }
 
 impl Builtin {
-    fn new(identity: BuiltinIdentity, name: Name) -> Self {
-        Self { identity, name }
+    fn new(id: BuiltinIdentity, name: Name) -> Self {
+        Self { id, name }
+    }
+
+    pub fn is_internal(&self) -> bool {
+        match self.id {
+            BuiltinIdentity::transport_err => true,
+            _ => false,
+        }
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+impl WithName for Builtin {
+    fn name(&self) -> &Name {
+        &self.name
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declarations {
-    pub structs: Vec<Declaration>,
-    pub protocols: Vec<Declaration>,
-    pub contants: Vec<Declaration>,
-    pub builtins: Vec<Declaration>,
-    pub imports: Vec<Declaration>,
+    pub structs: Vec<Rc<Declaration>>,
+    pub protocols: Vec<Rc<Declaration>>,
+    pub contants: Vec<Rc<Declaration>>,
+    pub builtins: Vec<Rc<Declaration>>,
+    pub imports: Vec<Rc<Declaration>>,
+
+    pub all: MultiMap<String, Rc<Declaration>>,
+}
+
+impl Default for Declarations {
+    fn default() -> Self {
+        Declarations {
+            structs: vec![],
+            protocols: vec![],
+            contants: vec![],
+            builtins: vec![],
+            imports: vec![],
+            all: MultiMap::new(),
+        }
+    }
+}
+
+impl PartialOrd for Declarations {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Declarations {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.structs.cmp(&other.structs)
+    }
+}
+
+fn store_decl(decl: Declaration, all: &mut MultiMap<String, Rc<Declaration>>, decls: &mut Vec<Rc<Declaration>>) {
+    let decl = Rc::from(decl);
+    all.insert(decl.name().decl_name(), decl.clone());
+    decls.push(decl);
 }
 
 impl Declarations {
     pub fn insert(&mut self, decl: Declaration) {
+        let all_ref = &mut self.all;
+
         match decl {
-            Declaration::Struct(_) => self.structs.push(decl),
-            Declaration::Protocol(_) => self.protocols.push(decl),
-            Declaration::Const(_) => self.contants.push(decl),
-            Declaration::Import(_) => self.imports.push(decl),
-            Declaration::Builtin(_) => self.builtins.push(decl),
+            Declaration::Struct(_) => store_decl(decl, all_ref, &mut self.structs),
+            Declaration::Protocol(_) => store_decl(decl, all_ref, &mut self.protocols),
+            Declaration::Const(_) => store_decl(decl, all_ref, &mut self.contants),
+            Declaration::Builtin(_) => store_decl(decl, all_ref, &mut self.builtins),
+            Declaration::Bits => todo!(),
+            Declaration::Enum => todo!(),
         }
     }
 }
@@ -125,22 +256,24 @@ pub enum RegisterResult {
     Duplicate,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+/// A reference to a library, derived from a "using" statement.
+#[derive(Debug, PartialEq, Eq)]
 struct LibraryRef {
     span: Span,
-    dep_library: Rc<Library>,
+    library: Rc<Library>,
+    used: RefCell<bool>,
 }
 
-// Per-file information about imports.
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-struct PerFile {
+// Per-source information about imports.
+#[derive(Debug, Default, PartialEq, Eq)]
+struct PerSource {
     // References to dependencies, keyed by library name or by alias.
-    refs: BTreeMap<CompoundIdentifier, Rc<LibraryRef>>,
+    refs: BTreeMap<Vec<String>, Rc<LibraryRef>>,
     // Set containing ref->library for every ref in |refs|.
     libraries: BTreeSet<Rc<Library>>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Dependencies {
     // All dependencies, in the order they were registered.
     refs: Vec<Rc<LibraryRef>>,
@@ -148,8 +281,8 @@ pub struct Dependencies {
     // Maps a library's name to its LibraryRef.
     by_name: BTreeMap<CompoundIdentifier, Rc<LibraryRef>>,
 
-    // Maps a library's filename to its PerFile.
-    by_source_id: BTreeMap<SourceId, PerFile>,
+    // Maps a library's filename to its PerSource.
+    by_source_id: BTreeMap<SourceId, PerSource>,
 
     // All dependencies, including transitive dependencies.
     dependencies_aggregate: BTreeSet<Rc<Library>>,
@@ -159,15 +292,11 @@ impl Dependencies {
     // Registers a dependency to a library. The registration name is |maybe_alias|
     // if provided, otherwise the library's name. Afterwards, Dependencies::Lookup
     // will return |dep_library| given the registration name.
-    pub fn register(
-        &mut self,
-        span: &Span,
-        dep_library: Rc<Library>,
-        alias: Option<CompoundIdentifier>,
-    ) -> RegisterResult {
+    pub fn register(&mut self, span: &Span, dep_library: Rc<Library>, alias: Option<Vec<String>>) -> RegisterResult {
         self.refs.push(Rc::from(LibraryRef {
             span: span.clone(),
-            dep_library: dep_library.clone(),
+            library: dep_library.clone(),
+            used: RefCell::from(false),
         }));
 
         let lib_ref = self.refs.last().unwrap();
@@ -175,15 +304,15 @@ impl Dependencies {
         let name = if alias.is_some() {
             alias.unwrap()
         } else {
-            dep_library.name.borrow().clone().unwrap()
+            dep_library.name.get().expect("expected initialized name").clone()
         };
 
-        log::debug!("register: {:?} as {}", dep_library.name.borrow(), name);
+        log::debug!("register: {:?} as {:?}", dep_library.name, name);
 
         let per_file = if self.by_source_id.contains_key(&span.source) {
             self.by_source_id.get_mut(&span.source).unwrap()
         } else {
-            self.by_source_id.try_insert(span.source, PerFile::default()).unwrap()
+            self.by_source_id.try_insert(span.source, PerSource::default()).unwrap()
         };
 
         log::debug!("per_file.refs: {:?}", per_file.refs.keys());
@@ -200,6 +329,28 @@ impl Dependencies {
 
         return RegisterResult::Success;
     }
+
+    /// Looks up a dependency by filename (within the importing library, since
+    /// "using" statements are file-scoped) and name (of the imported library).
+    /// Also marks the library as used. Returns null if no library is found.
+    pub fn lookup_and_mark_used(&self, source: SourceId, name: &Vec<String>) -> Option<Rc<Library>> {
+        let iter1 = self.by_source_id.iter().find(|&(si, _)| *si == source);
+        if iter1.is_none() {
+            return None;
+        }
+
+        let (_, per_file) = iter1.unwrap();
+
+        let iter2 = per_file.refs.iter().find(|&(n, _)| n == name);
+        if iter2.is_none() {
+            return None;
+        }
+
+        let (_, reference) = iter2.unwrap();
+
+        reference.used.replace(true);
+        Some(reference.library.clone())
+    }
 }
 
 /// AST representation of a MIDL library.
@@ -210,17 +361,15 @@ impl Dependencies {
 /// The AST is not validated, also fields and attributes are not resolved. Every node is
 /// annotated with its location in the text representation.
 /// Basically, the AST is an object oriented representation of the midl's text.
-#[derive(Debug, Default, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Library {
-    pub name: RefCell<Option<CompoundIdentifier>>,
+    pub name: OnceCell<Vec<String>>,
 
     pub dependencies: RefCell<Dependencies>,
 
     /// All structs, enums, protocols, constants, bits and type aliase declarations.
     /// Populated by ParseStep, and then rewritten by ResolveStep.
     pub declarations: RefCell<Declarations>,
-
-    pub elements: Vec<Element>,
 
     // Contains the same decls as `declarations`, but in a topologically sorted
     // order, i.e. later decls only depend on earlier ones. Populated by SortStep.
@@ -229,25 +378,35 @@ pub struct Library {
     pub arbitrary_name_span: RefCell<Option<Span>>,
 }
 
-impl Library {
-    pub fn new_root() -> Self {
-        let span = Span::empty();
+impl PartialOrd for Library {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
+impl Ord for Library {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.name.get().cmp(&other.name.get())
+    }
+}
+
+impl Library {
+    pub fn new_root() -> Rc<Self> {
         // TODO(fxbug.dev/67858): Because this library doesn't get compiled, we have
         // to simulate what AvailabilityStep would do (set the platform, inherit the
         // availabilities). Perhaps we could make the root library less special and
         // compile it as well. That would require addressing circularity issues.
         let mut library = Library::default();
-        library.name = RefCell::new(Some(CompoundIdentifier {
-            components: vec![Identifier {
-                value: "".to_owned(),
-                span,
-            }],
-            span,
-        }));
+        library.name = OnceCell::from(vec!["midl".to_owned()]);
 
-        let mut insert = |name: &str, id: BuiltinIdentity| {
-            let decl = Builtin::new(id, Name::new_intrinsic(&library, name));
+        let library = Rc::new(library);
+
+        let insert = |name: &str, id: BuiltinIdentity| {
+            let decl = Builtin::new(
+                id,
+                Name::create_intrinsic(library.clone(), name), /*Name::new_intrinsic(&library, name)*/
+            );
+
             library
                 .declarations
                 .borrow_mut()
@@ -288,10 +447,11 @@ impl Library {
         return library;
     }
 
-    // want to traverse all elements which are simialr to declarations in this library
-    pub fn traverse_elements(&self, visitor: &mut dyn FnMut(&Element)) {
-        for element in &self.elements {
-            visitor(element);
+    // want to traverse all elements which are simialar to declarations in this library
+    pub fn traverse_elements(&self, visitor: &mut dyn FnMut(Element)) {
+        for (_, decl) in self.declarations.borrow().all.iter() {
+            visitor(decl.clone().into());
+            decl.for_each_member(visitor);
         }
     }
 
@@ -353,7 +513,8 @@ fn top_idx_to_top_id(top_idx: usize, decl: &Declaration) -> DeclarationId {
         Declaration::Protocol(_) => DeclarationId::Protocol(ProtocolId(top_idx as u32)),
         Declaration::Struct(_) => DeclarationId::Struct(StructId(top_idx as u32)),
         Declaration::Const(_) => DeclarationId::Const(ConstId(top_idx as u32)),
-        Declaration::Import(_) => DeclarationId::Import(ImportId(top_idx as u32)),
         Declaration::Builtin(_) => DeclarationId::Builtin(BuiltinId(top_idx as u32)),
+        Declaration::Bits => todo!(),
+        Declaration::Enum => todo!(),
     }
 }

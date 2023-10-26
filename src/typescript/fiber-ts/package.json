@@ -1,7 +1,7 @@
 {
     "name": "@meshx-org/fiber-ts",
-    "version": "0.1.2",
-    "type": "commonjs",
+    "version": "0.2.0",
+    "type": "module",
     "author": "Sz.Kovács Roland <Roland.Szarka-Kovacs@meshx.co>",
     "homepage": "https://github.com/meshx-org/meshx#readme",
     "publishConfig": {
@@ -16,7 +16,7 @@
         "url": "https://github.com/meshx-org/meshx/issues"
     },
     "dependencies": {
-        "@meshx-org/fiber-types": "0.1.2",
-        "@meshx-org/fiber-sys": "0.1.2"
+        "@meshx-org/fiber-types": "0.2.0",
+        "@meshx-org/fiber-sys": "0.2.0"
     }
 }
