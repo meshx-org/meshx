@@ -22,7 +22,7 @@ jobs:
               with:
                   fetch-depth: 0
 
-            - uses: nrwl/nx-set-shas@v3
+            - uses: nrwl/nx-set-shas@v4
 
             - name: Setup Rust toolchain
               uses: actions-rs/toolchain@v1
