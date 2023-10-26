@@ -1,5 +1,11 @@
 # @meshx-org/fiber-types
 
+## 0.3.1
+
+### Patch Changes
+
+- test
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { System } from "@meshx-org/fiber-sys"
-import { Ref, fx_handle_t, fx_port_packet_t, fx_rights_t, fx_status_t } from "@meshx-org/fiber-types"
-import { JobDispatcher } from "./object/dispatchers/job-dispatcher"
-import { Handle, HandleOwner, KernelHandle } from "./object/handle"
+import { Ref, fx_handle_t, fx_port_packet_t, fx_status_t } from "@meshx-org/fiber-types"
+import { JobDispatcher } from "./object/dispatchers"
+import { Handle, HandleOwner, KernelHandle } from "./object"
 import { userboot_init } from "./userboot"
 import invariant from "tiny-invariant"
 
