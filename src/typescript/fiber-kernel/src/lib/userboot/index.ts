@@ -23,8 +23,6 @@ export function userboot_init(kernel: Kernel) {
 
     invariant(msg.num_handles() === HANDLE_COUNT)
 
-    console.debug(`userboot_init: msg=${msg}`)
-
     // Create the process.
     // let vmar_handle:  KernelHandle<VmAddressRegionDispatcher> ;
     const result = ProcessDispatcher.create(kernel.get_root_job_dispatcher(), "userboot", 0)
@@ -82,8 +80,6 @@ export function userboot_init(kernel: Kernel) {
     const user_handle_owner = Handle.make(user_handle, channel_rights)
     const hv = process.handle_table().map_handle_to_value(user_handle_owner)
     process.handle_table().add_handle(user_handle_owner)
-
-    console.debug(`userboot_init: hv=${hv}`)
 
     // TODO: do we even need threads?
     // Create the user thread.

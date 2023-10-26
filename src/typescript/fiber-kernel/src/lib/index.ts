@@ -7,17 +7,76 @@ import { Handle, HandleOwner, KernelHandle } from "./object/handle"
 import { userboot_init } from "./userboot"
 import invariant from "tiny-invariant"
 
+export type IWrite = {
+    postMessage: any
+}
+
+export type IRead = {
+    addEventListener: (event: "message", handler: any) => void
+}
+
 export class Kernel implements System {
+    private processes: Array<string> = []
+
+    private parent: null | IWrite = null
+    private broadcast: Map<string, IWrite> = new Map()
+
+    private isBooted = false
+
     private _boot_process: null
     private _root_job: null | JobDispatcher
     private _root_job_handle: null | HandleOwner
     private _root_job_observer: null
 
-    constructor() {
+    constructor(private kid: string, private isLeader: boolean) {
         this._boot_process = null
         this._root_job = null
         this._root_job_handle = null
         this._root_job_observer = null
+    }
+
+    public dial(target: IWrite & IRead) {
+        if (!this.isBooted) throw new Error("only booted kernels can dial")
+        if (!this.isLeader) throw new Error("only leaders can dial")
+
+        target.addEventListener("message", (event: any) => this.onLeaderMessage.call(this, event))
+        this.broadcast.set("", target)
+    }
+
+    public listen(listener: IWrite & IRead) {
+        if (!this.isBooted) throw new Error("only booted kernels can listen")
+        if (this.isLeader) throw new Error("only followers can listen")
+
+        listener.addEventListener("message", (event: any) => this.onFollowerMessage.call(this, event))
+        this.parent = listener
+    }
+
+    private onFollowerMessage(event: { data: { type: string; pid: string; kid: string } }) {
+        if (event.data.type === "newProcess") {
+            this.processes.push(event.data.kid + ":" + event.data.pid)
+        }
+    }
+
+    private onLeaderMessage(event: { data: { type: string; pid: string; kid: string } }) {
+        if (event.data.type == "newProcess") {
+            this.processes.push(event.data.kid + ":" + event.data.pid)
+
+            for (const [, target] of this.broadcast) {
+                target.postMessage({ type: "newProcess", pid: event.data.pid, kid: event.data.kid })
+            }
+        }
+    }
+
+    public unstable_newProcess(pid: string) {
+        if (this.isLeader) {
+            this.processes.push(this.kid + ":" + pid)
+
+            for (const [, target] of this.broadcast) {
+                target.postMessage({ type: "newProcess", pid, kid: this.kid })
+            }
+        } else {
+            this.parent?.postMessage({ type: "newProcess", pid, kid: this.kid })
+        }
     }
 
     public init() {
@@ -36,6 +95,8 @@ export class Kernel implements System {
 
         console.info("Now wait until the root job is childless.")
         console.log("Hello world")
+
+        this.isBooted = true
     }
 
     public get_root_job_dispatcher() {

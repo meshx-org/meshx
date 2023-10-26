@@ -1,5 +1,18 @@
 # @meshx-org/fiber-kernel
 
+## 0.4.0
+
+### Minor Changes
+
+- test
+
+### Patch Changes
+
+- Updated dependencies
+  - @meshx-org/fiber-sys@0.3.0
+  - @meshx-org/fiber-ts@0.3.0
+  - @meshx-org/fiber-types@0.3.0
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
     "name": "@meshx-org/fiber-sys",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "type": "module",
     "author": "Sz.Kovács Roland <Roland.Szarka-Kovacs@meshx.co>",
     "homepage": "https://github.com/meshx-org/meshx#readme",
@@ -16,6 +16,6 @@
         "url": "https://github.com/meshx-org/meshx/issues"
     },
     "dependencies": {
-        "@meshx-org/fiber-types": "0.2.0"
+        "@meshx-org/fiber-types": "0.3.0"
     }
 }
