@@ -1,12 +1,13 @@
 import invariant from "tiny-invariant"
-import { Handle, HandleOwner } from "../object/handle"
+import { Handle } from "../object/handle"
 import { FX_KOID_INVALID, FX_OK } from "@meshx-org/fiber-types"
-import { ProcessDispatcher } from "../object/process-dispatcher"
-import { ChannelDispatcher } from "../object/channel-dispatcher"
+import { ProcessDispatcher } from "../object/dispatchers/process-dispatcher"
+import { ChannelDispatcher } from "../object/dispatchers/channel-dispatcher"
 import { HANDLE_COUNT, ROOT_JOB, PROC_SELF, _start } from "./userboot"
 import { MessagePacket } from "../object/message-packet"
-import { Kernel } from ".."
-import { JobDispatcher } from "../object/job-dispatcher"
+import { JobDispatcher } from "../object/dispatchers/job-dispatcher"
+import { HandleOwner } from '../object'
+import { Kernel } from '..'
 
 function get_job_handle(kernel: Kernel): HandleOwner {
     return Handle.dup(kernel.get_root_job_handle().handle, JobDispatcher.default_rights())

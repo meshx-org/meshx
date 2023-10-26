@@ -1,7 +1,19 @@
 {
     "root": true,
+    "extends": [
+        "eslint:recommended",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:import/warnings",
+        "plugin:import/typescript"
+    ],
     "ignorePatterns": ["**/*"],
-    "plugins": ["@nx"],
+    "plugins": ["import"],
+    "settings": {
+        "import/extensions": [".js", ".jsx", ".ts", ".tsx"],
+        "import/parsers": {
+            "@typescript-eslint/parser": [".ts", ".tsx"]
+        }
+    },
     "overrides": [
         {
             "files": ["{package,project}.json"],
@@ -22,17 +34,13 @@
         {
             "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
             "rules": {
-                "@nx/enforce-module-boundaries": [
-                    "error",
+ 
+                "import/no-unresolved": "off",
+                "import/no-cycle": [
+                    "warn",
                     {
-                        "enforceBuildableLibDependency": true,
-                        "allow": [],
-                        "depConstraints": [
-                            {
-                                "sourceTag": "*",
-                                "onlyDependOnLibsWithTags": ["*"]
-                            }
-                        ]
+                        "maxDepth": 10,
+                        "ignoreExternal": true
                     }
                 ]
             }
@@ -40,7 +48,9 @@
         {
             "files": ["*.ts", "*.tsx"],
             "extends": ["plugin:@nx/typescript"],
-            "rules": {}
+            "rules": {
+                
+            }
         },
         {
             "files": ["*.js", "*.jsx"],

@@ -6,9 +6,9 @@ import {
     fx_signals_t,
     fx_status_t,
 } from "@meshx-org/fiber-types"
-import { Err, Ref, Result } from "../std"
+import { Err, Ref, Result } from "../../std"
 import invariant from "tiny-invariant"
-import * as koid from "../koid"
+import * as koid from "../../koid"
 
 export abstract class Dispatcher {
     private _koid: fx_koid_t

@@ -1,9 +1,9 @@
 import { FX_ERR_BAD_STATE, FX_OK, fx_handle_t, fx_rights_t, fx_status_t } from "@meshx-org/fiber-types"
 import { SoloDispatcher } from "./dispatcher"
-import { HandleTable } from "./handle-table"
+import { HandleTable } from "../handle-table"
 import invariant from "tiny-invariant"
-import { Err, Ok, Result } from "../std"
-import { KernelHandle } from "./handle"
+import { Err, Ok, Result } from "../../std"
+import { KernelHandle } from "../handle"
 import { JobDispatcher, JobPolicy } from "./job-dispatcher"
 
 // state of the process

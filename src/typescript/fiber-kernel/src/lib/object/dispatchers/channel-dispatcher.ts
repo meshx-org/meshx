@@ -10,10 +10,10 @@ import {
     fx_status_t,
     fx_txid_t,
 } from "@meshx-org/fiber-types"
-import { Ok, Result, Ref, Err } from "../std"
+import { Ok, Result, Ref, Err } from "../../std"
 import { PeerHolder, PeeredDispatcher } from "./dispatcher"
-import { KernelHandle } from "./handle"
-import { MessagePacketPtr } from "./message-packet"
+import { KernelHandle } from "../handle"
+import { MessagePacketPtr } from "../message-packet"
 
 // This value is part of the zx_channel_call contract.
 const MIN_KERNEL_GENERATED_TXID = 0x80000000

@@ -1,26 +1,9 @@
 import { fx_koid_t, fx_rights_t } from "@meshx-org/fiber-types"
-import { Dispatcher } from "./dispatcher"
+import { Dispatcher } from "./dispatchers/dispatcher"
 import invariant from "tiny-invariant"
 import { Ref } from "../std"
-import { HandleTableArena } from "./handle-table"
-
-// HandleOwner wraps a Handle in an Arc that has shared
-// ownership of the Handle and deletes it whenever it falls out of scope.
-export class HandleOwner {
-    constructor(public handle: Handle) { }
-    
-    dispatcher() {
-        return this.handle.dispatcher()
-    }
-
-    base_value() {
-        return this.handle.base_value()
-    }
-
-    set_handle_table_id(v: bigint) {
-        return this.handle.set_handle_table_id(v)
-    }
-}
+import { gHandleTableArena } from "./handle-table-arena"
+import { HandleOwner } from './handle-owner'
 
 /**
  * A minimal wrapper around a Dispatcher which is owned by the kernel.
@@ -56,8 +39,6 @@ export class KernelHandle<T> {
         return dispatcher
     }
 }
-
-const gHandleTableArena = new HandleTableArena()
 
 /** A Handle is how a specific process refers to a specific Dispatcher. */
 export class Handle {
