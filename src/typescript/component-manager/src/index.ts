@@ -1,5 +1,5 @@
-import { Channel } from "@meshx-org/fiber-ts"
-/*
+/* import { Channel } from "@meshx-org/fiber-ts"
+
 export function main(arg: Channel) {
     // Initialize the outgoing services provided by this component
     let fs = ServiceFs.new_local();
@@ -22,3 +22,5 @@ export function main(arg: Channel) {
      
 }
 */
+
+export {}
