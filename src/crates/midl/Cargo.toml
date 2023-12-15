@@ -14,7 +14,7 @@ futures = "0.3.28"
 static_assertions = "1.1.0"
 thiserror = "1.0.40"
 tracing = "0.1.29"
-zerocopy = "0.6.1"
+zerocopy = "0.7.3"
 slab="0.4.5"
 parking_lot="0.12.1"
 
