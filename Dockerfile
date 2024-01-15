@@ -24,7 +24,7 @@ RUN --mount=type=bind,source=src,target=src \
     <<EOF
 set -e &&
 apt update &&
-apt install -y pkg-config libreadline-dev libssl-dev openssl ca-certificates &&
+apt install -y pkg-config libreadline-dev libssl-dev openssl perl make ca-certificates &&
 rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* &&
 cargo build --locked --release
 cp ./target/release/$APP_NAME /bin/meshx
