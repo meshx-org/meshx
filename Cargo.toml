@@ -1,4 +1,11 @@
 
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+
+## All dependency versions, used in the project
+[workspace.dependencies]
+openssl = {version = "0.10", features = ["vendored"]}
 
 [workspace]
 members = [

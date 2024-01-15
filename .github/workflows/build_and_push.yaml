@@ -8,8 +8,18 @@ on:
     pull_request:
         branches:
             - main
+
+concurrency:
+    # Allow only one workflow per any non-`main` branch.
+    group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.ref_name == 'main' && github.sha || 'anysha' }}
+    cancel-in-progress: true
+
 env:
     CARGO_TERM_COLOR: always
+    RUST_BACKTRACE: 1
+    COPT: "-Werror"
+    SCCACHE_GHA_ENABLED: "true"
+    RUSTC_WRAPPER: "sccache"
 
 jobs:
     build_and_test:
@@ -54,8 +64,8 @@ jobs:
               id: docker_build
               uses: docker/build-push-action@v3
               with:
-                context: .
-                file: ./Dockerfile
-                push: true
-                tags: ${{ steps.meta.outputs.tags }}
-                labels: ${{ steps.meta.outputs.labels }}
+                  context: .
+                  file: ./Dockerfile
+                  push: true
+                  tags: ${{ steps.meta.outputs.tags }}
+                  labels: ${{ steps.meta.outputs.labels }}
