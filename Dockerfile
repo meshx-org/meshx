@@ -1,6 +1,6 @@
 ################################################################################
 # Create a stage for building the application.
-FROM rust:nightly-bullseye-slim AS build
+FROM rustlang/rust:nightly-bullseye-slim AS build
 
 ARG APP_NAME=meshx
 WORKDIR /app
