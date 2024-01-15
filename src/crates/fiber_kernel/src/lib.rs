@@ -1,5 +1,4 @@
 #![feature(trait_upcasting)]
-#![feature(local_key_cell_methods)]
 
 // Copyright 2023 MeshX Contributors. All rights reserved.
 pub mod koid;
@@ -10,16 +9,15 @@ mod process_context;
 
 use object::{HandleOwner, PortDispatcher};
 use std::{
-    cell::Cell,
     fmt,
     sync::{Arc, Mutex},
 };
-use tracing::{event, instrument, Level};
+use tracing::instrument;
 
 use fiber_sys as sys;
 
 use crate::object::{
-    Dispatcher, GenericDispatcher, Handle, JobDispatcher, JobPolicy, KernelHandle, ProcessDispatcher, RootJobObserver,
+    GenericDispatcher, Handle, JobDispatcher, JobPolicy, KernelHandle, ProcessDispatcher, RootJobObserver,
     TypedDispatcher,
 };
 

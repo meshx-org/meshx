@@ -23,9 +23,9 @@ RUN --mount=type=bind,source=src,target=src \
     --mount=type=cache,target=/usr/local/cargo/registry/ \
     <<EOF
 set -e
-cargo build --locked --release
 apt update
-apt install -y libreadline-dev libseccomp-dev libicu66 openssl ca-certificates 
+apt install -y pkg-config libreadline-dev libseccomp-dev libicu66 openssl ca-certificates 
+cargo build --locked --release
 rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*      
 cp ./target/release/$APP_NAME /bin/meshx
 EOF
