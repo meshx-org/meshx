@@ -24,7 +24,7 @@ RUN --mount=type=bind,source=src,target=src \
     <<EOF
 set -e
 apt update
-apt install -y pkg-config libreadline-dev libseccomp-dev libicu66 openssl ca-certificates 
+apt install -y pkg-config libreadline-dev libseccomp-dev openssl ca-certificates 
 cargo build --locked --release
 rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*      
 cp ./target/release/$APP_NAME /bin/meshx
