@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use super::{
     Attribute, Comment, Declaration, Element, Identifier, Name, Span, TypeConstructor, WithAttributes,
-    WithDocumentation, WithIdentifier, WithName, WithSpan,
+    WithDocumentation, WithIdentifier, WithName, WithSpan, AttributeList,
 };
 
 /// An opaque identifier for a field in an AST model. Use the
@@ -94,7 +94,7 @@ pub struct Struct {
     ///   member :string
     /// }
     /// ```
-    pub attributes: Vec<Attribute>,
+    pub attributes: AttributeList,
 
     /// The documentation for this struct.
     ///
@@ -140,7 +140,7 @@ impl WithSpan for Struct {
 }
 
 impl WithAttributes for Struct {
-    fn attributes(&self) -> &[Attribute] {
+    fn attributes(&self) -> &AttributeList {
         &self.attributes
     }
 }

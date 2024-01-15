@@ -1,7 +1,5 @@
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
-use switcheroo::Yielder;
-
 use crate::object::ProcessDispatcher;
 
 thread_local! {
@@ -11,7 +9,6 @@ thread_local! {
 #[derive(Clone)]
 pub(crate) struct Context {
     pub process: Arc<ProcessDispatcher>,
-    pub yielder: *const Yielder<u32, u32>,
 }
 
 impl std::fmt::Debug for Context {

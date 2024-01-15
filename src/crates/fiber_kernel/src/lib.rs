@@ -3,7 +3,7 @@
 
 // Copyright 2023 MeshX Contributors. All rights reserved.
 pub mod koid;
-pub mod userboot;
+// pub mod userboot;
 
 mod object;
 mod process_context;
@@ -324,8 +324,6 @@ impl fiber_sys::System for Kernel {
     ) -> sys::fx_status_t {
         let up = ProcessDispatcher::get_current();
 
-        unsafe { up.yielder.read().suspend(0); }
-
         sys::FX_OK
     }
 
@@ -477,7 +475,7 @@ impl Kernel {
             .unwrap();
 
         rt.block_on(async {
-            userboot::userboot_init(self);
+            // userboot::userboot_init(self);
 
             log::info!("Now wait until the root job is childless.");
 

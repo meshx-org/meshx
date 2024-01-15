@@ -128,8 +128,8 @@ pub struct LayoutParameterList {
     pub span: Option<Span>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct LayoutConstraints {}
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct LayoutConstraints;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TypeConstructor {
@@ -141,6 +141,17 @@ pub struct TypeConstructor {
     // Set during compilation.
     pub(crate) r#type: Option<Type>,
     // TODO: resolved_params: Option<LayoutInvocation>,
+}
+
+impl TypeConstructor {
+    pub(crate) fn new(layout: Reference, parameters: LayoutParameterList, constraints: LayoutConstraints) -> Self {
+        Self {
+            layout,
+            parameters,
+            constraints,
+            r#type: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

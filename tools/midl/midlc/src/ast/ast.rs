@@ -11,9 +11,9 @@ pub enum Literal {
 }
 
 impl Literal {
-    pub fn as_numeric_value(&self) -> Option<(&str, Span)> {
+    pub fn as_numeric_value(&self) -> Option<(f64, Span)> {
         match self {
-            Literal::NumericValue(val, span) => Some((val, span.clone())),
+            Literal::NumericValue(val, span) => Some((val.parse().unwrap(), span.clone())),
             _ => None,
         }
     }

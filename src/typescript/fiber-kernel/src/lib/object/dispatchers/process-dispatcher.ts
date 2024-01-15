@@ -24,8 +24,6 @@ export class ProcessDispatcher extends SoloDispatcher {
     private constructor(job: JobDispatcher, name: string, flags: number) {
         super()
 
-        console.debug("ProcessDispatcher::new({:?})", name)
-
         this._job = job
         this._policy = job.get_policy()
 
@@ -80,8 +78,6 @@ export class ProcessDispatcher extends SoloDispatcher {
     // `ensure_initial_thread` is true, the thread will only start if it is the first thread in the
     // process.
     public start(entry: (arg1: fx_handle_t, arg2: fx_handle_t) => void, arg1: fx_handle_t, arg2: fx_handle_t) {
-        console.debug("ProcessDispatcher::start({:?}, {:?})", entry, this._name)
-
         //const stack = new OneMbStack.unwrap()
 
         /*const task = new Generator(stack, (yielder, input) => {

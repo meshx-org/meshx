@@ -92,10 +92,6 @@ export class Kernel implements System {
 
     public async boot() {
         userboot_init(this)
-
-        console.info("Now wait until the root job is childless.")
-        console.log("Hello world")
-
         this.isBooted = true
     }
 

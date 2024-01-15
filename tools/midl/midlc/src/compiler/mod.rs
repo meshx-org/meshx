@@ -29,7 +29,7 @@
 mod context;
 mod libraries;
 mod names;
-mod availability_step;
+//mod availability_step;
 mod resolve_step;
 mod compile_step;
 
@@ -44,7 +44,7 @@ use crate::{ast, diagnotics::Diagnostics};
 pub(crate) use context::{Context, ParsingContext};
 pub(crate) use libraries::Libraries;
 
-use self::availability_step::AvailabilityStep;
+//use self::availability_step::AvailabilityStep;
 use self::resolve_step::ResolveStep;
 use self::compile_step::CompileStep;
 
@@ -142,9 +142,9 @@ impl Compiler {
 
         names::verify_names(&mut ctx);
 
-        if !AvailabilityStep::new(&mut ctx).run() {
-            return false;
-        }
+        //if !AvailabilityStep::new(&mut ctx).run() {
+        //    return false;
+        //}
 
         if !ResolveStep::new(&mut ctx).run() {
             return false;

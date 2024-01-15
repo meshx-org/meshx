@@ -107,7 +107,7 @@ fn compile(source_managers: &Vec<SourceManager<'_>>) -> Result<(), std::io::Erro
         return Err(std::io::Error::new(std::io::ErrorKind::Other, "Compilation failed"));
     }
 
-    log::debug!("{:#?}", all_libraries);
+    log::debug!("all {:#?}", all_libraries);
 
     Ok(())
 }

@@ -5,7 +5,7 @@ use super::consume_type::consume_type_constructor;
 use super::helpers::consume_catch_all;
 use super::{helpers::Pair, Rule};
 
-use crate::ast::{self, Name};
+use crate::ast::{self, Name, Element};
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
 use crate::diagnotics::DiagnosticsError;
@@ -61,8 +61,8 @@ pub(crate) fn consume_struct_declaration(
 
     let mut identifier: Option<ast::Identifier> = initial_name;
     let mut name: Option<ast::Name> = None;
-    let attributes: Vec<ast::Attribute> = Vec::new();
-    let mut members: Vec<Rc<ast::StructMember>> = Vec::new();
+    let attributes = ast::AttributeList(vec![]);
+    let mut members: Vec<ast::Element> = Vec::new();
     let mut pending_field_comment: Option<Pair<'_>> = None;
 
     for current in pair.into_inner() {
@@ -78,7 +78,7 @@ pub(crate) fn consume_struct_declaration(
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::struct_layout_member => match consume_struct_member(current, pending_field_comment.take(), ctx) {
                 Ok(member) => {
-                    members.push(Rc::from(member));
+                    members.push(Element::StructMember(Rc::from(member)));
                 }
                 Err(err) => ctx.diagnostics.push_error(err),
             },

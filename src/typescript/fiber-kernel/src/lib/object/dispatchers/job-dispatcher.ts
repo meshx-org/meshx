@@ -46,8 +46,6 @@ export class JobDispatcher extends SoloDispatcher {
     private constructor(flags: number, parent: JobDispatcher | null, policy: JobPolicy) {
         super()
 
-        console.debug(`new JobDispatcher(${flags}, ${parent}, ${policy})`)
-
         this._parent_job = parent
         this._max_height = parent ? parent.max_height() - 1 : ROOT_JOB_MAX_HEIGHT
 

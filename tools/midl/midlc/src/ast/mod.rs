@@ -1,3 +1,4 @@
+mod alias;
 mod ast;
 mod attributes;
 mod comment;
@@ -6,12 +7,14 @@ mod identifier;
 mod name;
 mod protocol;
 mod reference;
+mod resource;
 mod span;
 mod r#struct;
 mod traits;
-mod versioning_types;
+//mod versioning_types;
 mod type_constructor;
 
+use multimap::MultiMap;
 use std::cell::{OnceCell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
@@ -19,16 +22,17 @@ use std::rc::Rc;
 
 pub use ast::*;
 
-pub use versioning_types::{Platform, Version, Availability};
-pub use attributes::{Attribute, AttributeArg};
+//pub use versioning_types::{Platform, Version, Availability};
+pub use alias::Alias;
+pub use attributes::{Attribute, AttributeArg, AttributeList};
 pub use comment::Comment;
+pub use resource::{Resource, ResourceProperty};
 pub use identifier::{CompoundIdentifier, Identifier};
-use multimap::MultiMap;
 pub use name::Name;
 pub use protocol::{Protocol, ProtocolMethod};
 pub use r#const::{Const, ConstantValue, IdentifierConstant, LiteralConstant};
 pub use r#struct::{Struct, StructMember};
-pub use reference::{Reference, Target, ReferenceKey, ReferenceState};
+pub use reference::{Reference, ReferenceKey, ReferenceState, Target};
 pub use span::Span;
 pub use traits::{WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
 pub use type_constructor::{
@@ -42,6 +46,7 @@ use crate::source_file::SourceId;
 pub enum Element {
     Bits,
     Enum,
+    Alias(Rc<RefCell<Alias>>),
     Builtin(Rc<RefCell<Builtin>>),
     Struct(Rc<RefCell<Struct>>),
     Protocol(Rc<RefCell<Protocol>>),
@@ -75,6 +80,8 @@ impl Element {
 pub enum Declaration {
     Bits,
     Enum,
+    Resource(Rc<RefCell<Resource>>),
+    Alias(Rc<RefCell<Alias>>),
     Const(Rc<RefCell<Const>>),
     Struct(Rc<RefCell<Struct>>),
     Protocol(Rc<RefCell<Protocol>>),
@@ -90,6 +97,8 @@ impl Into<Element> for Declaration {
             Declaration::Builtin(ref decl) => Element::Builtin(decl.clone()),
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
+            Declaration::Alias(ref decl) => Element::Alias(decl.clone()),
+            Declaration::Resource(_) => todo!(),
         }
     }
 }
@@ -99,10 +108,12 @@ impl Into<Element> for Rc<Declaration> {
         match &*self {
             Declaration::Const(ref decl) => Element::Const(decl.clone()),
             Declaration::Struct(_) => todo!(),
-            Declaration::Protocol(_) => todo!(),
+            Declaration::Protocol(ref decl) => Element::Protocol(decl.clone()),
             Declaration::Builtin(ref decl) => Element::Builtin(decl.clone()),
+            Declaration::Alias(ref decl) => Element::Alias(decl.clone()),
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
+            Declaration::Resource(_) => todo!(),
         }
     }
 }
@@ -114,6 +125,8 @@ impl Declaration {
             Declaration::Protocol(decl) => decl.borrow().name().to_owned(),
             Declaration::Const(decl) => decl.borrow().name().to_owned(),
             Declaration::Builtin(decl) => decl.borrow().name().to_owned(),
+            Declaration::Alias(decl) => decl.borrow().name().to_owned(),
+            Declaration::Resource(_) => todo!(),
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
         }
@@ -135,6 +148,8 @@ impl Declaration {
             }
             Declaration::Const(_) => {}
             Declaration::Builtin(_) => {}
+            Declaration::Alias(_) => {}
+            Declaration::Resource(_) => todo!(),
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
         };
@@ -142,17 +157,17 @@ impl Declaration {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum BuiltinIdentity {
+pub(crate) enum BuiltinIdentity {
     #[default]
     bool,
-    i8,
-    i16,
-    i32,
-    i64,
-    u8,
-    u16,
-    u32,
-    u64,
+    int8,
+    int16,
+    int32,
+    int64,
+    uint8,
+    uint16,
+    uint32,
+    uint64,
     float32,
     float64,
     string,
@@ -243,10 +258,16 @@ impl Declarations {
             Declaration::Struct(_) => store_decl(decl, all_ref, &mut self.structs),
             Declaration::Protocol(_) => store_decl(decl, all_ref, &mut self.protocols),
             Declaration::Const(_) => store_decl(decl, all_ref, &mut self.contants),
+            Declaration::Alias(_) => store_decl(decl, all_ref, &mut self.builtins),
             Declaration::Builtin(_) => store_decl(decl, all_ref, &mut self.builtins),
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
+            Declaration::Resource(_) => todo!(),
         }
+    }
+
+    pub(crate) fn lookup_builtin(identity: BuiltinIdentity) {
+
     }
 }
 
@@ -516,5 +537,7 @@ fn top_idx_to_top_id(top_idx: usize, decl: &Declaration) -> DeclarationId {
         Declaration::Builtin(_) => DeclarationId::Builtin(BuiltinId(top_idx as u32)),
         Declaration::Bits => todo!(),
         Declaration::Enum => todo!(),
+        Declaration::Alias(_) => todo!(),
+        Declaration::Resource(_) => todo!(),
     }
 }

@@ -319,15 +319,18 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
                     self.visit_type_constructor(&type_ctor, context);
                 }
             }
+            ast::Element::Alias(alias_decl) => {
+                self.visit_type_constructor(&alias_decl.borrow().partial_type_ctor, context);
+            }
             ast::Element::Protocol(_) => {}
             ast::Element::Struct(_) => {}
-            ast::Element::Protocol(_) => {}
             ast::Element::Builtin(_) => {}
+            ast::Element::Bits => todo!(),
+            ast::Element::Enum => todo!(),
+            ast::Element::Protocol(_) => {}
             ast::Element::Builtin(_) => {}
             ast::Element::Struct(_) => {}
             ast::Element::Const(_) => {}
-            ast::Element::Bits => todo!(),
-            ast::Element::Enum => todo!(),
         }
     }
 

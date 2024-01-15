@@ -1,4 +1,5 @@
 use crate::compiler::ParsingContext;
+use crate::consumption::helpers::consume_catch_all;
 use crate::diagnotics::DiagnosticsError;
 
 use super::ast;
@@ -10,24 +11,35 @@ pub(crate) fn consume_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_>) -> 
     assert!(token.as_rule() == Rule::literal);
 
     let value_token = token.into_inner().next().unwrap();
+    let span = Span::from_pest(value_token.as_span(), ctx.source_id);
 
     match value_token.as_rule() {
         Rule::string_literal => {
-            let span = Span::from_pest(value_token.as_span(), ctx.source_id);
             let value = consume_string_literal(value_token, ctx);
             ast::Literal::StringValue(value, span)
         }
         Rule::numeric_literal => {
-            let span = Span::from_pest(value_token.as_span(), ctx.source_id);
-           
-            ast::Literal::NumericValue("".to_string(), span)
+            let value = consume_numeric_literal(value_token, ctx);
+            log::debug!("{}", value);
+            ast::Literal::NumericValue(value, span)
         }
-        _ => unreachable!(),
+        _ => {
+            consume_catch_all(&value_token, "literal");
+            unreachable!()
+        }
     }
 }
 
+pub(crate) fn consume_numeric_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_>) -> String {
+    debug_assert!(token.as_rule() == Rule::numeric_literal);
+
+    let contents_str = token.as_str();
+
+    contents_str.to_owned()
+}
+
 pub(crate) fn consume_string_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_>) -> String {
-    assert!(token.as_rule() == Rule::string_literal);
+    debug_assert!(token.as_rule() == Rule::string_literal);
 
     let contents = token.clone().into_inner().next().unwrap();
     let contents_str = contents.as_str();

@@ -1,10 +1,7 @@
 // Copyright 2016 The Fuchsia Authors
 // Copyright 2023 MeshX Contributors
 
-use std::vec;
-
 use fiber_rust as fx;
-use fiber_rust::sys;
 use fiber_rust::HandleBased;
 use fx::Handle;
 use memoffset::offset_of;

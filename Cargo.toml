@@ -1,21 +1,24 @@
+
+
 [workspace]
 members = [
-    "src/crates/meshx",
-    "src/crates/midl",
-    "src/crates/fiber_rust",
-    "src/crates/meshx_flow",
-    "src/crates/component_dummy",
-    "src/crates/fiber_sys",
-    "src/crates/fiber_types",
-    "src/crates/fiber_status",
-    "src/crates/fiber_kernel",
-    "experiments/wasm_tcp",
-    "experiments/wasm_host",
-    "tools/midl/midlc",
-    "tools/midl/midlgen",
-    "tools/midl/midlgen_ts",
-    "tools/midl/midlgen_rust",
+  "src/crates/meshx",
+  "src/crates/midl",
+  "src/crates/fiber_rust",
+  "src/crates/meshx_flow",
+  "src/crates/component_dummy",
+  "src/crates/fiber_sys",
+  "src/crates/fiber_types",
+  "src/crates/fiber_status",
+  "src/crates/fiber_kernel",
+  "experiments/wasm_tcp",
+  "experiments/wasm_host",
+  "tools/midl/midlc",
+  "tools/midl/midlgen",
+  "tools/midl/midlgen_ts",
+  "tools/midl/midlgen_rust",
 ]
+resolver = "2"
 
 [profile.release]
 debug = true

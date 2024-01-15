@@ -12,10 +12,10 @@
 // This is the basic syntax of Pest grammar files:
 // https://pest.rs/book/grammars/syntax.html#cheat-sheet
 
-library              =  { SOI ~ (library_declaration | import_declaration | const_declaration | struct_declaration | protocol_declaration | arbitrary_block | comment_block | empty_lines | CATCH_ALL)* ~ EOI }
+library              =  { SOI ~ (library_declaration | import_declaration | resource_declaration | alias_declaration | const_declaration | struct_declaration | protocol_declaration | comment_block | empty_lines | CATCH_ALL)* ~ EOI }
 
 declaration_list     = _{ (declaration ~ NEWLINE+) * ~ declaration? }
-declaration          = _{ (library_declaration | import_declaration | const_declaration | struct_declaration/*layout_declaration*/ | protocol_declaration) }
+declaration          = _{ alias_declaration | library_declaration | import_declaration  | const_declaration  | struct_declaration | protocol_declaration }
 library_declaration  =  { LIBRARY_KEYWORD ~ compound_identifier }
 import_declaration   =  { IMPORT_KEYWORD ~ compound_identifier ~ import_alias? }
 import_alias         =  { AS_KEYWORD ~ identifier }
@@ -27,6 +27,14 @@ const_declaration = {
     ~ type_constructor 
     ~ "=" 
     ~ constant 
+}
+
+alias_declaration = { 
+	block_attribute_list
+    ~ ALIAS_KEYWORD
+    ~ identifier
+    ~  "="
+    ~ type_constructor
 }
 
 struct_declaration =  { 
@@ -56,6 +64,23 @@ protocol_declaration  =  {
     ~ BLOCK_CLOSE
 }
 
+resource_declaration = { 
+    block_attribute_list
+    ~ RESOURCE_KEYWORD
+    ~ identifier 
+    ~ ( ":" ~ type_constructor )?
+    ~ BLOCK_OPEN 
+    ~ (resource_properties | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)+
+    ~ BLOCK_CLOSE 
+}
+
+resource_properties = { 
+	"properties" 
+    ~ BLOCK_OPEN 
+    ~ (member_field | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)+
+    ~ BLOCK_CLOSE
+}
+
 // a block definition without a keyword. Is not valid. Just acts as a catch for the parser to display a nice error.
 arbitrary_block = { identifier ~ BLOCK_OPEN ~ ((!BLOCK_CLOSE ~ ANY) | NEWLINE)* ~ BLOCK_CLOSE }
 
@@ -65,7 +90,7 @@ protocol_member       = _{ protocol_method | protocol_event | protocol_compose }
 protocol_method       =  { block_attribute_list ~ identifier ~ parameter_list ~ protocol_result? }
 protocol_result       =  { "->" ~ parameter_list ~ ( "error" ~ type_constructor )? }
 protocol_event        =  { block_attribute_list ~ "->" ~ identifier ~ parameter_list }
-protocol_compose      =  { COMPOSE_KEYWORD ~ compound_identifier }
+protocol_compose      =  { block_attribute_list ~ COMPOSE_KEYWORD ~ compound_identifier }
 
 parameter_list        =   { "(" ~ (struct_declaration | identifier ) ~ ")" }
 
@@ -84,7 +109,7 @@ struct_layout_member  =  { member_field ~ inline_attribute_list ~ trailing_comma
 ordinal_layout        =  { ( NEWLINE* ~ ordinal_layout_member ~ NEWLINE* )+ }
 ordinal_layout_member =  { "#" ~ ordinal ~ (member_field | RESERVED_KEYWORD) ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
 
-member_field         = _{ identifier ~ type_constructor }
+member_field          = _{ identifier ~ type_constructor }
 inline_layout        =  { 
 							block_attribute_list
                             ~ declaration_modifiers* 
@@ -146,8 +171,8 @@ ordinal                 =  { ASCII_NONZERO_DIGIT }
 // ######################################
 // shared building blocks
 // ######################################
-identifier              = @{ !KEYWORDS ~ ("_" | ASCII_ALPHANUMERIC)+ }
-compound_identifier     =  { identifier ~ ( "." ~ identifier )* }
+identifier               = @{ !KEYWORDS ~ ("_" | ASCII_ALPHANUMERIC)+ }
+compound_identifier      =  { identifier ~ ( "." ~ identifier )* }
 
 // the any part is to not crash on comments next to an open block, see test `parse_comments_without_crasing_or_loosing_info`
 BLOCK_OPEN              = { "{" ~ (!NEWLINE ~ ANY)* ~ NEWLINE }
@@ -158,6 +183,8 @@ BLOCK_LEVEL_CATCH_ALL   = { !BLOCK_CLOSE ~ CATCH_ALL }
 
 LIBRARY_KEYWORD  = _{ "library" }
 IMPORT_KEYWORD   = _{ "import" }
+ALIAS_KEYWORD    = _{ "alias" }
+RESOURCE_KEYWORD = _{ "resource" }
 AS_KEYWORD       = _{ "as" }
 ENUM_KEYWORD     = _{ "enum" }
 STRUCT_KEYWORD   = _{ "struct" }
@@ -171,7 +198,6 @@ PROTOCOL_KEYWORD = _{ "protocol" }
 STRICT_KEYWORD   = _{ "strict" }
 RESERVED_KEYWORD = _{ "reserved" }
 FLEXIBLE_KEYWORD = _{ "flexible" }
-RESOURCE_KEYWORD = _{ "resource" }
 ERROR_KEYWORD    = _{ "error" }
 
 KEYWORDS         = _{ "true" | "false" | declaration_modifiers | TYPE_KEYWORD | LIBRARY_KEYWORD | CONST_KEYWORD | COMPOSE_KEYWORD | PROTOCOL_KEYWORD | ERROR_KEYWORD | RESERVED_KEYWORD }

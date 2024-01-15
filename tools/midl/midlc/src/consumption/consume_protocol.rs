@@ -2,12 +2,13 @@ use std::rc::Rc;
 
 use super::helpers::consume_catch_all;
 
-use super::{consume_compound_identifier, consume_identifier};
+use super::consume_identifier;
 use super::{helpers::Pair, Rule};
 
 use crate::ast::{self, Name, Span};
-use crate::ast::{CompoundIdentifier, Declaration, ProtocolMethod};
+use crate::ast::{CompoundIdentifier, Declaration};
 use crate::compiler::ParsingContext;
+use crate::consumption::consume_attribute_list;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
 use crate::consumption::consume_struct::consume_struct_declaration;
 use crate::diagnotics::DiagnosticsError;
@@ -99,18 +100,22 @@ fn consume_protocol_method(
     }
 }
 
+fn consume_compose(ctx: &mut ParsingContext<'_>) {}
+
 pub(crate) fn consume_protocol_declaration(
     pair: Pair<'_>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<(ast::Protocol, Vec<ast::Declaration>), DiagnosticsError> {
+    log::error!("consume_protocol_declaration");
+
     let pair_span = pair.as_span();
 
     let mut identifier: Option<ast::Identifier> = None;
     let mut name: Option<ast::Name> = None;
     let mut pending_field_comment: Option<Pair<'_>> = None;
     let mut methods: Vec<Rc<ast::ProtocolMethod>> = Vec::new();
+    let mut attributes: Option<ast::AttributeList> = None;
     let mut composes: Vec<CompoundIdentifier> = Vec::new();
-    let attributes: Vec<ast::Attribute> = Vec::new();
     let mut declarations: Vec<Declaration> = Vec::new();
 
     for current in pair.into_inner() {
@@ -123,7 +128,9 @@ pub(crate) fn consume_protocol_declaration(
                 identifier = Some(consume_identifier(&current, ctx));
                 name = Some(Name::create_sourced(ctx.library.clone(), name_span));
             }
-            Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
+            Rule::block_attribute_list => {
+                attributes = Some(consume_attribute_list(current, ctx));
+            }
             Rule::protocol_method => match consume_protocol_method(
                 &identifier.as_ref().unwrap().value,
                 current,
@@ -138,10 +145,9 @@ pub(crate) fn consume_protocol_declaration(
                 Err(err) => ctx.diagnostics.push_error(err),
             },
             Rule::protocol_event => {}
-            Rule::protocol_compose => match current.into_inner().next() {
-                Some(id_pair) => composes.push(consume_compound_identifier(&id_pair, ctx)),
-                None => panic!("Expected a compound identifier."),
-            },
+            Rule::protocol_compose => {
+                consume_compose(ctx)
+            }
             Rule::comment_block => pending_field_comment = Some(current),
             Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(
                 "This line is not a valid field or attribute definition.",
@@ -158,7 +164,7 @@ pub(crate) fn consume_protocol_declaration(
                 name,
                 methods,
                 composes,
-                attributes,
+                attributes: attributes.unwrap(),
                 documentation: None,
                 span: ast::Span::from_pest(pair_span, ctx.source_id),
             },

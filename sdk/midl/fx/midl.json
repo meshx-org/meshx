@@ -1,5 +1,5 @@
 {
     "name": "fx",
-    "files": ["fx.midl"],
+    "files": ["fx_common.midl", "fx.midl"],
     "dependencies": {}
 }

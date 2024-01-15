@@ -201,23 +201,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-wasi"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4579f5d5d87e9cc89e25a1ffc8813db681614e433ca67d4086075cd1b298926"
-dependencies = [
- "bitflags 2.3.3",
- "cfg-if",
- "futures 0.3.28",
- "getrandom 0.2.10",
- "libc",
- "path-absolutize",
- "serde",
- "socket2",
- "tokio",
-]
-
-[[package]]
 name = "atomic-waker"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -282,9 +265,9 @@ dependencies = [
 
 [[package]]
 name = "bindgen"
-version = "0.65.1"
+version = "0.61.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfdf7b466f9a4903edc73f95d6d2bcd5baf8ae620638762244d3f60143643cc5"
+checksum = "8a022e58a142a46fea340d68012b9201c094e93ec3d033a944a24f8fd4a4f09a"
 dependencies = [
  "bitflags 1.3.2",
  "cexpr 0.6.0",
@@ -292,13 +275,12 @@ dependencies = [
  "lazy_static",
  "lazycell",
  "peeking_take_while",
- "prettyplease 0.2.9",
  "proc-macro2",
  "quote",
  "regex",
  "rustc-hash",
  "shlex 1.1.0",
- "syn 2.0.22",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -675,6 +657,17 @@ dependencies = [
 
 [[package]]
 name = "errno"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f639046355ee4f37944e44f60642c6f3a7efa3cf6b78c78a0d989a8ce6c396a1"
+dependencies = [
+ "errno-dragonfly",
+ "libc",
+ "winapi",
+]
+
+[[package]]
+name = "errno"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4bcfec3a70f97c962c307b2d2c56e358cf1d00b558d74262b5f929ee8cc7e73a"
@@ -721,19 +714,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fiber-for-wasmedge"
-version = "8.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bde949a23e17220d7afe29a8258901f2fae9000a4b04a58d1c2126554e3df8b1"
-dependencies = [
- "cc",
- "cfg-if",
- "rustix 0.37.21",
- "wasmtime-asm-macros",
- "windows-sys 0.48.0",
-]
-
-[[package]]
 name = "fiber_kernel"
 version = "0.1.0"
 dependencies = [
@@ -749,7 +729,6 @@ dependencies = [
  "rand 0.8.5",
  "smol",
  "static_assertions",
- "switcheroo",
  "thiserror",
  "tokio",
  "tracing",
@@ -1261,6 +1240,12 @@ dependencies = [
 
 [[package]]
 name = "io-lifetimes"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59ce5ef949d49ee85593fc4d3f3f95ad61657076395cbbce23e2121fc5542074"
+
+[[package]]
+name = "io-lifetimes"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eae7b9aee968036d54dce06cebaefd919e4472e753296daccd6d344e3e2df0c2"
@@ -1371,6 +1356,12 @@ dependencies = [
  "pkg-config",
  "vcpkg",
 ]
+
+[[package]]
+name = "linux-raw-sys"
+version = "0.0.46"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4d2456c373231a208ad294c33dc5bff30051eafd954cd4caae83a712b12854d"
 
 [[package]]
 name = "linux-raw-sys"
@@ -1806,24 +1797,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
 
 [[package]]
-name = "path-absolutize"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43eb3595c63a214e1b37b44f44b0a84900ef7ae0b4c5efce59e123d246d7a0de"
-dependencies = [
- "path-dedot",
-]
-
-[[package]]
-name = "path-dedot"
-version = "3.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d55e486337acb9973cdea3ec5638c1b3bcb22e573b2b7b41969e0c744d5a15e"
-dependencies = [
- "once_cell",
-]
-
-[[package]]
 name = "peeking_take_while"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1992,16 +1965,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prettyplease"
-version = "0.2.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9825a04601d60621feed79c4e6b56d65db77cdca55cef43b46b0de1096d1c282"
-dependencies = [
- "proc-macro2",
- "syn 2.0.22",
-]
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.63"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2093,7 +2056,7 @@ dependencies = [
  "log",
  "multimap 0.8.3",
  "petgraph 0.6.3",
- "prettyplease 0.1.25",
+ "prettyplease",
  "prost 0.11.9",
  "prost-types 0.11.9",
  "regex",
@@ -2333,13 +2296,27 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustix"
+version = "0.35.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5363f616a5244fd47fc1dd0a0b24c28a5c0154f5010c16332a7ad6f78f2e8b62"
+dependencies = [
+ "bitflags 1.3.2",
+ "errno 0.2.8",
+ "io-lifetimes 0.7.5",
+ "libc",
+ "linux-raw-sys 0.0.46",
+ "windows-sys 0.42.0",
+]
+
+[[package]]
+name = "rustix"
 version = "0.37.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62f25693a73057a1b4cb56179dd3c7ea21a7c6c5ee7d85781f5749b46f34b79c"
 dependencies = [
  "bitflags 1.3.2",
- "errno",
- "io-lifetimes",
+ "errno 0.3.1",
+ "io-lifetimes 1.0.11",
  "libc",
  "linux-raw-sys 0.3.8",
  "windows-sys 0.48.0",
@@ -2352,7 +2329,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fbc6396159432b5c8490d4e301d8c705f61860b8b6c863bf79942ce5401968f3"
 dependencies = [
  "bitflags 2.3.3",
- "errno",
+ "errno 0.3.1",
  "libc",
  "linux-raw-sys 0.4.3",
  "windows-sys 0.48.0",
@@ -2381,12 +2358,6 @@ checksum = "713cfb06c7059f3588fb8044c0fad1d09e3c01d225e25b9220dbfdcf16dbb1b3"
 dependencies = [
  "windows-sys 0.42.0",
 ]
-
-[[package]]
-name = "scoped-tls"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1cf6437eb19a8f4a6cc0f7dca544973b0b78843adbfeb3683d1a94a0024a294"
 
 [[package]]
 name = "scopeguard"
@@ -2570,16 +2541,6 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
-
-[[package]]
-name = "switcheroo"
-version = "0.2.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7c0b9876e2a0ad2d98476f643b50b9677e50223d6574211812c95b132a2e777"
-dependencies = [
- "libc",
- "winapi",
-]
 
 [[package]]
 name = "syn"
@@ -3111,20 +3072,20 @@ dependencies = [
 
 [[package]]
 name = "wasmedge-macro"
-version = "0.4.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "372985c17ffd2705e0cc14aa85e96c546d04823aec07ec1e0da0a2983c9eb655"
+checksum = "6f159a9a7d3d2301de2fc9cb88ad3459af9e95cbd5a0f57437efccc2b572a027"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.22",
+ "syn 1.0.109",
 ]
 
 [[package]]
 name = "wasmedge-sdk"
-version = "0.9.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e30b3d1a423ee62c0016bbfd07bdca4669a30cd167d7ff528caff559b467c17b"
+checksum = "a6b7678a024c25fbe7168dedbca6958b6baf5412a998c697bf40dbf359efc54e"
 dependencies = [
  "anyhow",
  "num-derive 0.3.3",
@@ -3138,28 +3099,29 @@ dependencies = [
 
 [[package]]
 name = "wasmedge-sys"
-version = "0.14.0"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3db99e2ef8cf618f832f1ecf32c3b86e8ce0fb2f31013426040ae514a981312c"
+checksum = "00ab1f78c1d3de17fd0deff054de96e337cf8cf02d13651748bdfa1f1b219369"
 dependencies = [
- "async-wasi",
- "bindgen 0.65.1",
+ "bindgen 0.61.0",
  "cmake",
- "fiber-for-wasmedge",
+ "lazy_static",
  "libc",
+ "parking_lot 0.12.1",
  "paste",
- "scoped-tls",
+ "rand 0.8.5",
  "thiserror",
  "wasmedge-macro",
  "wasmedge-types",
+ "wasmtime-fiber",
  "wat",
 ]
 
 [[package]]
 name = "wasmedge-types"
-version = "0.4.2"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b447f1a187fc86d866f388d7f29382b61896ee33627b727d678a994a0cbbd9e"
+checksum = "3323fe75a4e65476b33a041092aac22a1065a7ba0bfecbedc8135e8efb6c522d"
 dependencies = [
  "thiserror",
  "wat",
@@ -3167,11 +3129,24 @@ dependencies = [
 
 [[package]]
 name = "wasmtime-asm-macros"
-version = "8.0.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d3b9daa7c14cd4fa3edbf69de994408d5f4b7b0959ac13fa69d465f6597f810d"
+checksum = "de327cf46d5218315957138131ed904621e6f99018aa2da508c0dcf0c65f1bf2"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "wasmtime-fiber"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1075aa43857086ef89afbe87602fe2dae98ad212582e722b6d3d2676bb5ee141"
+dependencies = [
+ "cc",
+ "cfg-if",
+ "rustix 0.35.16",
+ "wasmtime-asm-macros",
+ "windows-sys 0.36.1",
 ]
 
 [[package]]
@@ -3249,6 +3224,19 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows-sys"
+version = "0.36.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea04155a16a59f9eab786fe12a4a450e75cdb175f9e0d80da1e17db09f55b8d2"
+dependencies = [
+ "windows_aarch64_msvc 0.36.1",
+ "windows_i686_gnu 0.36.1",
+ "windows_i686_msvc 0.36.1",
+ "windows_x86_64_gnu 0.36.1",
+ "windows_x86_64_msvc 0.36.1",
+]
+
+[[package]]
+name = "windows-sys"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a3e1820f08b8513f676f7ab6c1f99ff312fb97b553d30ff4dd86f9f15728aa7"
@@ -3300,6 +3288,12 @@ checksum = "91ae572e1b79dba883e0d315474df7305d12f569b400fcf90581b06062f7e1bc"
 
 [[package]]
 name = "windows_aarch64_msvc"
+version = "0.36.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9bb8c3fd39ade2d67e9874ac4f3db21f0d710bee00fe7cab16949ec184eeaa47"
+
+[[package]]
+name = "windows_aarch64_msvc"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e08e8864a60f06ef0d0ff4ba04124db8b0fb3be5776a5cd47641e942e58c4d43"
@@ -3309,6 +3303,12 @@ name = "windows_aarch64_msvc"
 version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2ef27e0d7bdfcfc7b868b317c1d32c641a6fe4629c171b8928c7b08d98d7cf3"
+
+[[package]]
+name = "windows_i686_gnu"
+version = "0.36.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "180e6ccf01daf4c426b846dfc66db1fc518f074baa793aa7d9b9aaeffad6a3b6"
 
 [[package]]
 name = "windows_i686_gnu"
@@ -3324,6 +3324,12 @@ checksum = "622a1962a7db830d6fd0a69683c80a18fda201879f0f447f065a3b7467daa241"
 
 [[package]]
 name = "windows_i686_msvc"
+version = "0.36.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2e7917148b2812d1eeafaeb22a97e4813dfa60a3f8f78ebe204bcc88f12f024"
+
+[[package]]
+name = "windows_i686_msvc"
 version = "0.42.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44d840b6ec649f480a41c8d80f9c65108b92d89345dd94027bfe06ac444d1060"
@@ -3333,6 +3339,12 @@ name = "windows_i686_msvc"
 version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4542c6e364ce21bf45d69fdd2a8e455fa38d316158cfd43b3ac1c5b1b19f8e00"
+
+[[package]]
+name = "windows_x86_64_gnu"
+version = "0.36.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4dcd171b8776c41b97521e5da127a2d86ad280114807d0b2ab1e462bc764d9e1"
 
 [[package]]
 name = "windows_x86_64_gnu"
@@ -3357,6 +3369,12 @@ name = "windows_x86_64_gnullvm"
 version = "0.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7896dbc1f41e08872e9d5e8f8baa8fdd2677f29468c4e156210174edc7f7b953"
+
+[[package]]
+name = "windows_x86_64_msvc"
+version = "0.36.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c811ca4a8c853ef420abd8592ba53ddbbac90410fab6903b3e79972a631f7680"
 
 [[package]]
 name = "windows_x86_64_msvc"

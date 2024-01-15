@@ -1,0 +1,20 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library meshx.io
+
+import fx
+
+// TODO(https://fxbug.dev/105608): Use a generated constant.
+const DIRECTORY_PROTOCOL_NAME string = "fuchsia.io/Directory"
+
+protocol Directory {
+    compose Directory1
+    compose Directory2
+}
+
+/// A [`Node2`] that is capable of containing other nodes.
+protocol Directory2 {
+    compose Node2
+    compose AdvisoryLocking
+}

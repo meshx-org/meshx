@@ -11,9 +11,6 @@ use fiber_sys as sys;
 
 use super::GenericDispatcher;
 
-use switcheroo::Generator;
-use switcheroo::{stack::*, Yielder};
-
 // state of the process
 #[derive(Debug, PartialEq)]
 enum State {
@@ -139,23 +136,12 @@ impl ProcessDispatcher {
     ) {
         log::debug!("ProcessDispatcher::start({:?}, {:?})", entry, self.name);
 
-        let stack = OneMbStack::new().unwrap();
+        let context = Context { process: self };
 
-        let mut task = Generator::<_, _, OneMbStack>::new(stack, |yielder, input: u32| {
-            let context = Context {
-                process: self,
-                yielder: yielder as *const Yielder<u32, u32>,
-            };
+        // Make sure to save the guard, see documentation for more information
+        let _guard = ScopeGuard::new(context);
 
-            // Make sure to save the guard, see documentation for more information
-            let _guard = ScopeGuard::new(context);
-
-            entry(arg1, input);
-        });
-
-        log::debug!("{:?}", task.resume(0));
-        log::debug!("{:?}", task.resume(1));
-        //log::debug!("{:?}", task.resume(1));
+        entry(arg1, 0);
     }
 
     pub(crate) fn get_current() -> Context {

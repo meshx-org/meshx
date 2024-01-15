@@ -1,0 +1,41 @@
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library meshx.io
+
+import fx
+
+/// The maximum size for an extended attribute name.
+@available(added=HEAD)
+const MAX_ATTRIBUTE_NAME uint64 = 255
+
+/// The name of an extended attribute. It can not contain any null bytes. Other
+/// than that and the maximum size, no particular structure is imposed on the
+/// name.
+@available(added=HEAD)
+alias ExtendedAttributeName = vector<uint8>:MAX_ATTRIBUTE_NAME
+
+/// The maximum size for an extended attribute value to be included inline.
+/// Values larger than this size are passed in a vmo.
+@available(added=HEAD)
+const MAX_INLINE_ATTRIBUTE_VALUE uint64 = 32768
+
+/// The maximum size of a chunk in the ListExtendedAttributes iterator.
+@available(added=HEAD)
+const MAX_LIST_ATTRIBUTES_CHUNK uint64 = 128
+
+protocol Node {
+    compose Node1
+    compose Node2
+}
+
+/// Node defines the minimal protocol for entities which can be accessed
+/// in a filesystem.
+@available(added=9)
+protocol Node2 {
+    @available(added=9)
+    compose meshx.unknown.Closeable
+    
+    @available(added=9)
+    compose meshx.unknown.Queryable
+}

@@ -109,6 +109,7 @@ pub struct Reference {
 }
 
 impl Reference {
+    
     pub fn new_sourced(name: CompoundIdentifier) -> Self {
         assert!(!name.components.is_empty(), "expected at least one component");
 

@@ -88,10 +88,10 @@ impl<'ctx, 'd> AvailabilityStep<'ctx, 'd> {
             if let ast::Declaration::Protocol(protocol) = *protocol_decl {
                 for method in protocol.borrow().methods {
                     if let Some(request) = method.maybe_request {
-                        link_anonymous(&method, &request);
+                        link_anonymous(&ast::Element::ProtocolMethod(method), &request);
                     }
                     if let Some(response) = method.maybe_response {
-                        link_anonymous(&method, &response);
+                        link_anonymous(&ast::Element::ProtocolMethod(method), &response);
                     }
                 }
             }
@@ -183,7 +183,10 @@ impl<'ctx, 'd> AvailabilityStep<'ctx, 'd> {
     /// After consuming the raw AST, the anonymous layout `struct {}` gets treated
     /// like a top-level declaration alongside `Foo`. But we inherit from its
     /// lexical parent, the member `bar` (added at version 3).
-    fn lexical_parent(&self, element: &ast::Element) -> &ast::Element {}
+    fn lexical_parent(&self, element: &ast::Element) -> &ast::Element {
+        // FIXME: remove
+        &ast::Element::Enum
+    }
 
     /// Reports errors for all decl name collisions on overlapping availabilities.
     fn verify_no_decl_overlaps(&self) {}

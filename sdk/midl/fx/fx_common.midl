@@ -1,0 +1,8 @@
+library fx
+
+resource Handle : uint32 {
+    properties {
+        subtype ObjType
+        rights Rights
+    }
+}

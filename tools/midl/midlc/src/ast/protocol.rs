@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use super::{
     Attribute, Comment, CompoundIdentifier, Declaration, Identifier, Span, TypeConstructor, WithAttributes,
-    WithDocumentation, WithIdentifier, WithSpan, WithName, Name,
+    WithDocumentation, WithIdentifier, WithSpan, WithName, Name, AttributeList,
 };
 
 #[derive(Debug)]
@@ -129,7 +129,7 @@ pub struct Protocol {
     ///   Bar()
     /// }
     /// ```
-    pub attributes: Vec<Attribute>,
+    pub attributes: AttributeList,
 
     /// The documentation for this protocol.
     ///
@@ -184,7 +184,7 @@ impl WithSpan for Protocol {
 }
 
 impl WithAttributes for Protocol {
-    fn attributes(&self) -> &[Attribute] {
+    fn attributes(&self) -> &AttributeList {
         &self.attributes
     }
 }

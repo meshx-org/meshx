@@ -1,6 +1,8 @@
+use std::{cell::RefCell, rc::Rc};
+
 use super::{
-    Attribute, Comment, Identifier, Literal, Reference, Span, TypeConstructor, WithAttributes, WithDocumentation,
-    WithIdentifier, WithSpan, WithName, Name,
+    AttributeList, Comment, Declaration, Identifier, Literal, Name, Reference, Span, TypeConstructor, WithAttributes,
+    WithDocumentation, WithIdentifier, WithName, WithSpan,
 };
 
 /// Represents an identifier constant
@@ -60,7 +62,7 @@ pub struct Const {
     /// ^^^^^^^^^^^^
     /// const FOO u32 = 10
     /// ```
-    pub attributes: Vec<Attribute>,
+    pub attributes: AttributeList,
 
     /// The documentation for the constant.
     ///
@@ -78,6 +80,12 @@ pub struct Const {
     pub(crate) span: Span,
 }
 
+impl Into<Declaration> for Const {
+    fn into(self) -> Declaration {
+        Declaration::Const(Rc::new(RefCell::new(self)))
+    }
+}
+
 impl WithIdentifier for Const {
     fn identifier(&self) -> &Identifier {
         &self.identifier
@@ -91,7 +99,7 @@ impl WithSpan for Const {
 }
 
 impl WithAttributes for Const {
-    fn attributes(&self) -> &[Attribute] {
+    fn attributes(&self) -> &AttributeList {
         &self.attributes
     }
 }
