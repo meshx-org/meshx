@@ -1,4 +1,4 @@
-name: Continous Integration for MeshX Binary
+name: Build and Push MeshX binary
 
 on:
     workflow_dispatch:
