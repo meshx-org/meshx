@@ -3,7 +3,6 @@ use crate::compiler::ParsingContext;
 use crate::diagnotics::DiagnosticsError;
 
 use super::consume_attribute::consume_attribute_list;
-use super::consume_identifier;
 use super::consume_type_constructor;
 use crate::consumption::helpers::consume_catch_all;
 

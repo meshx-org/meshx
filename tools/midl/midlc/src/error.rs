@@ -1,5 +1,5 @@
+use crate::diagnotics::DiagnosticColorer;
 use colored::{ColoredString, Colorize};
-use crate::diagnotics::{pretty_print_error_text, DiagnosticColorer};
 
 pub struct ErrorColorer {}
 

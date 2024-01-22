@@ -1,5 +1,4 @@
 use midlgen::ir::{self, EncodedCompoundIdentifier};
-use serde_json::json;
 
 use crate::{
     ast::{self, ConstantTrait},

@@ -48,7 +48,6 @@ pub(crate) fn consume_type_constructor(pair: Pair<'_>, ctx: &mut ParsingContext<
     let mut params_span = None;
     // TODO: params_signature
 
-    let mut constraits: Vec<ast::Constant> = vec![];
     // TODO: constraits_signature
 
     for current in pair.into_inner() {

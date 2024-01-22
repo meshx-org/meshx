@@ -19,22 +19,12 @@ use consume_library::consume_library_declaration;
 use consume_protocol::consume_protocol_declaration;
 use consume_struct::consume_struct_declaration;
 use consume_type::consume_type_constructor;
-use midlgen::ir::Type;
 
 use self::helpers::consume_catch_all;
 use super::ast;
-use crate::{
-    ast::{Name, TypeConstructor},
-    compiler::{Context, ParsingContext},
-    diagnotics::DiagnosticsError,
-};
+use crate::{compiler::ParsingContext, diagnotics::DiagnosticsError, ast::Name};
 pub use parser::{MIDLParser, Rule};
-
 use pest::iterators::{Pair, Pairs};
-
-pub(crate) struct ConsumeStep<'ctx, 'd> {
-    ctx: &'ctx mut Context<'d>,
-}
 
 pub(crate) fn consume_identifier(pair: &Pair<'_, Rule>, ctx: &mut ParsingContext<'_>) -> ast::Identifier {
     debug_assert!(pair.as_rule() == Rule::identifier);
