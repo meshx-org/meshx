@@ -8,6 +8,9 @@ pub enum Literal {
 
     /// Any string value.
     StringValue(String, Span),
+
+    /// Any boolean value.
+    BoolValue(String, Span),
 }
 
 impl Literal {
@@ -31,6 +34,7 @@ impl WithSpan for Literal {
         match &self {
             Self::NumericValue(_, span) => span.clone(),
             Self::StringValue(_, span) => span.clone(),
+            Self::BoolValue(_, span) => span.clone(),
         }
     }
 }

@@ -1,3 +1,4 @@
+use derivative::Derivative;
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
@@ -5,8 +6,42 @@ use super::{
     WithDocumentation, WithIdentifier, WithName, WithSpan,
 };
 
+#[derive(Debug, Clone)]
+pub enum ConstantValue {
+    Bool(bool),
+    Float64(f64),
+    Float32(f32),
+    Int8(i8),
+    Int16(i16),
+    Int32(i32),
+    Int64(i64),
+    String(String),
+}
+
+impl std::fmt::Display for ConstantValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConstantValue::Bool(val) => write!(f, "{}", if *val { "true" } else { "false" }),
+            ConstantValue::Float64(val) => write!(f, "{}", val),
+            ConstantValue::Float32(val) => write!(f, "{}", val),
+            ConstantValue::Int8(val) => write!(f, "{}", val),
+            ConstantValue::Int16(val) => write!(f, "{}", val),
+            ConstantValue::Int32(val) => write!(f, "{}", val),
+            ConstantValue::Int64(val) => write!(f, "{}", val),
+            ConstantValue::String(val) => write!(f, "{}", val),
+        }
+    }
+}
+
+pub trait ConstantTrait {
+    fn value(&self) -> ConstantValue;
+    fn span(&self) -> &Span;
+    fn is_resolved(&self) -> bool;
+}
+
 /// Represents an identifier constant
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
 pub struct IdentifierConstant {
     /// The referenced identifier of the contant.
     ///
@@ -15,10 +50,32 @@ pub struct IdentifierConstant {
     ///                 ^^^^^^^
     /// ```
     pub(crate) reference: Reference,
+
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(PartialOrd = "ignore")]
+    #[derivative(Ord = "ignore")]
+    pub(crate) constant_value: Option<ConstantValue>,
+    pub(crate) span: Span,
+}
+
+impl ConstantTrait for IdentifierConstant {
+    fn value(&self) -> ConstantValue {
+        assert!(self.is_resolved(), "accessing the value of an unresolved Constant: %s",);
+        self.constant_value.as_ref().expect("assert made").clone()
+    }
+
+    fn is_resolved(&self) -> bool {
+        self.constant_value.is_some()
+    }
+
+    fn span(&self) -> &Span {
+        &self.span
+    }
 }
 
 /// Represents a literal constant value.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
 pub struct LiteralConstant {
     /// The literal value of the constant.
     ///
@@ -26,11 +83,36 @@ pub struct LiteralConstant {
     /// const FOO u32 = 10
     ///                 ^^
     /// ```
-    pub(crate) value: Literal,
+    pub(crate) literal: Literal,
+
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(PartialOrd = "ignore")]
+    #[derivative(Ord = "ignore")]
+    pub(crate) constant_value: Option<ConstantValue>,
+    pub(crate) span: Span,
+}
+
+impl ConstantTrait for LiteralConstant {
+    fn value(&self) -> ConstantValue {
+        assert!(
+            self.is_resolved(),
+            "accessing the value of an unresolved Constant: {:?}",
+            self.constant_value
+        );
+        self.constant_value.as_ref().expect("assert made").clone()
+    }
+
+    fn is_resolved(&self) -> bool {
+        self.constant_value.is_some()
+    }
+
+    fn span(&self) -> &Span {
+        &self.span
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ConstantValue {
+pub enum Constant {
     Identifier(IdentifierConstant),
     Literal(LiteralConstant),
 }
@@ -74,7 +156,7 @@ pub struct Const {
     pub(crate) documentation: Option<Comment>,
 
     /// The constant value
-    pub(crate) value: ConstantValue,
+    pub(crate) value: Constant,
 
     /// The location of this constant in the text representation.
     pub(crate) span: Span,

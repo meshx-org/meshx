@@ -6,14 +6,18 @@ license = "Apache-2.0"
 ## All dependency versions, used in the project
 [workspace.dependencies]
 openssl = {version = "0.10", features = ["vendored"]}
+libloading = "0.8"
 
 [workspace]
 members = [
-  "src/crates/meshx",
+  "src/bin/meshx",
   "src/crates/midl",
   "src/crates/fiber_rust",
+  "src/crates/meshx_component",
+  "src/crates/meshx_runtime",
   "src/crates/meshx_flow",
   "src/crates/component_dummy",
+  "src/crates/datasources",
   "src/crates/fiber_sys",
   "src/crates/fiber_types",
   "src/crates/fiber_status",

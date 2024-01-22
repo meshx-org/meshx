@@ -1,61 +1,52 @@
 {{!
+// Copyright 2024 MeshX Authors. All rights reserved.
 // Copyright 2018 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 }}
 
-{{#each doc_comments}}
+{{#each (doc_comments ir.maybe_attributes) }}
 ///{{ this }}
 {{/each}}
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-{{#if is_strict }}
-#[repr({{ type }})]
-{{else}}
-#[non_exhaustive]
+{{#if ir.is_strict}}
+#[repr({{ underlying_type }})]
 {{/if}}
 pub enum {{ name }} {
     {{#each members }}
-    {{#each this.doc_comments }}
+    {{#each (doc_comments this.ir.maybe_attributes) }}
     ///{{ this }}
-    {{/each}}
-    {{ this.name }}{{#if @root.is_strict }} = {{ this.value }}{{/if}},
+    {{/each }}
+    {{ this.name }}{{#if @root.ir.is_strict}} = {{ this.value }}{{/if}},
     {{/each}}
     {{#if is_flexible }}
-    #[deprecated = "Use `{{ name }}::unknown()` to construct and `{{ name }}Unknown!()` to exhaustively match."]
     #[doc(hidden)]
-    __Unknown({{ type }}),
+    __SourceBreaking { unknown_ordinal: {{ underlying_type }} },
     {{/if}}
 }
 
 {{#if is_flexible }}
-/// Pattern that matches an unknown `{{ name }}` member.
+/// Pattern that matches an unknown `{{name}}` member.
 #[macro_export]
-macro_rules! {{ name }}Unknown {
+macro_rules! {{name}}Unknown {
     () => { _ };
 }
 {{/if}}
 
 impl {{ name }} {
     #[inline]
-    pub fn from_primitive(prim: {{ type }}) -> Option<Self> {
+    pub fn from_primitive(prim: {{ underlying_type }}) -> Option<Self> {
         match prim {
             {{#each members }}
             {{ this.value }} => Some(Self::{{ this.name }}),
-            {{/each}}
+            {{/each }}
             _ => None,
         }
     }
-
-{{#if is_strict }}
+    {{#if ir.strict}}
     #[inline]
-    pub const fn into_primitive(self) -> {{ type }} {
-        self as {{ type }}
-    }
-
-    #[deprecated = "Strict enums should not use `validate`"]
-    #[inline]
-    pub fn validate(self) -> std::result::Result<Self, {{ type }}> {
-        Ok(self)
+    pub const fn into_primitive(self) -> {{ underlying_type }} {
+        self as {{ underlying_type }}
     }
 
     #[deprecated = "Strict enums should not use `is_unknown`"]
@@ -63,65 +54,40 @@ impl {{ name }} {
     pub fn is_unknown(&self) -> bool {
         false
     }
-{{else}}
+    {{else}}
     #[inline]
-    pub fn from_primitive_allow_unknown(prim: {{ type }}) -> Self {
+    pub fn from_primitive_allow_unknown(prim: {{ underlying_type }}) -> Self {
         match prim {
             {{#each members }}
-            {{ value }} => Self::{{ name }},
+            {{ this.value }} => Self::{{ this.name }},
             {{/each}}
-            #[allow(deprecated)]
-            x => Self::__Unknown(x),
+            unknown_ordinal => Self::__SourceBreaking { unknown_ordinal },
         }
     }
 
     #[inline]
     pub fn unknown() -> Self {
-        #[allow(deprecated)]
-        Self::__Unknown({{ printf unknown_value_for_tmpl "%#x" }})
+        Self::__SourceBreaking { unknown_ordinal: {{unknown_value_for_tmpl ir}} }
     }
 
     #[inline]
-    pub const fn into_primitive(self) -> {{ type }} {
+    pub const fn into_primitive(self) -> {{ underlying_type }} {
         match self {
             {{#each members }}
-            Self::{{ name }} => {{ value }},
+            Self::{{ this.name }} => {{ this.value }},
             {{/each}}
-            #[allow(deprecated)]
-            Self::__Unknown(x) => x,
-        }
-    }
-
-    #[inline]
-    pub fn validate(self) -> std::result::Result<Self, {{ type }}> {
-        match self {
-            {{#each members }}
-            {{#if is_unknown }}
-            Self::{{ this.name }} => Err(self.into_primitive()),
-            {{/if}}
-            {{/each}}
-            #[allow(deprecated)]
-            Self::__Unknown(x) => Err(x),
-            {{#if members }}
-            _ => Ok(self),
-            {{/if}}
+            Self::__SourceBreaking { unknown_ordinal } => unknown_ordinal,
         }
     }
 
     #[inline]
     pub fn is_unknown(&self) -> bool {
-        self.validate().is_err()
+        match self {
+            Self::__SourceBreaking { unknown_ordinal: _ } => true,
+            {{#if members }}
+            _ => false,
+            {{/if}}
+        }
     }
-{{/if}}
-}
-
-fidl_enum! {
-    name: {{ name }},
-    prim_ty: {{ type }},
-    {{#if is_flexible}}
-    flexible: true,
-    {{else}}
-    strict: true,
-    min_member: {{ min_member }},
     {{/if}}
 }

@@ -1,6 +1,6 @@
 use iota::iota;
+use midlgen::ir::{self, Identifier};
 use serde::{Deserialize, Serialize};
-use midlgen::ir;
 
 #[derive(Serialize, Deserialize)]
 pub struct Derives(pub u16);
@@ -40,64 +40,120 @@ pub struct RustPaddingMarker {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Const {
-    pub base: ir::Const,
+    pub ir: ir::Const,
     pub name: String,
     pub r#type: String,
     pub value: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct UnionMember {
+    pub ir: ir::UnionMember,
+    pub name: String,
+    pub r#type: Type,
+    pub ordinal: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Union {
+    pub name: String,
+    pub members: Vec<UnionMember>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Enum {
-    pub base: ir::Enum,
+    pub ir: ir::Enum,
     pub name: String,
-    pub r#type: String,
+    pub underlying_type: String,
     pub members: Vec<EnumMember>,
     /// Member name with the minimum value, used as an arbitrary default value
     /// in Decodable::new_empty for strict enums.
     pub min_member: String,
-    pub is_flexible: bool
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct EnumMember {
-    pub base: ir::EnumMember,
+    pub ir: ir::EnumMember,
     pub name: String,
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Struct {
-    pub base: ir::Struct,
-    pub eci: ir::EncodedCompoundIdentifier,
-    pub derives: Derives,
-    pub name: String,
-    pub members: Vec<StructMember>,
-    pub padding_markers_v1: Vec<RustPaddingMarker>,
-    pub padding_markers_v2: Vec<RustPaddingMarker>,
-    pub flattened_padding_markers_v1: Vec<RustPaddingMarker>,
-    pub flattened_padding_markers_v2: Vec<RustPaddingMarker>,
-    pub size_v1: i32,
-    pub size_v2: i32,
-    pub alignment_v1: i32,
-    pub alignment_v2: i32,
-    pub has_padding: bool,
-    /// True if the fidl_struct_copy! macro should be used instead of fidl_struct!.
-    pub use_fidl_struct_copy: bool,
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum TypeKind {
+    PrimitiveType,
+    StringType,
+    InternalType,
+    HandleType,
+    RequestType,
+    ArrayType,
+    VectorType,
+    IdentifierType,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Type {
+    // TODO(https://fxbug.dev/7660): Remove Resourceness once stored on fidlgen.Type.
+    pub resourceness: midlgen::ir::Resourceness,
+
+    // Information extracted from fidlgen.Type.
+    pub kind: TypeKind,
+    pub nullable: bool,
+    pub primitive_subtype: Option<midlgen::ir::PrimitiveSubtype>,
+    pub element_type: Option<Box<Type>>,
+    pub identifier: Option<ir::EncodedCompoundIdentifier>,
+    pub decl_type: Option<midlgen::ir::DeclType>,
+
+    // The marker type that implements midl::encoding::Type.
+    pub midl: String,
+
+    // The associated type midl::encoding::Type::Owned.
+    pub owned: String,
+
+    // The type to use when this occurs as a method parameter.
+    // TODO(https://fxbug.dev/122199): Once the transition to the new types if complete,
+    // document this as being {Value,Resource}Type::Borrowed.
+    pub param: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StructMember {
-    pub base: ir::StructMember,
-    pub og_type: ir::Type,
-    pub r#type: String,
+    pub(crate) ir: midlgen::ir::StructMember,
+    pub(crate) r#type: Type,
+    pub(crate) name: String,
+    pub(crate) offset_v2: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Table {
+    pub ir: midlgen::ir::Table,
+    // pub derives: Derives,
+    pub eci: ir::EncodedCompoundIdentifier,
     pub name: String,
-    pub offset_v1: i32,
-    pub offset_v2: i32,
-    pub has_default: bool,
-    pub default_value: String,
-    pub has_handle_metadata: bool,
-    pub handle_rights: String,
-    pub handle_subtype: String,
+    pub members: Vec<TableMember>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TableMember {
+    pub ir: midlgen::ir::TableMember,
+    pub r#type: Type,
+    pub name: String,
+    pub ordinal: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Struct {
+    pub(crate) ir: midlgen::ir::Struct,
+    pub(crate) eci: ir::EncodedCompoundIdentifier,
+    // pub(crate) derives: Derives,
+    pub(crate) name: String,
+    pub(crate) members: Vec<StructMember>,
+    pub(crate) padding_markers_v2: Vec<midlgen::PaddingMarker>,
+    pub(crate) flattened_padding_markers_v2: Vec<midlgen::PaddingMarker>,
+    pub(crate) size_v2: u32,
+    pub(crate) alignment_v2: u32,
+    pub(crate) has_padding: bool,
+    // True if the struct should be encoded and decoded by memcpy.
+    pub(crate) use_midl_struct_copy: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -227,25 +283,17 @@ pub struct Parameter {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct HandleMetadataWrapper {
-    pub name: String,
-    pub subtype: String,
-    pub rights: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct Root {
     pub extern_crates: Vec<String>,
     // bits: Vec<Bits>,
     pub consts: Vec<Const>,
     pub enums: Vec<Enum>,
+    pub unions: Vec<Union>,
     pub structs: Vec<Struct>,
     pub external_structs: Vec<Struct>,
-    // unions: Vec<Union>,
+    pub tables: Vec<Table>,
     /// Result types for methods with error syntax.
     // results: Vec<Result>,
-    // tables: Vec<Table>,
     pub protocols: Vec<Protocol>,
     // services: Vec<Service>,
-    pub handle_metadata_wrappers: Vec<HandleMetadataWrapper>,
 }

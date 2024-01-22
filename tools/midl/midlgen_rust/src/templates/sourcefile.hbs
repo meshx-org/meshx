@@ -1,5 +1,5 @@
 {{!
-// Copyright 2023 MeshX Authors. All rights reserved.
+// Copyright 2024 MeshX Authors. All rights reserved.
 // Copyright 2018 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -14,79 +14,53 @@
 )]
 
 #![recursion_limit="512"]
+#![warn(clippy::all)]
+#![allow(unused_parens, unused_mut, unused_imports, nonstandard_style)]
 
-#[allow(unused_imports)]
 use fiber as fx;
 
-#[allow(unused_imports)]
 use {
     bitflags::bitflags,
-    fuchsia_zircon_status as zx_status,
+    fiber_status as fx_status,
     futures::future::{self, MaybeDone, TryFutureExt},
     midl::{
-        midl_bits,
-        midl_empty_struct,
-        midl_enum,
-        midl_struct_copy,
-        midl_struct,
-        midl_table,
-        midl_union,
-        wrap_handle_metadata,
-        encoding::{Encodable as _, Decodable as _, zerocopy},
         endpoints::{ControlHandle as _, Responder as _},
-        client::{
-            QueryResponseFut,
-            decode_transaction_body_fut,
-        },
+        client::QueryResponseFut,
     },
 };
 
-{{!
-For MIDL tracing, the Rust bindings are assigned a bindings enum of 6. See
-fidl-trace/trace_impl.cc, enum LogContext for more context.
-
-This constant will be unused in a build that has MIDL tracing disabled,
-since this constant is used only within trace_duration! macros that will
-expand to no-ops. However, the constant needs to be present, since the
-constant is evaluated before the macro expansion.
-
-The constant starts with an underscore to avoid clashing with FIDL
-declarations, which are not allowed to start with underscores.
-}}
-{{#if protocols}}
-const _MIDL_TRACE_BINDINGS_RUST: u32 = 6;
-{{/if}}
-
-{{#each bits}}
-{{> BitsDeclaration this }}
-{{/each}}
 {{#each consts}}
-{{> ConstDeclaration this }}
+{{> Const this }}
 {{/each}}
 {{#each enums}}
-{{> EnumDeclaration this }}
-{{/each}}
-{{#each results}}
-{{> ResultDeclaration this }}
+{{> Enum this }}
 {{/each}}
 {{#each unions}}
-{{> UnionDeclaration this }}
+{{> Union this }}
 {{/each}}
 {{#each structs}}
-{{> StructDeclaration this }}
+{{> Struct this }}
 {{/each}}
 {{#each tables}}
-{{> TableDeclaration this }}
+{{> Table this }}
 {{/each}}
-{{#each HandleMetadataWrappers}}
-{{> HandleMetadataWrapperDeclaration this }}
+{{#each protocols}}
+{{> Protocol this }}
 {{/each}}
 
-{{#each protocols}}
- 
-{{> ProtocolDeclaration this }}
- 
-{{!#each (call .ServicesForTransport "Channel") -}}
-{{!> ServiceDeclaration this }}
-{{!/each}}
-{{/each}}
+mod internal {
+    use super::*;
+
+    {{#each structs }}
+    {{> StructInternal this }}
+    {{/each }}
+    {{#each unions }}
+    {{> UnionInternal this }}
+    {{/each }}
+    {{#each tables}}
+    {{> TableInternal this }}
+    {{/each}}
+    {{#each enums}}
+    {{> EnumInternal this }}
+    {{/each}}
+}

@@ -30,13 +30,14 @@ mod context;
 mod libraries;
 mod names;
 //mod availability_step;
-mod resolve_step;
 mod compile_step;
+mod resolve_step;
 
+use pest::Parser;
 use std::cell::RefCell;
 use std::rc::Rc;
-use pest::Parser;
 
+use crate::ast::Library;
 use crate::consumption::{MIDLParser, Rule};
 use crate::source_file::{SourceFile, SourceId};
 use crate::{ast, diagnotics::Diagnostics};
@@ -45,8 +46,62 @@ pub(crate) use context::{Context, ParsingContext};
 pub(crate) use libraries::Libraries;
 
 //use self::availability_step::AvailabilityStep;
-use self::resolve_step::ResolveStep;
 use self::compile_step::CompileStep;
+use self::resolve_step::ResolveStep;
+
+/// Like ast::Declarations, but with const pointers rather than unique_ptr.
+#[derive(Debug, Default)]
+pub struct Declarations {
+    // aliases: Vec<Rc<RefCell<Alias>>>,
+    // bits: Vec<Rc<RefCell<Bits>>>,
+    pub builtins: Vec<ast::Declaration>,
+    pub consts: Vec<ast::Declaration>,
+    // enums: Vec<Rc<RefCell<ast::Enum>>>,
+    // new_types: Vec<Rc<RefCell<NewType>>>,
+    pub protocols: Vec<ast::Declaration>,
+    pub resources: Vec<ast::Declaration>,
+    // services: Vec<Rc<RefCell<ast::Service>>>,
+    pub structs: Vec<ast::Declaration>,
+    // tables: Vec<Rc<RefCell<ast::Table>>>,
+    // unions: Vec<Rc<RefCell<ast::Union>>>,
+    // overlays: Vec<Rc<RefCell<Overlay>>>,
+}
+
+/// A library dependency together with its filtered declarations.
+#[derive(Debug)]
+struct Dependency {
+    library: Rc<ast::Library>,
+    declarations: Declarations,
+}
+
+/// A compilation is the result of compiling a library and all its transitive
+/// dependencies. All fidlc output should be a function of the compilation
+/// (roughly speaking; of course everything is reachable via pointers into the
+/// AST, but we should avoid any further processing/traversals).
+#[derive(Debug)]
+pub struct Compilation {
+    /// Filtered from library->declarations.
+    pub declarations: Declarations,
+
+    /// The target library name and attributes. Note, we purposely do not store a
+    /// Library* to avoid accidentally reaching into its unfiltered decls.
+    pub library_name: Vec<String>,
+
+    /// Filtered from structs used as method payloads in protocols that come from
+    /// an external library via composition.
+    pub external_structs: Vec<Rc<RefCell<ast::Struct>>>,
+
+    /// Filtered from library->declaration_order.
+    pub declaration_order: Vec<ast::Declaration>,
+
+    /// Filtered from library->dependencies, and also includes indirect
+    /// dependencies that come from protocol composition, i.e. what would need to
+    /// be imported if the composed methods were copied and pasted.
+    pub direct_and_composed_dependencies: Vec<Dependency>,
+
+    /// Versions that were selected for this compilation.
+    pub version_selection: u32, // VersionSelection;
+}
 
 /// gathered during schema validation. Each validation step enriches the
 /// database with information that can be used to work with the schema, without
@@ -66,7 +121,6 @@ use self::compile_step::CompileStep;
 ///   fields.
 /// - Global validations are then performed on the mostly validated schema.
 ///   Currently only index name collisions.
-
 pub(crate) struct Compiler {
     // interner: interner::StringInterner,
     // names: Names,
@@ -130,7 +184,7 @@ impl Compiler {
 
         let pairs = MIDLParser::parse(Rule::library, source.as_str()).unwrap();
 
-        crate::parse_source(pairs, &mut ctx);
+        crate::consumption::consume_source(pairs, &mut ctx);
 
         diagnostics
     }
@@ -153,6 +207,8 @@ impl Compiler {
         if !CompileStep::new(&mut ctx).run() {
             return false;
         }
+
+        println!("LIB: {:?}", self.library);
 
         if !self.all_libraries.borrow_mut().insert(self.library.clone()) {
             return false;

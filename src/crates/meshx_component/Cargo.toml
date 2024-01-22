@@ -1,0 +1,15 @@
+[package]
+edition = "2021"
+name = "meshx_component"
+version = "0.1.0"
+
+[dependencies]
+anyhow = "1.0"
+fiber_rust = {path = "../fiber_rust"}
+futures = "0.3"
+log = "0.4"
+meshx_runtime = {path = "../meshx_runtime"}
+midl = {path = "../midl"}
+pin-project = "1.1"
+thiserror = "1.0"
+vfs = {path = "../vfs"}

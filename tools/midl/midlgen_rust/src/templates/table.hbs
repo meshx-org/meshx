@@ -1,0 +1,22 @@
+{{!
+// Copyright 2024 MeshX Authors. All rights reserved.
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+}}
+
+{{#each (doc_comments ir.maybe_attributes)}}
+///{{ this }}
+{{/each}}
+pub struct {{ name }} {
+    {{#each members }}
+    {{#each (doc_comments this.ir.maybe_attributes)}}
+	///{{ this }}
+	{{/each}}
+    pub {{ this.name }}: Option<{{ this.type.owned }}>,
+    {{/each}}
+    #[doc(hidden)]
+    pub __source_breaking: fidl::marker::SourceBreaking,
+}
+
+impl fidl::{{#if is_value_type }}Persistable{{else}}Standalone{{/if}} for {{ name }} {}

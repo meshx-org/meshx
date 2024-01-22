@@ -1,4 +1,4 @@
-use super::{ConstantValue, Name, Span, WithName, WithSpan};
+use super::{Constant, Name, Span, WithName, WithSpan};
 
 /// We parse `///` doc comments as nameless raw::Attribute with `provenance`
 /// set to raw::Attribute::Provenance::kDocComment. When consuming into a
@@ -62,14 +62,14 @@ pub struct AttributeArg {
     /// arguments like `@foo("abc")`, but will be set during compilation.
     name: Name,
 
-    pub value: ConstantValue,
+    pub value: Constant,
 
     /// Span of the entire argument, e.g. `bar="abc"`, or `"abc"` if unnamed.
     span: Span,
 }
 
 impl AttributeArg {
-    pub(crate) fn new(name: Name, span: Span, value: ConstantValue) -> Self {
+    pub(crate) fn new(name: Name, span: Span, value: Constant) -> Self {
         Self {
             name,
             span,

@@ -1,0 +1,81 @@
+{{!
+// Copyright 2024 MeshX Authors. All rights reserved.
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+}}
+
+{{#each (doc_comments ir.maybe_attributes) }}
+///{{this}}
+{{/each}}
+pub enum {{ name }} {
+    {{#each members }}
+    {{#each (doc_comments this.ir.maybe_attributes) }}
+	///{{this}}
+	{{/each}}
+    {{this.name}}({{ this.type.owned }}),
+    {{/each}}
+    {{#if is_flexible }}
+    #[doc(hidden)]
+    __SourceBreaking {
+        unknown_ordinal: u64,
+    },
+    {{/if}}
+}
+
+{{#if is_flexible }}
+/// Pattern that matches an unknown `{{ name }}` member.
+#[macro_export]
+macro_rules! {{ name }}Unknown {
+    () => { _ };
+}
+
+// Custom PartialEq so that unknown variants are not equal to themselves.
+impl PartialEq for {{ name }} {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            {{#each members }}
+            (Self::{{ this.name }}(x), Self::{{ this.name }}(y)) => *x == *y,
+            {{/each}}
+            _ => false,
+        }
+    }
+}
+{{/if}}
+
+impl {{ name }} {
+    #[inline]
+    pub fn ordinal(&self) -> u64 {
+        match *self {
+            {{#each members }}
+            Self::{{ this.name }}(_) => {{ this.ordinal }},
+            {{/each}}
+            {{#if is_flexible}}
+            Self::__SourceBreaking { unknown_ordinal } => unknown_ordinal,
+            {{/if}}
+        }
+    }
+
+    {{#if is_flexible }}
+    #[inline]
+    pub fn unknown_variant_for_testing() -> Self {
+        Self::__SourceBreaking { unknown_ordinal: 0 }
+    }
+
+    #[inline]
+    pub fn is_unknown(&self) -> bool {
+        match self {
+            Self::__SourceBreaking { .. } => true,
+            {{#if members}}
+            _ => false,
+            {{/if}}
+        }
+    }
+    {{else}}
+    #[deprecated = "Strict unions should not use `is_unknown`"]
+    #[inline]
+    pub fn is_unknown(&self) -> bool {
+        false
+    }
+    {{/if}}
+}
+
+impl midl::{{#if is_value_type }}Persistable{{ else }}Standalone{{/if}} for {{name}} {}

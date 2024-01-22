@@ -24,8 +24,8 @@ impl HandleDisposition<'_> {
     }
 }
 
-/// An object representing a Zircon
-/// [channel](https://fuchsia.dev/fuchsia-src/concepts/objects/channel.md).
+/// An object representing a Fiber
+/// [channel](https://docs.meshx.co/fuchsia-src/concepts/objects/channel.md).
 ///
 /// As essentially a subtype of `Handle`, it can be freely interconverted.
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]

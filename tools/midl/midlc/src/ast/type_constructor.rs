@@ -1,6 +1,6 @@
 use hcl::Identifier;
 
-use super::{ast, Const, ConstantValue, Element, LiteralConstant, Reference, Span};
+use super::{Const, Element, LiteralConstant, Nullability, Reference, Span};
 use std::{cell::RefCell, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -155,13 +155,30 @@ impl TypeConstructor {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct VectorType {
+    pub nullability: Nullability,
+    pub element_count: u32,
+    pub element_type: Box<Type>,
+}
+
+impl VectorType {
+    pub fn element_size(&self) -> u32 {
+        self.element_count
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PrimitiveType {
+    pub nullability: Nullability,
+    pub subtype: PrimitiveSubtype,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Type {
     ArrayType {
         element_type: Box<Type>,
     },
-    VectorType {
-        element_type: Box<Type>,
-    },
+    Vector(VectorType),
     StringType {
         nullable: bool,
     },
@@ -169,10 +186,7 @@ pub enum Type {
         nullable: bool,
         subtype: String, // "test.handles/DriverProtocol",
     },
-    PrimitiveType {
-        nullable: bool,
-        subtype: PrimitiveSubtype,
-    },
+    Primitive(PrimitiveType),
     IdentifierType {
         reference: Reference,
     },

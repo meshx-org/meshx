@@ -16,7 +16,7 @@
                 "outDir": "dist/sdk/midl/meshx.component.resolver",
                 "midlJson": "./midl.json",
                 "srcs": ["./io.midl", "./node.midl", "./directory.midl"],
-                "language": "ts"
+                "language": "rust"
             }
         }
     }

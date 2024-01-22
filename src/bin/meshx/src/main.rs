@@ -3,6 +3,7 @@
 use fiber_kernel::Kernel;
 use fiber_rust::sys;
 use fiber_status as fx_status;
+use libloading::Library;
 use std::sync::Arc;
 
 fn main() -> Result<(), fx_status::Status> {
@@ -28,6 +29,12 @@ fn main() -> Result<(), fx_status::Status> {
     });*/
 
     // TODO: register the component manager process
+
+    unsafe {
+        let lib = Library::new("libcomponent_dummy.dylib").unwrap();
+        let func: libloading::Symbol<unsafe extern fn() -> u32> = lib.get(b"_start").unwrap();
+        println!("{:?}", func());
+    }
 
     kernel.init();
 

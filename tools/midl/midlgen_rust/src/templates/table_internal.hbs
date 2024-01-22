@@ -1,0 +1,175 @@
+{{!
+// Copyright 2024 The MeshX Authors. All rights reserved.
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+}}
+
+impl {{ name }} {
+    #[inline(always)]
+    fn max_ordinal_present(&self) -> u64 {
+        {{#each (reverse members) }}
+        if let Some(_) = self.{{ this.name }} {
+            return {{ this.ordinal }};
+        }
+        {{/each}}
+        0
+    }
+}
+
+unsafe impl midl::encoding::TypeMarker for {{ name }} {
+    type Owned = Self;
+
+    #[inline(always)]
+    fn inline_align(_context: midl::encoding::Context) -> usize {
+        8
+    }
+
+    #[inline(always)]
+    fn inline_size(_context: midl::encoding::Context) -> usize {
+        16
+    }
+}
+
+{{#if is_resource_type }}
+impl midl::encoding::ResourceTypeMarker for {{ name }} {
+    type Borrowed<'a> = &'a mut Self;
+    fn take_or_borrow<'a>(value: &'a mut <Self as midl::encoding::TypeMarker>::Owned) -> Self::Borrowed<'a> {
+        value
+    }
+}
+{{else}}
+impl midl::encoding::ValueTypeMarker for {{ name }} {
+    type Borrowed<'a> = &'a Self;
+    fn borrow<'a>(value: &'a <Self as midl::encoding::TypeMarker>::Owned) -> Self::Borrowed<'a> {
+        value
+    }
+}
+{{/if}}
+
+unsafe impl midl::encoding::Encode<{{ name }}> for &{{#if is_resource_type }}mut {{/if}}{{ name }} {
+    unsafe fn encode(self, encoder: &mut midl::encoding::Encoder<'_>, offset: usize, mut depth: midl::encoding::Depth) -> midl::Result<()> {
+        encoder.debug_check_bounds::<{{ name }}>(offset);
+        // Vector header
+        let max_ordinal: u64 = self.max_ordinal_present();
+        encoder.write_num(max_ordinal, offset);
+        encoder.write_num(midl::encoding::ALLOC_PRESENT_U64, offset + 8);
+        // write_out_of_line must not be called with a zero-sized out-of-line block.
+        if max_ordinal == 0 {
+            return Ok(());
+        }
+        depth.increment()?;
+        let envelope_size = 8;
+        let bytes_len = max_ordinal as usize * envelope_size;
+        #[allow(unused_variables)]
+        let offset = encoder.out_of_line_offset(bytes_len);
+        let mut _prev_end_offset: usize = 0;
+
+        {{#each members }}
+        if {{ this.ordinal }} > max_ordinal {
+            return Ok(());
+        }
+
+        // Write at offset+(ordinal-1)*envelope_size, since ordinals are one-based and envelopes
+        // are envelope_size bytes.
+        let cur_offset: usize = ({{ this.ordinal }} - 1) * envelope_size;
+
+        // Zero reserved fields.
+        encoder.padding(offset + _prev_end_offset, cur_offset - _prev_end_offset);
+
+        // Safety:
+        // - bytes_len is calculated to fit envelope_size*max(member.ordinal).
+        // - Since cur_offset is envelope_size*(member.ordinal - 1) and the envelope takes
+        //   envelope_size bytes, there is always sufficient room.
+        midl::encoding::encode_in_envelope_optional::<{{ this.type.midl }}>(
+            {{#each this.type.is_resource_type }}
+            self.{{ this.name }}.as_mut().map(<{{ this.type.midl }} as midl::encoding::ResourceTypeMarker>::take_or_borrow),
+            {{else}}
+            self.{{ this.name }}.as_ref().map(<{{ this.type.midl }} as midl::encoding::ValueTypeMarker>::borrow),
+            {{/each}}
+            encoder, offset + cur_offset, depth
+        )?;
+
+        _prev_end_offset = cur_offset + envelope_size;
+        {{/each}}
+
+        Ok(())
+    }
+}
+
+impl midl::encoding::Decode<Self> for {{ name }} {
+    #[inline(always)]
+    fn new_empty() -> Self {
+        Self::default()
+    }
+
+    unsafe fn decode(&mut self, decoder: &mut midl::encoding::Decoder<'_>, offset: usize, mut depth: midl::encoding::Depth) -> midl::Result<()> {
+        decoder.debug_check_bounds::<Self>(offset);
+        let len = match midl::encoding::decode_vector_header(decoder, offset)? {
+            None => return Err(midl::Error::NotNullable),
+            Some(len) => len,
+        };
+        depth.increment()?;
+        let envelope_size = 8;
+        let bytes_len = len * envelope_size;
+        let offset = decoder.out_of_line_offset(bytes_len)?;
+        // Decode the envelope for each type.
+        let mut _next_ordinal_to_read = 0;
+        let mut next_offset = offset;
+        let end_offset = offset + bytes_len;
+
+        {{#each members}}
+        _next_ordinal_to_read += 1;
+        if next_offset >= end_offset {
+            return Ok(());
+        }
+
+        // Decode unknown envelopes for gaps in ordinals.
+        while _next_ordinal_to_read < {{ this.ordinal }} {
+            midl::encoding::decode_unknown_envelope(decoder, next_offset, depth)?;
+            _next_ordinal_to_read += 1;
+            next_offset += envelope_size;
+        }
+
+        let next_out_of_line = decoder.next_out_of_line();
+        let handles_before = decoder.remaining_handles();
+        if let Some((inlined, num_bytes, num_handles)) =
+            midl::encoding::decode_envelope_header(decoder, next_offset)?
+        {
+            let member_inline_size = <{{ this.type.midl }} as midl::encoding::TypeMarker>::inline_size(decoder.context);
+            if inlined != (member_inline_size <= 4) {
+                return Err(midl::Error::InvalidInlineBitInEnvelope);
+            }
+            let inner_offset;
+            let mut inner_depth = depth.clone();
+            if inlined {
+                decoder.check_inline_envelope_padding(next_offset, member_inline_size)?;
+                inner_offset = next_offset;
+            } else {
+                inner_offset = decoder.out_of_line_offset(member_inline_size)?;
+                inner_depth.increment()?;
+            }
+            let val_ref =
+                self.{{ this.name }}.get_or_insert_with(|| midl::new_empty!({{ this.type.midl }}));
+            midl::decode!({{ this.type.midl }}, val_ref, decoder, inner_offset, inner_depth)?;
+            if !inlined && decoder.next_out_of_line() != next_out_of_line + (num_bytes as usize) {
+                return Err(midl::Error::InvalidNumBytesInEnvelope);
+            }
+            if handles_before != decoder.remaining_handles() + (num_handles as usize) {
+                return Err(midl::Error::InvalidNumHandlesInEnvelope);
+            }
+        }
+
+        next_offset += envelope_size;
+        {{/each}}
+
+        // Decode the remaining unknown envelopes.
+        while next_offset < end_offset {
+            _next_ordinal_to_read += 1;
+            midl::encoding::decode_unknown_envelope(decoder, next_offset, depth)?;
+            next_offset += envelope_size;
+        }
+
+        Ok(())
+    }
+}

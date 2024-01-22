@@ -1,0 +1,176 @@
+{{!
+// Copyright 2024 MeshX Authors. All rights reserved.
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+}}
+
+unsafe impl fidl::encoding::TypeMarker for {{ name }} {
+    type Owned = Self;
+
+    #[inline(always)]
+    fn inline_align(_context: fidl::encoding::Context) -> usize {
+        {{ alignment_v2 }}
+    }
+
+    #[inline(always)]
+    fn inline_size(_context: fidl::encoding::Context) -> usize {
+        {{ size_v2 }}
+    }
+
+    {{#if use_midl_struct_copy }}
+    {{#unless flattened_padding_markers_v2 }}
+    #[inline(always)]
+    fn encode_is_copy() -> bool {
+        true
+    }
+
+    #[inline(always)]
+    fn decode_is_copy() -> bool {
+        true
+    }
+    {{/unless }}
+    {{/if }}
+}
+
+{{#if is_resource_type }}
+impl midl::encoding::ResourceTypeMarker for {{ name }} {
+    type Borrowed<'a> = &'a mut Self;
+    fn take_or_borrow<'a>(value: &'a mut <Self as midl::encoding::TypeMarker>::Owned) -> Self::Borrowed<'a> {
+        value
+    }
+}
+{{else}}
+impl midl::encoding::ValueTypeMarker for {{ name }} {
+    type Borrowed<'a> = &'a Self;
+    fn borrow<'a>(value: &'a <Self as midl::encoding::TypeMarker>::Owned) -> Self::Borrowed<'a> {
+        value
+    }
+}
+{{/if}}
+
+unsafe impl midl::encoding::Encode<{{ name }}> for &{{#if is_resource_type }}mut {{/if}}{{ name }} {
+    #[inline]
+    unsafe fn encode(self, encoder: &mut midl::encoding::Encoder<'_>, offset: usize, _depth: midl::encoding::Depth) -> midl::Result<()> {
+        encoder.debug_check_bounds::<{{ name }}>(offset);
+        {{#if (not members) }}
+            {{! Case #1: Empty struct }}
+            encoder.write_num(0u8, offset);
+            Ok(())
+        {{else if use_midl_struct_copy }}
+            {{! Case #2: Encode/decode is copy }}
+            unsafe {
+                // Copy the object into the buffer.
+                let buf_ptr = encoder.buf.as_mut_ptr().add(offset);
+                (buf_ptr as *mut {{ name }}).write_unaligned((self as *const {{ name }}).read());
+                // Zero out padding regions. Unlike `fidl_struct_impl_noncopy!`, this must be
+                // done second because the memcpy will write garbage to these bytes.
+                {{#each flattened_padding_markers_v2 }}
+                // TODO
+                {{/each}}
+            }
+            Ok(())
+        {{else}}
+            {{! Case #3: General case }}
+            // Delegate to tuple encoding.
+            midl::encoding::Encode::<{{name}}>::encode(
+                (
+                    {{#each members }}
+                    {{#if this.type.is_resource_type }}
+                    <{{{ this.type.midl }}} as midl::encoding::ResourceTypeMarker>::take_or_borrow(&mut self.{{ this.name }}),
+                    {{else}}
+                    <{{{ this.type.midl }}} as midl::encoding::ValueTypeMarker>::borrow(&self.{{ this.name }}),
+                    {{/if}}
+                    {{/each}}
+                ),
+                encoder, offset, _depth
+            )
+        {{/if}}
+    }
+}
+
+{{#if members }}
+unsafe impl<{{#each members}} T{{ @index }}: midl::encoding::Encode<{{{this.type.midl}}}>,{{/each}}>
+    midl::encoding::Encode<{{ name }}> for ({{#each members }} T{{ @index }},{{/each}})
+{
+    #[inline]
+    unsafe fn encode(self, encoder: &mut midl::encoding::Encoder<'_>, offset: usize, depth: midl::encoding::Depth) -> midl::Result<()> {
+        encoder.debug_check_bounds::<{{ name }}>(offset);
+        // Zero out padding regions. There's no need to apply masks
+        // because the unmasked parts will be overwritten by fields.
+        {{#each padding_markers_v2 }}
+        unsafe {
+            let ptr = encoder.buf.as_mut_ptr().add(offset).offset({{ offset }});
+            (ptr as *mut u{{ mask_bit_width }}).write_unaligned(0);
+        }
+        {{/each}}
+        // Write the fields.
+        {{#each members }}
+        self.{{ @index }}.encode(encoder, offset + {{ this.offset_v2 }}, depth)?;
+        {{/each}}
+        Ok(())
+    }
+}
+{{/if}}
+
+impl midl::encoding::Decode<Self> for {{ name }} {
+    #[inline(always)]
+    fn new_empty() -> Self {
+        Self {{#if members}} {
+            {{#each members}}
+            {{ this.name }}: midl::new_empty!({{this.type.midl}}),
+            {{/each }}
+        }
+        {{/if}}
+    }
+
+    #[inline]
+    unsafe fn decode(&mut self, decoder: &mut midl::encoding::Decoder<'_>, offset: usize, _depth: midl::encoding::Depth) -> midl::Result<()> {
+        decoder.debug_check_bounds::<Self>(offset);
+        {{#unless members }}
+            {{! Case #1: Empty struct}}
+            match decoder.read_num::<u8>(offset) {
+                0 => Ok(()),
+                _ => Err(fidl::Error::Invalid),
+            }
+        {{else if use_midl_struct_copy }}
+            {{! Case #2: Encode/decode is copy }}
+            let buf_ptr = unsafe { decoder.buf.as_ptr().add(offset) };
+            // Verify that padding bytes are zero.
+            {{#each flattened_padding_markers_v2 }}
+            let ptr = unsafe { buf_ptr.offset({{ this.offset }}) };
+            let padval = unsafe { (ptr as *const u{{ this.mask_bit_width }}).read_unaligned() };
+            let mask = {{ this.mask }}u{{ this.mask_bit_width }};
+            let maskedval = padval & mask;
+            if maskedval != 0 {
+                return Err(fidl::Error::NonZeroPadding {
+                    padding_start: offset + {{ this.offset }} + ((mask as u64).trailing_zeros() / 8) as usize,
+                });
+            }
+            {{/each}}
+            // Copy from the buffer into the object.
+            unsafe {
+                std::ptr::copy_nonoverlapping(buf_ptr, self as *mut Self as *mut u8, {{ this.size_v2 }});
+            }
+            Ok(())
+        {{else}}
+        {{! Case #3: General case }}
+            // Verify that padding bytes are zero.
+            {{#each padding_markers_v2}}
+            let ptr = unsafe { decoder.buf.as_ptr().add(offset).offset({{ this.offset }}) };
+            let padval = unsafe { (ptr as *const u{{ this.mask_bit_width }}).read_unaligned() };
+            let mask = {{this.mask}}u{{this.mask_bit_width}};
+            let maskedval = padval & mask;
+            if maskedval != 0 {
+                return Err(fidl::Error::NonZeroPadding {
+                    padding_start: offset + {{this.offset}} + ((mask as u64).trailing_zeros() / 8) as usize,
+                });
+            }
+            {{/each}}
+            {{#each members}}
+            midl::decode!({{{this.type.midl}}}, &mut self.{{this.name}}, decoder, offset + {{this.offset_v2}}, _depth)?;
+            {{/each}}
+            Ok(())
+        {{/unless}}
+    }
+}

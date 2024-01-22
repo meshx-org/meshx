@@ -1,0 +1,7 @@
+[package]
+edition = "2021"
+name = "meshx_runtime"
+version = "0.1.0"
+
+[dependencies]
+fiber_rust={path = "../fiber_rust"}

@@ -3,7 +3,7 @@ use super::{helpers::Pair, Rule};
 use crate::{
     ast::{self, *},
     compiler::ParsingContext,
-    consumption::{consume_const::consume_constant_value, helpers::consume_catch_all},
+    consumption::{consume_const::consume_constant, helpers::consume_catch_all},
 };
 
 pub(crate) fn consume_attribute_arg(token: Pair<'_>, ctx: &mut ParsingContext<'_>) -> ast::AttributeArg {
@@ -22,7 +22,7 @@ pub(crate) fn consume_attribute_arg(token: Pair<'_>, ctx: &mut ParsingContext<'_
                 name = Some(Name::create_sourced(ctx.library.clone(), name_span));
             }
             Rule::constant => {
-                value = Some(consume_constant_value(current, ctx));
+                value = Some(consume_constant(current, ctx));
             }
             _ => consume_catch_all(&current, "attribute arg"),
         }

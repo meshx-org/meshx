@@ -1,0 +1,17 @@
+[package]
+edition = "2021"
+name = "vfs"
+version = "0.1.0"
+
+[dependencies]
+fiber_status={path = "../fiber_status"}
+libc="0.2"
+static_assertions="1.0"
+thiserror="1.0"
+anyhow="1.0"
+async-trait="0.1"
+assert_matches="1.0"
+midl_meshx_io={path = "../midl_meshx_io"}
+futures="0.3"
+midl={path = "../midl"}
+tracing="0.1"

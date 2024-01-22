@@ -46,7 +46,7 @@ pub struct Resource {
     pub(crate) span: Span,
 
     // Set during construction.
-    pub(crate) subtype_ctor: TypeConstructor,
+    // pub(crate) subtype_ctor: TypeConstructor,
     pub(crate) properties: Vec<ResourceProperty>
 }
 

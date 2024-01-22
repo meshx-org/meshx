@@ -1,0 +1,18 @@
+[package]
+edition = "2018"
+name = "meshx"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+component_manager = {version = "0.1.0", path = "../../crates/component_manager"}
+
+fiber_kernel = {version = "0.1.0", path = "../../crates/fiber_kernel"}
+fiber_rust = {version = "0.1.0", path = "../../crates/fiber_rust"}
+fiber_status = {version = "0.1.0", path = "../../crates/fiber_status"}
+phf = {version = "0.11", features = ["macros"]}
+log="0.4.17"
+env_logger="0.9.1"
+tracing-subscriber = "0.3"
+libloading.workspace = true

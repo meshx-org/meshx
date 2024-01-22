@@ -5,6 +5,7 @@ mod comment;
 mod r#const;
 mod identifier;
 mod name;
+mod properties;
 mod protocol;
 mod reference;
 mod resource;
@@ -26,13 +27,14 @@ pub use ast::*;
 pub use alias::Alias;
 pub use attributes::{Attribute, AttributeArg, AttributeList};
 pub use comment::Comment;
-pub use resource::{Resource, ResourceProperty};
 pub use identifier::{CompoundIdentifier, Identifier};
-pub use name::Name;
+pub use name::{Name, name_flat_name};
+pub use properties::{Nullability, Resourceness, Strictness};
 pub use protocol::{Protocol, ProtocolMethod};
-pub use r#const::{Const, ConstantValue, IdentifierConstant, LiteralConstant};
+pub use r#const::{Const, Constant, ConstantValue, ConstantTrait, IdentifierConstant, LiteralConstant};
 pub use r#struct::{Struct, StructMember};
 pub use reference::{Reference, ReferenceKey, ReferenceState, Target};
+pub use resource::{Resource, ResourceProperty};
 pub use span::Span;
 pub use traits::{WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
 pub use type_constructor::{
@@ -46,6 +48,7 @@ use crate::source_file::SourceId;
 pub enum Element {
     Bits,
     Enum,
+    Resource,
     Alias(Rc<RefCell<Alias>>),
     Builtin(Rc<RefCell<Builtin>>),
     Struct(Rc<RefCell<Struct>>),
@@ -92,13 +95,13 @@ impl Into<Element> for Declaration {
     fn into(self) -> Element {
         match self {
             Declaration::Const(ref decl) => Element::Const(decl.clone()),
-            Declaration::Struct(_) => todo!(),
-            Declaration::Protocol(_) => todo!(),
+            Declaration::Struct(ref decl) => Element::Struct(decl.clone()),
+            Declaration::Protocol(ref decl) => Element::Protocol(decl.clone()),
             Declaration::Builtin(ref decl) => Element::Builtin(decl.clone()),
-            Declaration::Bits => todo!(),
-            Declaration::Enum => todo!(),
+            Declaration::Bits => Element::Bits,
+            Declaration::Enum => Element::Enum,
             Declaration::Alias(ref decl) => Element::Alias(decl.clone()),
-            Declaration::Resource(_) => todo!(),
+            Declaration::Resource(..) => Element::Resource,
         }
     }
 }
@@ -107,7 +110,7 @@ impl Into<Element> for Rc<Declaration> {
     fn into(self) -> Element {
         match &*self {
             Declaration::Const(ref decl) => Element::Const(decl.clone()),
-            Declaration::Struct(_) => todo!(),
+            Declaration::Struct(ref decl) => Element::Struct(decl.clone()),
             Declaration::Protocol(ref decl) => Element::Protocol(decl.clone()),
             Declaration::Builtin(ref decl) => Element::Builtin(decl.clone()),
             Declaration::Alias(ref decl) => Element::Alias(decl.clone()),
@@ -126,7 +129,7 @@ impl Declaration {
             Declaration::Const(decl) => decl.borrow().name().to_owned(),
             Declaration::Builtin(decl) => decl.borrow().name().to_owned(),
             Declaration::Alias(decl) => decl.borrow().name().to_owned(),
-            Declaration::Resource(_) => todo!(),
+            Declaration::Resource(decl) => decl.borrow().name().to_owned(),
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
         }
@@ -149,7 +152,7 @@ impl Declaration {
             Declaration::Const(_) => {}
             Declaration::Builtin(_) => {}
             Declaration::Alias(_) => {}
-            Declaration::Resource(_) => todo!(),
+            Declaration::Resource(_) => {}
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
         };
@@ -210,21 +213,23 @@ impl WithName for Builtin {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declarations {
-    pub structs: Vec<Rc<Declaration>>,
-    pub protocols: Vec<Rc<Declaration>>,
-    pub contants: Vec<Rc<Declaration>>,
-    pub builtins: Vec<Rc<Declaration>>,
-    pub imports: Vec<Rc<Declaration>>,
+    pub structs: Vec<Declaration>,
+    pub protocols: Vec<Declaration>,
+    pub builtins: Vec<Declaration>,
+    pub consts: Vec<Declaration>,
+    pub resources: Vec<Declaration>,
+    pub imports: Vec<Declaration>,
 
-    pub all: MultiMap<String, Rc<Declaration>>,
+    pub all: MultiMap<String, Declaration>,
 }
 
 impl Default for Declarations {
     fn default() -> Self {
         Declarations {
+            consts: vec![],
+            resources: vec![],
             structs: vec![],
             protocols: vec![],
-            contants: vec![],
             builtins: vec![],
             imports: vec![],
             all: MultiMap::new(),
@@ -244,8 +249,7 @@ impl Ord for Declarations {
     }
 }
 
-fn store_decl(decl: Declaration, all: &mut MultiMap<String, Rc<Declaration>>, decls: &mut Vec<Rc<Declaration>>) {
-    let decl = Rc::from(decl);
+fn store_decl(decl: Declaration, all: &mut MultiMap<String, Declaration>, decls: &mut Vec<Declaration>) {
     all.insert(decl.name().decl_name(), decl.clone());
     decls.push(decl);
 }
@@ -257,18 +261,16 @@ impl Declarations {
         match decl {
             Declaration::Struct(_) => store_decl(decl, all_ref, &mut self.structs),
             Declaration::Protocol(_) => store_decl(decl, all_ref, &mut self.protocols),
-            Declaration::Const(_) => store_decl(decl, all_ref, &mut self.contants),
+            Declaration::Const(_) => store_decl(decl, all_ref, &mut self.consts),
             Declaration::Alias(_) => store_decl(decl, all_ref, &mut self.builtins),
             Declaration::Builtin(_) => store_decl(decl, all_ref, &mut self.builtins),
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
-            Declaration::Resource(_) => todo!(),
+            Declaration::Resource(_) => store_decl(decl, all_ref, &mut self.resources),
         }
     }
 
-    pub(crate) fn lookup_builtin(identity: BuiltinIdentity) {
-
-    }
+    pub(crate) fn lookup_builtin(identity: BuiltinIdentity) {}
 }
 
 pub enum RegisterResult {
@@ -437,14 +439,14 @@ impl Library {
         // An assertion in Declarations::Insert ensures that these insertions
         // stays in sync with the order of Builtin::Identity.
         insert("bool", BuiltinIdentity::bool);
-        insert("int8", BuiltinIdentity::i8);
-        insert("int16", BuiltinIdentity::i16);
-        insert("int32", BuiltinIdentity::i32);
-        insert("int64", BuiltinIdentity::i64);
-        insert("uint8", BuiltinIdentity::u8);
-        insert("uint16", BuiltinIdentity::u16);
-        insert("uint32", BuiltinIdentity::u32);
-        insert("uint64", BuiltinIdentity::u64);
+        insert("int8", BuiltinIdentity::int8);
+        insert("int16", BuiltinIdentity::int16);
+        insert("int32", BuiltinIdentity::int32);
+        insert("int64", BuiltinIdentity::int64);
+        insert("uint8", BuiltinIdentity::uint8);
+        insert("uint16", BuiltinIdentity::uint16);
+        insert("uint32", BuiltinIdentity::uint32);
+        insert("uint64", BuiltinIdentity::uint64);
         insert("float32", BuiltinIdentity::float32);
         insert("float64", BuiltinIdentity::float64);
         insert("string", BuiltinIdentity::string);
@@ -522,7 +524,7 @@ impl std::ops::Index<DeclarationId> for Declarations {
         match index {
             DeclarationId::Protocol(ProtocolId(idx)) => &self.protocols[idx as usize],
             DeclarationId::Struct(StructId(idx)) => &self.structs[idx as usize],
-            DeclarationId::Const(ConstId(idx)) => &self.contants[idx as usize],
+            DeclarationId::Const(ConstId(idx)) => &self.consts[idx as usize],
             DeclarationId::Import(ImportId(idx)) => &self.imports[idx as usize],
             DeclarationId::Builtin(BuiltinId(idx)) => &self.builtins[idx as usize],
         }

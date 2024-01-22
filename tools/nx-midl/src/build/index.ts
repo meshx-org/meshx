@@ -86,7 +86,7 @@ async function buildLibrary(options: Options, context: ExecutorContext): Promise
         exec(
             `${context.root}/dist/tools/midl/midlgen_${options.language}/midlgen_${
                 options.language
-            } --json ${path.resolve(outDir, "ir.json")}`,
+            } --json ${path.resolve(outDir, "ir.json")} --out ${path.resolve(outDir, "file.rs")}`,
             {
                 cwd,
             },

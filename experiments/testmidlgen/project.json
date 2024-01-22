@@ -1,0 +1,133 @@
+{
+    "name": "experiments/testmidlgen",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "experiments/testmidlgen",
+    "projectType": "application",
+    "implicitDependencies": ["tools/midl/midlgen_rust", "tools/midl/midlgen"],
+    "targets": {
+        "build:table.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/table.json --out dist/testmidlgen/table.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:struct.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/struct.json --out dist/testmidlgen/struct.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:consts.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/consts.json --out dist/testmidlgen/consts.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:enum.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/enum.json --out dist/testmidlgen/enum.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:union.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/union.json --out dist/testmidlgen/union.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:nullable.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/nullable.json --out dist/testmidlgen/nullable.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:string_array.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/string_array.json --out dist/testmidlgen/string_array.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:vectors.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/vectors.json --out dist/testmidlgen/vectors.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:arrays.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/arrays.json --out dist/testmidlgen/arrays.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:doc_comments.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/doc_comments.json --out dist/testmidlgen/doc_comments.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:empty_struct.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/empty_struct.json --out dist/testmidlgen/empty_struct.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:encapsulated_structs.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/encapsulated_structs.json --out dist/testmidlgen/encapsulated_structs.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:error.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/error.json --out dist/testmidlgen/error.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:error_syntax.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/error_syntax.json --out dist/testmidlgen/error_syntax.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build:handles.json": {
+            "executor": "nx:run-commands",
+            "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/handles.json --out dist/testmidlgen/handles.rs "
+            },
+            "dependsOn": ["^build"]
+        },
+        "build": {
+            "executor": "nx:noop",
+            "dependsOn": [
+                "build:table.json",
+                "build:nullable.json",
+                "build:enum.json",
+                "build:struct.json",
+                "build:string_array.json",
+                "build:consts.json",
+                "build:vectors.json",
+                "build:arrays.json",
+                "build:doc_comments.json",
+                "build:empty_struct.json",
+                "build:encapsulated_structs.json",
+                "build:error.json",
+                "build:error_syntax.json",
+                "build:handles.json"
+            ]
+        }
+    }
+}

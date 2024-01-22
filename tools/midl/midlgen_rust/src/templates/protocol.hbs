@@ -1,130 +1,56 @@
 {{!
+// Copyright 2024 The MeshX Authors. All rights reserved.
 // Copyright 2018 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 }}
 
-{{#*inline "HandleWrapper"}}
-{{#if is_strict}}
-{{#if has_error_result}}
-{{ result.name }}HandleWrapper
-{{else}}{{! if not .HasErrorResult }}
-(
-    {{#each response}}
-    {{#if this.has_handle_metadata}}
-    {{ this.handle_wrapper_name }}<{{ this.response.type }}>,
-    {{else}}
-    {{ this.response.type }},
-    {{/if}}
-    {{/each}}
-)
-{{/if }}
-{{else}}{{! if not .IsStrict }}
-{{ result.name }}WireHandleWrapper
-{{/if }}{{! end if .IsStrict/not .IsStrict}}
-{{/inline}}
-
-{{#*inline "WrappedName"}}
-{{#if has_handle_metadata}}
-{{ handle_wrapper_name }}::<{{{ borrowed_type }}}>({{ name }})
-{{else}}
-{{ name }}
-{{/if}}
-{{/inline}}
-
-{{#*inline "RemoveHandleWrappers"}}
-{{#if (eq this.length 1)}}
-
-{{#if this.[0].has_handle_metadata}}
-_value.0.into_inner()
-{{else}}
-_value.0
-{{/if}}
-
-{{else}}{{! if (eq (len .) 1)}}
-
-(
-{{#each this}}
-{{#if has_handle_metadata }}
-_value.{{ @index }}.into_inner(),
-{{ else }}
-_value.{{ @index }},
-{{/if}}
-{{/each}}{{!end range}}
-)
-
-{{/if}}
-{{/inline}}
-
-{{#*inline "ResponseType"}}
-{{#if is_strict}}
-{{#if has_error_result}}
-{{ result.name }}HandleWrapper
-{{else}}{{!if not .HasErrorResult}}
-(
-    {{#each response }}
-    {{#if has_handle_metadata }}
-    {{ ../handle_wrapper_name }}<{{- this.type -}}>,
-    {{else}}
-    {{ this.type }},
-    {{/if}}
-    {{/each }}{{! end range }}
-)
-{{/if}}
-{{else}}{{!if not .IsStrict}}
-{{ result.name }}WireHandleWrapper
-{{/if}}{{!end if .IsStrict/not .IsStrict}}
-{{/inline}}
-
-{{#*inline "ResponseValue"}}
-{{#if has_error_result }}
-_value.map(|_value| {{> RemoveHandleWrappers result.ok }})
-{{else}}
-{{> RemoveHandleWrappers response }}
-{{/if}}
-{{/inline}}
-
-{{#with this as | protocol |}}
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct {{ protocol.name }}Marker;
+pub struct {{ marker }};
 
-impl fidl::endpoints::ProtocolMarker for {{ protocol.name }}Marker {
-    type Proxy = {{ protocol.name }}Proxy;
-    type RequestStream = {{ protocol.name }}RequestStream;
-{{#if protocol.protocol_name }}
-    const DEBUG_NAME: &'static str = "{{ protocol.protocol_name }}";
-{{else}}
-    const DEBUG_NAME: &'static str = "(anonymous) {{ protocol.name }}";
-{{/if }}
+impl midl::endpoints::ProtocolMarker for {{ marker }} {
+    type Proxy = {{ proxy }};
+    type RequestStream = {{ request_stream }};
+
+    #[cfg(target_os = "fuchsia")]
+    type SynchronousProxy = {{ synchronous_proxy }};
+
+    const DEBUG_NAME: &'static str = "{{ debug_name }}";
 }
 
-{{#if protocol.protocol_name }}
-impl fidl::endpoints::DiscoverableProtocolMarker for {{ protocol.name }}Marker {}
-{{/if }}
+{{#if discoverable}}
+impl midl::endpoints::DiscoverableProtocolMarker for {{ marker }} {}
+{{/if}}
 
-pub trait {{ protocol.name }}ProxyInterface: Send + Sync {
-    {{#each protocol.methods }}
-    {{#if this.has_response }}
-    type {{ this.camel_name }}ResponseFut: std::future::Future<Output = Result<(
-        {{!TODO}}
-    ), fidl::Error>> + Send;
+{{#each methods }}
+{{#if this.has_error}}
+{{#unless this.is_composed}}
+pub type {{ this.response.tuple_type }} = {{this.response.tuple_type_alias_rhs }};
+{{/unless}}
+{{/if}}
+{{/each}}
+
+pub trait {{ proxy_interface }}: Send + Sync {
+    {{#each methods}}
+    {{#if (and this.has_request this.has_response) }}
+    type {{ this.response_fut }}: std::future::Future<Output = Result<{{ this.response.tuple_type }}, midl::Error>> + Send;
     {{/if}}
 
-    {{#if this.has_request }}
+    {{#if this.has_request}}
     {{#if this.is_transitional}}
     #[allow(unused_variables)]
-    {{/if }}
-    fn r#{{ this.name }}(&self,
-        {{#each this.request }}
-        {{ this.name }}: {{{ this.borrowed_type }}},
-        {{/each }}
-    )
-    {{#if this.has_response}}
-    -> Self::{{ this.camel_name }}ResponseFut
-    {{else}}
-    -> Result<(), fidl::Error>
     {{/if}}
-    {{#if this.is_transitional}}
+    fn r#{{ this.name }}(&self,
+        {{#each this.request.parameters}}
+        {{this.name}}: {{this.type}},
+        {{/each}}
+    )
+    {{#if this.has_response }}
+    -> Self::{{ this.response_fut }}
+    {{else}}
+    -> Result<(), midl::Error>
+    {{/if }}
+    {{#if this.is_transitional }}
     { unimplemented!("transitional method {{ this.name }} is unimplemented"); }
     {{else}}
     ; {{! Semicolon for no default implementation }}
@@ -135,77 +61,79 @@ pub trait {{ protocol.name }}ProxyInterface: Send + Sync {
 
 #[derive(Debug)]
 #[cfg(target_os = "fuchsia")]
-pub struct {{ protocol.name }}SynchronousProxy {
-    client: fidl::client::sync::Client,
+pub struct {{ synchronous_proxy }} {
+    client: midl::client::sync::Client,
 }
 
 #[cfg(target_os = "fuchsia")]
-impl {{ protocol.name }}SynchronousProxy {
-    pub fn new(channel: fidl::Channel) -> Self {
-        let protocol_name = <{{ protocol.name }}Marker as fidl::endpoints::ProtocolMarker>::DEBUG_NAME;
-        Self { client: fidl::client::sync::Client::new(channel, protocol_name) }
+impl midl::endpoints::SynchronousProxy for {{synchronous_proxy}} {
+    type Proxy = {{proxy}};
+    type Protocol = {{marker}};
+
+    fn from_channel(inner: midl::Channel) -> Self {
+        Self::new(inner)
     }
 
-    pub fn into_channel(self) -> fidl::Channel {
+    fn into_channel(self) -> midl::Channel {
+        self.client.into_channel()
+    }
+
+    fn as_channel(&self) -> &midl::Channel {
+        self.client.as_channel()
+    }
+}
+
+#[cfg(target_os = "fuchsia")]
+impl {{ synchronous_proxy }} {
+    pub fn new(channel: midl::Channel) -> Self {
+        let protocol_name = <{{ marker }} as midl::endpoints::ProtocolMarker>::DEBUG_NAME;
+        Self { client: midl::client::sync::Client::new(channel, protocol_name) }
+    }
+
+    pub fn into_channel(self) -> midl::Channel {
         self.client.into_channel()
     }
 
     /// Waits until an event arrives and returns it. It is safe for other
     /// threads to make concurrent requests while waiting for an event.
-    pub fn wait_for_event(&self, deadline: zx::Time) -> Result<{{ protocol.name }}Event, fidl::Error> {
-        {{ protocol.name }}Event::decode(self.client.wait_for_event(deadline)?)
+    pub fn wait_for_event(&self, deadline: zx::Time) -> Result<{{ event }}, midl::Error> {
+        {{ event }}::decode(self.client.wait_for_event(deadline)?)
     }
 
-    {{#each protocol.methods as | method | }}
-    {{#if method.has_request }}
-    {{#each doc_comments}}
+    {{#each methods }}
+    {{#if this.has_request }}
+    {{#each this.doc_comments }}
     ///{{ this }}
-    {{/each}}
-    pub fn r#{{ method.name }}(&self,
-        {{#each method.request }}
-        mut {{ this.name }}: {{{ this.borrowed_type }}},
+    {{/each }}
+    pub fn r#{{ this.name }}(
+        &self,
+        {{#each this.request.parameters }}
+        mut {{ this.name }}: {{ this.type }},
         {{/each}}
-        {{#if method.has_response}}
-        ___deadline: zx::Time,
+        {{#if this.has_response }}
+        ___deadline: fx::Time,
         {{/if}}
-    ) -> Result<(
-        {{#each method.response}}
-        {{#if   }}, {{/if}}
-        {{ this.type }}
-        {{/each}}
-    ), fidl::Error> {
-        {{#if method.has_response}}
-            let _value: {{> HandleWrapper method }} =
-                self.client.send_query::<_, _,
-                  {{method.overflowable.on_request_encode}},
-                  {{method.overflowable.on_response_decode}}
-                >(&mut (
-                {{#each method.request}}
-                {{#if (ne @index 0) }}, {{/if}}
-                {{> WrappedName this}}
-                {{/each}}
-                ),
-                {{ printf method.ordinal "%#x" }},
-                {{ method.dynamic_flags }},
-                ___deadline,
-            )?;
-            {{#if method.is_flexible}}
-            {{#if method.has_error_result}}
-            let _value = _value.into_nested_result::<{{ protocol.name }}Marker>("{{ method.name }}")?;
-            {{else}}
-            let _value = _value.into_result::<{{ protocol.name }}Marker>("{{ method.name }}")?;
-            {{/if}}
-            {{/if}}
-            Ok({{> ResponseValue method }})
+    ) -> Result<{{ or this.response.tuple_type "()" }}, midl::Error> {
+        {{#if this.has_response }}
+        let _response = self.client.send_query::<
+            {{this.request.midl_type}},
+            {{this.response.midl_type}},
+        >(
+            {{ this.request.encode_expr }},
+            {{ this.ordinal }},
+            {{ this.dynamic_flags }},
+            ___deadline,
+        )?
+        {{#if this.is_flexible }}
+        .into_result::<{{ @root.marker }}>("{{ this.name }}")?
+        {{/if}};
+        Ok({{ convert_to_tuple this.response "_response" }})
         {{else}}
-            self.client.send::<_, {{ method.overflowable.on_request_encode }}>(&mut (
-                {{#each method.request }}
-                {{> WrappedName this}},
-                {{/each}}
-                ),
-                {{ printf method.ordinal "%#x" }},
-                {{ method.dynamic_flags }},
-            )
+        self.client.send::<{{this.request.midl_type}}>(
+            {{ this.request.encode_expr }},
+            {{ this.ordinal }},
+            {{ this.dynamic_flags }},
+        )
         {{/if}}
     }
     {{/if}}
@@ -213,185 +141,156 @@ impl {{ protocol.name }}SynchronousProxy {
 }
 
 #[derive(Debug, Clone)]
-pub struct {{ protocol.name }}Proxy {
-    client: fidl::client::Client,
+pub struct {{ proxy }} {
+    client: midl::client::Client,
 }
 
-impl fidl::endpoints::Proxy for {{ protocol.name }}Proxy {
-    type Protocol = {{ protocol.name }}Marker;
+impl midl::endpoints::Proxy for {{ proxy }} {
+    type Protocol = {{ marker }};
 
-    fn from_channel(inner: fidl::AsyncChannel) -> Self {
+    fn from_channel(inner: midl::AsyncChannel) -> Self {
         Self::new(inner)
     }
 
-    fn into_channel(self) -> Result<::fidl::AsyncChannel, Self> {
+    fn into_channel(self) -> Result<::midl::AsyncChannel, Self> {
         self.client.into_channel().map_err(|client| Self { client })
     }
 
-    fn as_channel(&self) -> &::fidl::AsyncChannel {
+    fn as_channel(&self) -> &::midl::AsyncChannel {
         self.client.as_channel()
     }
 }
 
-impl {{ protocol.name }}Proxy {
-    /// Create a new Proxy for {{ protocol.name }}
-    pub fn new(channel: fidl::AsyncChannel) -> Self {
-        let protocol_name = <{{ protocol.name }}Marker as fidl::endpoints::ProtocolMarker>::DEBUG_NAME;
-        Self { client: fidl::client::Client::new(channel, protocol_name) }
+impl {{ proxy }} {
+    /// Create a new Proxy for {{ ECI }}.
+    pub fn new(channel: midl::AsyncChannel) -> Self {
+        let protocol_name = <{{ marker }} as midl::endpoints::ProtocolMarker>::DEBUG_NAME;
+        Self { client: midl::client::Client::new(channel, protocol_name) }
     }
 
-    /// Get a Stream of events from the remote end of the {{ protocol.name }} protocol
+    /// Get a Stream of events from the remote end of the protocol.
     ///
     /// # Panics
     ///
     /// Panics if the event stream was already taken.
-    pub fn take_event_stream(&self) -> {{ protocol.name }}EventStream {
-        {{ protocol.name }}EventStream {
+    pub fn take_event_stream(&self) -> {{ event_stream }} {
+        {{ event_stream }} {
             event_receiver: self.client.take_event_receiver(),
         }
     }
 
-    {{#each protocol.methods as | method | }}
-    {{#if method.has_request }}
-    {{#each doc_comments}}
+    {{#each methods}}
+    {{#if this.has_request }}
+    {{#each this.doc_comments }}
     ///{{ this }}
     {{/each}}
-    pub fn r#{{ method.name }}(&self,
-        {{#each method.request }}
-        mut {{ this.name }}: {{{ this.borrowed_type }}},
-        {{/each }}
-    )
-    {{#if method.has_response}}
-    -> fidl::client::QueryResponseFut<(
-        {{#each method.response }}
-        {{#if (eq @index 0)}} {{ this.type }}
-        {{else}}, {{ this.type }} {{/if}}
+    pub fn r#{{ this.name }}(
+        &self,
+        {{#each this.request.parameters }}
+        mut {{ this.name }}: {{ this.type }},
         {{/each}}
-    )> {
+    )
+    {{#if this.has_response}}
+    -> midl::client::QueryResponseFut<{{this.response.tuple_type}}> {
     {{else}}
-    -> Result<(), fidl::Error> {
-    {{/if }}
-        {{ protocol.name }}ProxyInterface::r#{{ method.name }}(self,
-        {{#each method.request }}
-        {{ this.name }},
-        {{/each }}
+    -> Result<(), midl::Error> {
+    {{/if}}
+        {{ @root.proxy_interface }}::r#{{this.name}}(self,
+            {{#each this.request.parameters }}
+            {{ this.name }},
+            {{/each }}
         )
     }
-    {{/if}}{{! end if method.has_request}}
+    {{/if}}
     {{/each}}
 }
 
-impl {{ protocol.name }}ProxyInterface for {{ protocol.name}}Proxy {
-    {{#each protocol.methods as | method | }}
-    {{#if method.has_response }}
-    type {{ method.camel_name }}ResponseFut = fidl::client::QueryResponseFut<(
-        {{#each method.response }}
-        {{#if (eq @index 0)}} {{ this.type }}
-        {{else}}, {{ this.type }} {{/if}}
+impl {{ proxy_interface }} for {{ proxy }} {
+    {{#each methods }}
+    {{#if this.has_request }}
+    {{#if this.has_response }}
+    type {{ this.response_fut }} = midl::client::QueryResponseFut<{{ this.response.tuple_type }}>;
+    fn r#{{ this.name }}(
+        &self,
+        {{#each this.request.parameters }}
+        mut {{ this.name }}: {{ this.type }},
         {{/each}}
-    )>;
-    {{/if}}
-
-    {{#if method.has_request }}
-    {{#if method.has_response }}
-    fn r#{{ method.name }}(&self,
-        {{#each method.request }}
-        mut {{ this.name }}: {{{ this.borrowed_type }}},
-        {{/each }}
-    ) -> Self::{{ method.camel_name }}ResponseFut {
-        fn transform(result: Result<{{> ResponseType method }}, fidl::Error>) -> Result<(
-            {{#each method.response}}
-            {{#if (eq @index 0) }} {{ this.type }}
-            {{else}}, {{ this.type }} {{/if}}
-            {{/each}}
-        ), fidl::Error> {
-            {{#if method.is_flexible }}
-            result.and_then(|_value| {
-                {{#if method.has_error_result}}
-                let _value = _value.into_nested_result::<{{ protocol.name }}Marker>("{{ method.name }}")?;
-                {{else}}
-                let _value = _value.into_result::<{{ protocol.name }}Marker>("{{ method.name }}")?;
-                {{/if}}
-                Ok({{> ResponseValue method }})
-            })
-            {{else}}
-            result.map(|_value| {{> ResponseValue method }})
-            {{/if}}
+    ) -> Self::{{ this.response_fut }} {
+        fn _decode(mut _buf: Result<midl::MessageBufEtc, midl::Error>) -> Result<{{ this.response.tuple_type }}, midl::Error> {
+            let _response = midl::client::decode_transaction_body::<{{ this.response.midl_type }}, {{ this.ordinal }}>(_buf?)?
+            {{#if this.is_flexible }}
+            .into_result::<{{ @root.marker }}>("{{ this.name }}")?
+            {{/if}};
+            Ok({{ convert_to_tuple this.response "_response" }})
         }
-        let send_result = self.client.call_send_raw_query::<_, {{ method.overflowable.on_request_encode }}>(&mut (
-        {{#each method.request }}
-            {{#if (ne @index 0)}}, {{/if}}
-            {{> WrappedName request }}
-        {{/each}}
-        ), {{ printf method.ordinal "%#x" }}, {{ method.dynamic_flags }});
-        QueryResponseFut(match send_result {
-            Ok(res_fut) => {
-                future::maybe_done(res_fut
-                    .and_then(|buf| decode_transaction_body_fut::<_, _, {{ method.overflowable.on_response_decode }}>(buf, transform)))
-            }
-            Err(e) => MaybeDone::Done(Err(e)),
-        })
+        self.client.send_query_and_decode::<
+            {{ this.request.midl_type }},
+            {{ this.response.tuple_type }},
+        >(
+            {{ this.request.encode_expr }},
+            {{ this.ordinal }},
+            {{ this.dynamic_flags }},
+            _decode,
+        )
     }
     {{else}}
-    fn r#{{ method.name }}(&self,
-        {{#each method.request }}
-        mut {{ this.name }}: {{{ this.borrowed_type }}},
-        {{/each }}
-    ) -> Result<(), fidl::Error> {
-        self.client.send::<_, {{ method.overflowable.on_request_encode }}>(&mut (
-        {{#each method.request}}
-        {{#if (ne @index 0) }}, {{/if}}
-        {{> WrappedName this}}
+    fn r#{{this.name}}(
+        &self,
+        {{#each this.request.parameters}}
+        mut {{this.name}}: {{this.type}},
         {{/each}}
-    ), {{ printf method.ordinal "%#x" }}, {{ method.dynamic_flags }})
+    ) -> Result<(), midl::Error> {
+        self.client.send::<{{ this.request.midl_type }}>(
+            {{this.request.encode_expr}},
+            {{this.ordinal}},
+            {{this.dynamic_flags}},
+        )
     }
     {{/if}}
     {{/if}}
     {{/each}}
 }
 
-pub struct {{ protocol.name }}EventStream {
-    event_receiver: fidl::client::EventReceiver,
+pub struct {{ event_stream }} {
+    event_receiver: midl::client::EventReceiver,
 }
 
-impl std::marker::Unpin for {{ protocol.name }}EventStream {}
+impl std::marker::Unpin for {{ event_stream }} {}
 
-impl futures::stream::FusedStream for {{ protocol.name }}EventStream {
+impl futures::stream::FusedStream for {{ event_stream }} {
     fn is_terminated(&self) -> bool {
         self.event_receiver.is_terminated()
     }
 }
 
-impl futures::Stream for {{ protocol.name }}EventStream {
-    type Item = Result<{{ protocol.name }}Event, fidl::Error>;
+impl futures::Stream for {{ event_stream }} {
+    type Item = Result<{{ event }}, midl::Error>;
 
     fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>)
         -> std::task::Poll<Option<Self::Item>>
     {
-        let buf = match futures::ready!(
+        match futures::ready!(
             futures::stream::StreamExt::poll_next_unpin(&mut self.event_receiver, cx)?
         ) {
-            Some(buf) => buf,
-            None => return std::task::Poll::Ready(None),
-        };
-
-        std::task::Poll::Ready(Some({{ protocol.name }}Event::decode(buf)))
+            Some(buf) => std::task::Poll::Ready(Some({{ event }}::decode(buf))),
+            None => std::task::Poll::Ready(None),
+        }
     }
 }
 
 #[derive(Debug)]
-pub enum {{ protocol.name }}Event {
-    {{#each protocol.methods as | method | }}
-    {{#if (not method.has_request) }}
-    {{ method.camel_name }} {
-        {{#each method.response }}
-        {{ this.name }}: {{ this.type }},
-        {{/each }}
+pub enum {{ event }} {
+    {{#each methods }}
+    {{#unless this.has_request }}
+    {{ this.camel_name }} {
+        {{#each this.response.parameters }}
+        {{ this.name }}: {{this.owned_type}},
+        {{/each}}
     },
-    {{/if}}
+    {{/unless}}
     {{/each}}
 
-    {{#if protocol.one_way_unknown_interactions }}
+    {{#if one_way_unknown_interactions }}
     #[non_exhaustive]
     _UnknownEvent {
         /// Ordinal of the event that was sent.
@@ -400,148 +299,116 @@ pub enum {{ protocol.name }}Event {
     {{/if}}
 }
 
-impl {{ protocol.name }}Event {
-    {{#each protocol.methods as | method | }}
-    {{#if (not method.has_request) }}
+
+impl {{event}} {
+    {{#each methods }}
+    {{#unless this.has_request }}
     #[allow(irrefutable_let_patterns)]
-    pub fn into_{{ method.name }}(self) -> Option<(
-        {{#each method.response}}
-        {{#if (eq @index 0) }} {{ this.type }}
-        {{else}}, {{ this.type }} {{/if}}
-        {{/each}}
-    )> {
-        if let {{ protocol.name }}Event::{{ method.camel_name }} {
-            {{#each method.response }}
+    pub fn into_{{ this.name }}(self) -> Option<{{ this.response.tuple_type }}> {
+        if let {{ @root.event }}::{{ this.camel_name }} {
+            {{#each this.response.parameters }}
             {{ this.name }},
             {{/each}}
         } = self {
             Some((
-                {{#each method.response}}
-                {{#if (eq @index 0)}} {{ this.name }}
-                {{else}}, {{ this.name }} {{/if}}
+                {{#each this.response.parameters }}
+                {{#if @index }}, {{/if}}{{this.name}}
                 {{/each}}
             ))
         } else {
             None
         }
     }
-    {{/if}}
+    {{/unless}}
     {{/each}}
 
-    /// Decodes a message buffer as a [`{{ protocol.name }}Event`]. Transaction
-    /// ID in the message must be zero; this method does not check TXID.
-    fn decode(mut buf: fidl::MessageBufEtc) -> Result<{{ protocol.name }}Event, fidl::Error> {
+    /// Decodes a message buffer as a [`{{ event }}`].
+    fn decode(mut buf: midl::MessageBufEtc) -> Result<{{ event }}, midl::Error> {
         let (bytes, _handles) = buf.split_mut();
-        let (tx_header, _body_bytes) = fidl::encoding::decode_transaction_header(bytes)?;
-
-        match tx_header.ordinal() {
-            {{#each protocol.methods as | method | }}
-            {{#if (not method.has_request) }}
-            {{ printf this.ordinal "%#x" }} => {
-                let mut out_tuple: (
-                    {{#each method.response}}
-                    {{#if this.has_handle_metadata}}
-                    {{ this.handle_wrapper_name }}<{{ this.type }}>,
-                    {{else}}
-                    {{ this.type }},
-                    {{/if}}
-                    {{/each}}
-                ) = fidl::encoding::Decodable::new_empty();
-                fidl::duration_begin!("fidl", "decode", "bindings" => _FIDL_TRACE_BINDINGS_RUST, "name" => "{{ protocol.eci }}{{ method.camel_name }}Event");
-                fidl::trace_blob!("fidl:blob", "decode", bytes);
-                fidl::encoding::{{#if method.overflowable.on_response_decode}}
-                maybe_overflowing_decode
-                {{else}}
-                Decoder::decode_into
-                {{/if}}(&tx_header, _body_bytes, _handles, &mut out_tuple)?;
-                fidl::duration_end!("fidl", "decode", "bindings" => _FIDL_TRACE_BINDINGS_RUST, "size" => bytes.len() as u32, "handle_count" => _handles.len() as u32);
+        let (tx_header, _body_bytes) = midl::encoding::decode_transaction_header(bytes)?;
+        debug_assert_eq!(tx_header.tx_id, 0);
+        match tx_header.ordinal {
+            {{#each methods }}
+            {{#unless has_request }}
+            {{ this.ordinal }} => {
+                let mut out = midl::new_empty!({{ this.response.midl_type }});
+                midl::encoding::Decoder::decode_into::<{{ this.response.midl_type }}>(&tx_header, _body_bytes, _handles, &mut out)?;
                 Ok((
-                    {{ protocol.name }}Event::{{ method.camel_name }} {
-                        {{#each method.response}}
-                        {{#if this.has_handle_metadata }}
-                        {{ this.name }}: out_tuple.{{- @index -}}.into_inner(),
-                        {{else}}
-                        {{ this.name }}: out_tuple.{{- @index -}},
-                        {{/if}}
-                        {{/each}}
+                    {{ @root.event }}::{{ this.camel_name }} {
+                        {{ convert_to_fields this.response "out" }}
                     }
                 ))
             }
-            {{/if}}
+            {{/unless}}
             {{/each}}
-            {{#if protocol.one_way_unknown_interactions}}
-            _ if tx_header.dynamic_flags().contains(fidl::encoding::DynamicFlags::FLEXIBLE) => {
-                Ok({{ protocol.name }}Event::_UnknownEvent {
-                    ordinal: tx_header.ordinal(),
+            {{#if one_way_unknown_interactions }}
+            _ if tx_header.dynamic_flags().contains(midl::encoding::DynamicFlags::FLEXIBLE) => {
+                Ok({{ event }}::_UnknownEvent {
+                    ordinal: tx_header.ordinal,
                 })
-                // MessageBufEtc will close handles on drop, before the
-                // application can handle the _UnknownEvent variant, so this
-                // satisfies the RFC-0138 requirement to close handles first.
             }
             {{/if}}
-            _ => Err(fidl::Error::UnknownOrdinal {
-                ordinal: tx_header.ordinal(),
-                protocol_name: <{{ protocol.name }}Marker as fidl::endpoints::ProtocolMarker>::DEBUG_NAME,
+            _ => Err(midl::Error::UnknownOrdinal {
+                ordinal: tx_header.ordinal,
+                protocol_name: <{{ marker }} as midl::endpoints::ProtocolMarker>::DEBUG_NAME,
             })
         }
     }
 }
 
-/// A Stream of incoming requests for {{ protocol.name }}
-pub struct {{ protocol.name }}RequestStream {
-    inner: std::sync::Arc<fidl::ServeInner>,
+/// A Stream of incoming requests for {{ ECI }}.
+pub struct {{ request_stream }} {
+    inner: std::sync::Arc<midl::ServeInner>,
     is_terminated: bool,
 }
 
-impl std::marker::Unpin for {{ protocol.name }}RequestStream {}
+impl std::marker::Unpin for {{ request_stream }} {}
 
-impl futures::stream::FusedStream for {{ protocol.name }}RequestStream {
+impl futures::stream::FusedStream for {{ request_stream }} {
     fn is_terminated(&self) -> bool {
         self.is_terminated
     }
 }
 
-impl fidl::endpoints::RequestStream for {{ protocol.name }}RequestStream {
-    type Protocol = {{ protocol.name }}Marker;
-    type ControlHandle = {{ protocol.name }}ControlHandle;
+impl midl::endpoints::RequestStream for {{ request_stream }} {
+    type Protocol = {{ marker }};
+    type ControlHandle = {{ control_handle }};
 
-    fn from_channel(channel: fidl::AsyncChannel) -> Self {
+    fn from_channel(channel: midl::AsyncChannel) -> Self {
         Self {
-            inner: std::sync::Arc::new(fidl::ServeInner::new(channel)),
+            inner: std::sync::Arc::new(midl::ServeInner::new(channel)),
             is_terminated: false,
         }
     }
 
     fn control_handle(&self) -> Self::ControlHandle {
-        {{ protocol.name }}ControlHandle { inner: self.inner.clone() }
+        {{ control_handle }} { inner: self.inner.clone() }
     }
 
-    fn into_inner(self) -> (::std::sync::Arc<fidl::ServeInner>, bool) {
+    fn into_inner(self) -> (::std::sync::Arc<midl::ServeInner>, bool) {
         (self.inner, self.is_terminated)
     }
 
-    fn from_inner(inner: std::sync::Arc<fidl::ServeInner>, is_terminated: bool)
-        -> Self
-    {
+    fn from_inner(inner: std::sync::Arc<midl::ServeInner>, is_terminated: bool) -> Self {
         Self { inner, is_terminated }
     }
 }
 
-impl futures::Stream for {{ protocol.name }}RequestStream {
-    type Item = Result<{{ protocol.name }}Request, fidl::Error>;
+impl futures::Stream for {{ request_stream }} {
+    type Item = Result<{{ request }}, midl::Error>;
 
     fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>)
         -> std::task::Poll<Option<Self::Item>>
     {
         let this = &mut *self;
-        if this.inner.poll_shutdown(cx) {
+        if this.inner.check_shutdown(cx) {
             this.is_terminated = true;
             return std::task::Poll::Ready(None);
         }
         if this.is_terminated {
-            panic!("polled {{ protocol.name }}RequestStream after completion");
+            panic!("polled {{ request_stream }} after completion");
         }
-        fidl::encoding::with_tls_decode_buf(|bytes, handles| {
+        midl::encoding::with_tls_decode_buf(|bytes, handles| {
             match this.inner.channel().read_etc(cx, bytes, handles) {
                 std::task::Poll::Ready(Ok(())) => {},
                 std::task::Poll::Pending => return std::task::Poll::Pending,
@@ -549,127 +416,72 @@ impl futures::Stream for {{ protocol.name }}RequestStream {
                     this.is_terminated = true;
                     return std::task::Poll::Ready(None);
                 }
-                std::task::Poll::Ready(Err(e)) => return std::task::Poll::Ready(Some(Err(fidl::Error::ServerRequestRead(e)))),
+                std::task::Poll::Ready(Err(e)) => return std::task::Poll::Ready(Some(Err(midl::Error::ServerRequestRead(e)))),
             }
 
             // A message has been received from the channel
-            let (header, _body_bytes) = fidl::encoding::decode_transaction_header(bytes)?;
-            if !header.is_compatible() {
-                return std::task::Poll::Ready(Some(Err(fidl::Error::IncompatibleMagicNumber(header.magic_number()))));
-            }
+            let (header, _body_bytes) = midl::encoding::decode_transaction_header(bytes)?;
 
-            std::task::Poll::Ready(Some(match header.ordinal() {
-                {{#each protocol.methods as | method | }}
-                {{#if method.has_request }}
-                {{ printf method.ordinal "%#x" }} => {
-                    let mut req: (
-                        {{#each method.request}}
-                            {{#if has_handle_metadata}}
-                            {{ this.handle_wrapper_name }}<{{ this.type }}>,
-                            {{else}}
-                            {{ this.type }},
-                            {{/if}}
-                        {{/each}}
-                    ) = fidl::encoding::Decodable::new_empty();
-                    fidl::duration_begin!("fidl", "decode", "bindings" => _FIDL_TRACE_BINDINGS_RUST, "name" => "{{ protocol.eci }}{{ method.camel_name }}Request");
-                    fidl::trace_blob!("fidl:blob", "decode", bytes);
-                    fidl::encoding::{{#if method.overflowable.on_request_decode}}
-                    maybe_overflowing_decode
+            std::task::Poll::Ready(Some(match header.ordinal {
+                {{#each methods}}
+                {{#if this.has_request}}
+                {{this.ordinal}} => {
+                    header.validate_request_tx_id(
+                    {{#if this.has_response}}
+                        midl::MethodType::TwoWay
                     {{else}}
-                    Decoder::decode_into
-                    {{/if}}(&header, _body_bytes, handles, &mut req)?;
-                    fidl::duration_end!("fidl", "decode", "bindings" => _FIDL_TRACE_BINDINGS_RUST, "size" => bytes.len() as u32, "handle_count" => handles.len() as u32);
-                    let control_handle = {{ protocol.name }}ControlHandle {
+                        midl::MethodType::OneWay
+                    {{/if}}
+                    )?;
+                    let mut req = midl::new_empty!({{this.request.midl_type}});
+                    midl::encoding::Decoder::decode_into::<{{this.request.midl_type}}>(&header, _body_bytes, handles, &mut req)?;
+                    let control_handle = {{@root.control_handle}} {
                         inner: this.inner.clone(),
                     };
-
-                    Ok({{ protocol.name }}Request::{{ method.camel_name }} {
-                        {{#each method.request}}
-                            {{#if has_handle_metadata}}
-                            {{ this.name }}: req.{{ @index }}.into_inner(),
-                            {{else}}
-                            {{ this.name }}: req.{{ @index }},
-                            {{/if}}
-                        {{/each}}
-                        {{#if method.has_response}}
-                            responder: {{ protocol.name }}{{ method.camel_name }}Responder {
-                                control_handle: std::mem::ManuallyDrop::new(control_handle),
-                                tx_id: header.tx_id(),
-                                ordinal: header.ordinal(),
-                            },
-                            {{else}}
-                            control_handle,
+                    Ok({{@root.request}}::{{this.camel_name}} {
+                        {{ convert_to_fields "req" }}
+                        {{#if this.has_response}}
+                        responder: {{this.responder}} {
+                            control_handle: std::mem::ManuallyDrop::new(control_handle),
+                            tx_id: header.tx_id,
+                        },
+                        {{else}}
+                        control_handle,
                         {{/if}}
                     })
                 }
                 {{/if}}
                 {{/each}}
-                
-                {{#if protocol.one_way_unknown_interactions}}
-                _ if header.tx_id() == 0 && header.dynamic_flags().contains(fidl::encoding::DynamicFlags::FLEXIBLE) => {
-                    let control_handle = {{ protocol.name }}ControlHandle {
-                        inner: this.inner.clone(),
-                    };
-                    Ok({{ protocol.name }}Request::_UnknownMethod {
-                        ordinal: header.ordinal(),
-                        control_handle,
-                        {{#if protocol.two_way_unknown_interactions}}
-                        unknown_method_type: fidl::endpoints::UnknownMethodType::OneWay,
+                {{#if one_way_unknown_interactions }}
+                _ if header.tx_id == 0 && header.dynamic_flags().contains(midl::encoding::DynamicFlags::FLEXIBLE) => {
+                    Ok({{ request }}::_UnknownMethod {
+                        ordinal: header.ordinal,
+                        control_handle: {{ control_handle }} { inner: this.inner.clone() },
+                        {{#if two_way_unknown_interactions }}
+                        method_type: midl::MethodType::OneWay,
                         {{/if}}
                     })
-                    // with_tls_decode_buf will clear the handles when we return
-                    // before the application can handle the _UnknownMethod, so
-                    // we don't need to clear it explicitly to meet the RFC
-                    // requirement to close handles before calling an unknown
-                    // interaction handler.
                 }
-                {{#if protocol.two_way_unknown_interactions}}
-                _ if header.dynamic_flags().contains(fidl::encoding::DynamicFlags::FLEXIBLE) => {
-                    let control_handle = {{ protocol.name }}ControlHandle {
-                        inner: this.inner.clone(),
-                    };
-
-                    let mut response = fidl::encoding::OpenResult::<(), ()>::TransportErr(fidl::encoding::TransportErr::UnknownMethod);
-
-                    let mut msg = fidl::encoding::TransactionMessage {
-                        header: fidl::encoding::TransactionHeader::new(
-                            header.tx_id(), header.ordinal(), header.dynamic_flags(),
-                        ),
-                        body: &mut response,
-                    };
-
-                    // RFC-0138 requires us to close handles in the incoming
-                    // message before replying, so we can't wait for
-                    // with_tls_decode_buf to auto-clear handles when we return.
-                    handles.clear();
-
-                    // We are inside of with_tls_decode_buf, so we can't use
-                    // with_tls_encode_buf. However, we know that the unknown
-                    // interaction reply will not contain any handles, so
-                    // creating a new Vec here does not cause an allocation.
-                    let mut handles = Vec::new();
-                    fidl::duration_begin!("fidl", "encode", "bindings" => _FIDL_TRACE_BINDINGS_RUST, "name" => "{{ protocol.eci }}_UnknownMethodResponse");
-                    fidl::encoding::Encoder::encode(bytes, &mut handles, &mut msg)?;
-                    fidl::trace_blob!("fidl:blob", "encode", bytes.as_slice());
-                    fidl::duration_end!("fidl", "encode", "bindings" => _FIDL_TRACE_BINDINGS_RUST, "size" => bytes.len() as u32, "handle_count" => handles.len() as u32);
-
-                    control_handle
-                        .inner
-                        .channel()
-                        .write_etc(&*bytes, &mut handles)
-                        .map_err(fidl::Error::ServerResponseWrite)?;
-
-                    Ok({{ protocol.name }}Request::_UnknownMethod {
-                        ordinal: header.ordinal(),
-                        control_handle,
-                        unknown_method_type: fidl::endpoints::UnknownMethodType::TwoWay,
+                {{#if two_way_unknown_interactions }}
+                _ if header.dynamic_flags().contains(midl::encoding::DynamicFlags::FLEXIBLE) => {
+                    this.inner.send_framework_err(
+                        midl::encoding::FrameworkErr::UnknownMethod,
+                        header.tx_id,
+                        header.ordinal,
+                        header.dynamic_flags(),
+                        (bytes, handles),
+                    )?;
+                    Ok({{ request }}::_UnknownMethod {
+                        ordinal: header.ordinal,
+                        control_handle: {{ control_handle }} { inner: this.inner.clone() },
+                        method_type: midl::MethodType::TwoWay,
                     })
                 }
                 {{/if}}
                 {{/if}}
-                _ => Err(fidl::Error::UnknownOrdinal {
-                    ordinal: header.ordinal(),
-                    protocol_name: <{{ protocol.name }}Marker as fidl::endpoints::ProtocolMarker>::DEBUG_NAME,
+                _ => Err(midl::Error::UnknownOrdinal {
+                    ordinal: header.ordinal,
+                    protocol_name: <{{ marker }} as midl::endpoints::ProtocolMarker>::DEBUG_NAME,
                 }),
             }))
         })
@@ -677,74 +489,74 @@ impl futures::Stream for {{ protocol.name }}RequestStream {
 }
 
 {{#each doc_comments}}
-///{{ this }}
+///{{this}}
 {{/each}}
 #[derive(Debug)]
-pub enum {{ protocol.name }}Request {
-    {{#each protocol.methods as | method |}}
-    {{#if method.has_request }}
-    {{#each method.doc_comments}}
-    ///{{ this }}
+pub enum {{ request }} {
+    {{#each methods }}
+    {{#if this.has_request }}
+    {{#each this.doc_comments}}
+    ///{{this}}
     {{/each}}
-    {{ method.camel_name }} {
-        {{#each method.request }}
-        {{ this.name }}: {{ this.type }},
+    {{ this.camel_name }} {
+        {{#each this.request.parameters }}
+        {{this.name}}: {{this.owned_type}},
         {{/each}}
-        {{#if method.has_response}}
-        responder: {{ protocol.name }}{{ method.camel_name }}Responder,
+        {{#if has_response }}
+        responder: {{ responder }},
         {{else}}
-        control_handle: {{ protocol.name }}ControlHandle,
+        control_handle: {{ control_handle }},
         {{/if}}
     },
     {{/if}}
     {{/each}}
 
-    {{#if protocol.one_way_unknown_interactions }}
+    {{#if one_way_unknown_interactions}}
     /// An interaction was received which does not match any known method.
     #[non_exhaustive]
     _UnknownMethod {
         /// Ordinal of the method that was called.
         ordinal: u64,
-        control_handle: {{ protocol.name }}ControlHandle,
-        {{#if protocol.two_way_unknown_interactions}}
-        unknown_method_type: fidl::endpoints::UnknownMethodType,
+        control_handle: {{ control_handle }},
+        {{#if two_way_unknown_interactions }}
+        method_type: midl::MethodType,
         {{/if}}
     },
     {{/if}}
 }
 
-impl {{ protocol.name }}Request {
-    {{#each protocol.methods}}
-    {{#if method.has_request}}
+impl {{request}} {
+    {{#each methods}}
+    {{#if this.has_request}}
     #[allow(irrefutable_let_patterns)]
-    pub fn into_{{ method.name }}(self) -> Option<(
-        {{#each method.request}}
-        {{ this.type }},
+    pub fn into_{{this.name}}(self) -> Option<(
+        {{#each this.request.parameters }}
+        {{this.owned_type}},
         {{/each}}
-        {{#if method.has_response}}
-        {{ protocol.name }}{{ method.camel_name }}Responder
+        {{#if this.has_response}}
+        {{this.responder}}
         {{else}}
-        {{ protocol.name }}ControlHandle
+        {{@root.control_handle}}
         {{/if}}
     )> {
-        if let {{ protocol.name }}Request::{{ method.camel_name }} {
-            {{#each method.request}}
-            {{ this.name }},
+        if let {{request}}::{{this.camel_name}} {
+            {{#each this.request.parameters }}
+            {{this.name}},
             {{/each}}
-            {{#if method.has_response}}
+            {{#if this.has_response }}
             responder,
             {{else}}
             control_handle,
             {{/if}}
         } = self {
             Some((
-                {{#each method.request}}
-                {{ this.name }},
+                {{#each this.request.parameters}}
+                {{this.name}},
                 {{/each}}
-                {{#if method.has_response}}
-            	responder,
+                {{#if this.has_response}}
+                responder
                 {{else}}
-                control_handle,
+                control_handle
                 {{/if}}
             ))
         } else {
@@ -754,89 +566,84 @@ impl {{ protocol.name }}Request {
     {{/if}}
     {{/each}}
 
-    /// Name of the method defined in FIDL
+    /// Name of the method defined in MIDL
     pub fn method_name(&self) -> &'static str {
         match *self {
-            {{#each protocol.methods }}
+            {{#each methods}}
             {{#if this.has_request }}
-            {{ protocol.name }}Request::{{ this.camel_name }}{..} => "{{ this.name }}",
+            {{@root.request}}::{{ this.camel_name }}{..} => "{{ this.name }}",
             {{/if}}
             {{/each}}
 
-            {{#if protocol.two_way_unknown_interactions }}
-            {{ protocol.name }}Request::_UnknownMethod {
-                unknown_method_type: fidl::endpoints::UnknownMethodType::OneWay, ..
+            {{#if @root.two_way_unknown_interactions }}
+            {{ @root.request }}::_UnknownMethod {
+                method_type: midl::MethodType::OneWay, ..
             } => "unknown one-way method",
-            {{ protocol.name }}Request::_UnknownMethod {
-                unknown_method_type: fidl::endpoints::UnknownMethodType::TwoWay, ..
+            {{ @root.request }}::_UnknownMethod {
+                method_type: midl::MethodType::TwoWay, ..
             } => "unknown two-way method",
-            {{else if protocol.one_way_unknown_interactions }}
-            {{ protocol.name }}Request::_UnknownMethod {..} => "unknown one-way method",
+            {{else if @root.one_way_unknown_interactions }}
+            {{request}}::_UnknownMethod {..} => "unknown one-way method",
             {{/if}}
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct {{ protocol.name }}ControlHandle {
-    inner: std::sync::Arc<fidl::ServeInner>,
+pub struct {{ control_handle }} {
+    inner: std::sync::Arc<midl::ServeInner>,
 }
 
-impl fidl::endpoints::ControlHandle for {{ protocol.name }}ControlHandle {
+impl midl::endpoints::ControlHandle for {{ control_handle }} {
     fn shutdown(&self) {
         self.inner.shutdown()
     }
 
-    fn shutdown_with_epitaph(&self, status: zx_status::Status) {
+    fn shutdown_with_epitaph(&self, status: fx_status::Status) {
         self.inner.shutdown_with_epitaph(status)
+    }
+
+    fn is_closed(&self) -> bool {
+        self.inner.channel().is_closed()
+    }
+
+    fn on_closed<'a>(&'a self) -> midl::OnSignals<'a> {
+        self.inner.channel().on_closed()
     }
 }
 
-impl {{ protocol.name }}ControlHandle {
-    {{#each protocol.methods as | method | }}
-    {{#if (not method.has_request) }}
-    pub fn send_{{ method.name }}(&self
-        {{#each method.response}},
-        mut {{ this.name }}: {{ this.borrowed_type }}
+impl {{ control_handle }} {
+    {{#each methods }}
+    {{#unless this.has_request }}
+    pub fn send_{{ this.name }}(&self,
+        {{#each this.response.parameters }}
+        mut {{this.name}}: {{this.type}},
         {{/each}}
-    ) -> Result<(), fidl::Error> {
-        let mut response = (
-            {{#each method.response}}
-                {{#if (ne 0 @index) }}, {{/if}}
-                {{> WrappedName this }}
-            {{/each}}
-        );
-
-        let mut msg = fidl::encoding::TransactionMessage {
-            header: fidl::encoding::TransactionHeader::new(0, {{ printf method.ordinal "%#x"}}
-            , {{ method.dynamic_flags }}),
-            body: &mut response,
-        };
-
-        fidl::encoding::with_tls_encoded::<_, _, {{ method.overflowable.on_response_encode }}>(&mut msg, |bytes, handles| {
-            self.inner.channel().write_etc(&*bytes, &mut *handles).map_err(fidl::Error::ServerResponseWrite)
-        })?;
-
-        Ok(())
+    ) -> Result<(), midl::Error> {
+        self.inner.send::<{{ this.response.midl_type }}>(
+            {{ this.response.encode_expr }},
+            0,
+            {{ this.ordinal }},
+            {{ this.dynamic_flags }}
+        )
     }
-    {{/if}}
+    {{/unless}}
     {{/each}}
 }
 
-{{#each protocol.methods as | method | }}
-{{#if_cond method.has_request "&&" method.has_response }}
-#[must_use = "FIDL methods require a response to be sent"]
+{{#each methods}}
+{{#if (and this.has_request this.has_response) }}
+#[must_use = "MIDL methods require a response to be sent"]
 #[derive(Debug)]
-pub struct {{ protocol.name }}{{ method.camel_name }}Responder {
-    control_handle: std::mem::ManuallyDrop<{{ protocol.name }}ControlHandle>,
+pub struct {{ $method.Responder }} {
+    control_handle: std::mem::ManuallyDrop<{{ $protocol.ControlHandle }}>,
     tx_id: u32,
-    ordinal: u64,
 }
 
-/// Set the the channel to be shutdown (see [`{{ protocol.name }}ControlHandle::shutdown`])
+/// Set the the channel to be shutdown (see [`{{ control_handle }}::shutdown`])
 /// if the responder is dropped without sending a response, so that the client
 /// doesn't hang. To prevent this behavior, call `drop_without_shutdown`.
-impl std::ops::Drop for {{ protocol.name }}{{ method.camel_name }}Responder {
+impl std::ops::Drop for {{ responder }} {
     fn drop(&mut self) {
         self.control_handle.shutdown();
         // Safety: drops once, never accessed again
@@ -844,10 +651,10 @@ impl std::ops::Drop for {{ protocol.name }}{{ method.camel_name }}Responder {
     }
 }
 
-impl fidl::endpoints::Responder for {{ protocol.name }}{{ method.camel_name }}Responder {
-    type ControlHandle = {{ protocol.name }}ControlHandle;
+impl midl::endpoints::Responder for {{ responder }} {
+    type ControlHandle = {{ control_handle }};
 
-    fn control_handle(&self) -> &{{ protocol.name }}ControlHandle {
+    fn control_handle(&self) -> &{{ control_handle }} {
         &self.control_handle
     }
 
@@ -859,118 +666,55 @@ impl fidl::endpoints::Responder for {{ protocol.name }}{{ method.camel_name }}Re
     }
 }
 
-impl {{ protocol.name }}{{ method.camel_name }}Responder {
-    /// Sends a response to the FIDL transaction.
+impl {{ responder }} {
+    /// Sends a response to the MIDL transaction.
     ///
     /// Sets the channel to shutdown if an error occurs.
     pub fn send(self,
-        {{#each method.response}}
-        mut {{ this.name }}: {{{ this.borrowed_type }}},
+        {{#each this.response.parameters}}
+        mut {{this.name}}: {{this.type}},
         {{/each}}
-    ) -> Result<(), fidl::Error> {
-        let r = self.send_raw(
-            {{#each method.response}}
-            {{ this.name }},
-        	{{/each}}
+    ) -> Result<(), midl::Error> {
+        let _result = self.send_raw(
+            {{#each this.response.parameters }}
+            {{this.name}},
+            {{/each}}
         );
-        if r.is_err() {
+        if _result.is_err() {
             self.control_handle.shutdown();
         }
         self.drop_without_shutdown();
-        r
+        _result
     }
 
-    /// Similar to "send" but does not shutdown the channel if
-    /// an error occurs.
+    /// Similar to "send" but does not shutdown the channel if an error occurs.
     pub fn send_no_shutdown_on_err(self,
-        {{#each method.response}}
-        mut {{ this.name }}: {{{ this.borrowed_type }}},
+        {{#each this.response.parameters}}
+        mut {{this.name}}: {{this.type}},
         {{/each}}
-    ) -> Result<(), fidl::Error> {
-        let r = self.send_raw(
-            {{#each method.response}}
-            {{ this.name }},
-        	{{/each}}
+    ) -> Result<(), midl::Error> {
+        let _result = self.send_raw(
+            {{#each this.response.parameters }}
+            {{this.name}},
+            {{/each}}
         );
         self.drop_without_shutdown();
-        r
+        _result
     }
 
-    fn send_raw(&self,
-        {{#each method.response }}
-        {{#if method.has_error_result }}
-        mut _result: {{{ this.borrowed_type }}},
-        {{else}}
-        mut {{ this.name }}: {{{ this.borrowed_type }}},
-        {{/if}}
+    fn send_raw(
+        &self,
+        {{#each this.response.parameters }}
+        mut {{this.name}}: {{this.type}},
         {{/each}}
-    ) -> Result<(), fidl::Error> {
-        let mut response = (
-            {{#if method.has_error_result }}
-                {{#if method.is_flexible}}
-                fidl::encoding::OpenResult::from(
-                {{/if}}
-                    {{#if method.Result.has_any_handle_wrappers}}
-                    match _result {
-                        Ok((
-                            {{#each method.result.ok }}
-                            {{#if (ne 0 @index)}}, {{/if}}
-                            _{{ @index }}
-                            {{/each}}
-                        )) => Ok((
-                        {{#each method.result.ok}}
-                            {{#if (ne 0 @index)}}, {{/if}}
-                            {{#if this.has_handle_metadata}}
-                            {{ this.handle_wrapper_name }}(_{{ @index }})
-                            {{else}}
-                            _{{ @index }}
-                            {{/if}}
-                        {{/each}}
-                        )),
-                        Err(e) => Err(e),
-                    }
-                    {{else}}
-                    _result
-                    {{/if}}
-                {{#if method.is_flexible}}
-                )
-                {{/if}}
-            {{else}}
-                {{#if method.is_flexible}}fidl::encoding::OpenResult::<_, ()>::Ok({{/if}}
-                (
-                    {{#each method.response}}
-                    {{#if (ne 0 @index)}}, {{/if}}
-                    {{> WrappedName this}}
-                    {{/each}}
-                )
-                {{#if method.is_flexible}}){{/if}}
-            {{/if}}
-        );
-
-        let mut msg = fidl::encoding::TransactionMessage {
-            header: fidl::encoding::TransactionHeader::new(
-                self.tx_id, self.ordinal, {{ method.dynamic_flags }},
-            ),
-            body: &mut response,
-        };
-
-        fidl::encoding::with_tls_encode_buf(|bytes, handles| {
-            fidl::duration_begin!("fidl", "encode", "bindings" => _FIDL_TRACE_BINDINGS_RUST, "name" => "{{ protocol.eci }}{{ method.camel_name }}Response");
-            fidl::encoding::Encoder::encode(bytes, handles, &mut msg)?;
-            {{#if method.overflowable.on_response_encode }}fidl::encoding::maybe_overflowing_after_encode(bytes, handles)?;
-            {{/if}}
-            fidl::trace_blob!("fidl:blob", "encode", bytes.as_slice());
-            fidl::duration_end!("fidl", "encode", "bindings" => _FIDL_TRACE_BINDINGS_RUST, "size" => bytes.len() as u32, "handle_count" => handles.len() as u32);
-
-            self.control_handle.inner.channel().write_etc(&*bytes, &mut *handles)
-                .map_err(fidl::Error::ServerResponseWrite)?;
-            Ok(())
-        })
+    ) -> Result<(), midl::Error> {
+        self.control_handle.inner.send::<{{ this.response.midl_type }}>(
+            {{ this.response.encode_expr }},
+            self.tx_id,
+            {{ this.ordinal }},
+            {{ this.dynamic_flags }}
+        )
     }
 }
-
-{{/if_cond}}{{! if_cond method.has_request && method.has_response}}
+{{/if}}
 {{/each}}
-
-
-{{/with }}

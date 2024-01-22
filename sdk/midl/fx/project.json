@@ -13,7 +13,7 @@
                 "outDir": "dist/sdk/midl/fx",
                 "midlJson": "./midl.json",
                 "srcs": ["./component_runner.midl"],
-                "language": "ts"
+                "language": "rust"
             }
         }
     }

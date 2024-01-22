@@ -1,5 +1,8 @@
-use handlebars::{Context, Handlebars, Helper, HelperDef, HelperResult, JsonValue, Output, RenderError};
+use handlebars::{Context, Handlebars, Helper, HelperDef, HelperResult, Output, RenderError};
 use handlebars::{RenderContext, Renderable};
+use serde_json::json;
+
+use crate::ir;
 
 #[derive(Clone, Copy)]
 pub struct IfCondHelper {}
@@ -7,7 +10,7 @@ pub struct IfCondHelper {}
 impl HelperDef for IfCondHelper {
     fn call<'reg: 'rc, 'rc>(
         &self,
-        h: &Helper<'reg, 'rc>,
+        h: &Helper<'rc>,
         r: &'reg Handlebars<'reg>,
         ctx: &'rc Context,
         rc: &mut RenderContext<'reg, 'rc>,
@@ -62,7 +65,29 @@ pub struct PrintfHelper {}
 impl HelperDef for PrintfHelper {
     fn call<'reg: 'rc, 'rc>(
         &self,
-        h: &Helper<'reg, 'rc>,
+        h: &Helper<'rc>,
+        r: &'reg Handlebars<'reg>,
+        ctx: &'rc Context,
+        rc: &mut RenderContext<'reg, 'rc>,
+        out: &mut dyn Output,
+    ) -> HelperResult {
+        let tmpl = h.template();
+        println!("{:#?}", rc);
+
+        match tmpl {
+            Some(t) => t.render(r, ctx, rc, out),
+            None => Ok(()),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct CommentsHelper {}
+
+impl HelperDef for CommentsHelper {
+    fn call<'reg: 'rc, 'rc>(
+        &self,
+        h: &Helper<'rc>,
         r: &'reg Handlebars<'reg>,
         ctx: &'rc Context,
         rc: &mut RenderContext<'reg, 'rc>,
@@ -70,9 +95,22 @@ impl HelperDef for PrintfHelper {
     ) -> HelperResult {
         let tmpl = h.template();
 
-        match tmpl {
-            Some(t) => t.render(r, ctx, rc, out),
-            None => Ok(()),
-        }
+        let param_attributes = h
+            .param(0)
+            .ok_or_else(|| RenderError::new("Param 'attributes' not found for helper \"doc_comments\""))?;
+
+        let value = param_attributes.value().clone();
+
+        let ir: Vec<ir::Attribute> = serde_json::from_value(value).unwrap();
+        println!("{:#?}", ir);
+
+        let val = json!(["test"]);
+         
+        println!("{:#?}", val);
+        rc.set_context(Context::wraps(val).unwrap());
+
+        
+
+         Ok(())
     }
 }

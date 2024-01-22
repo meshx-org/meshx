@@ -309,7 +309,7 @@ impl<T: ProtocolMarker> ::std::fmt::Debug for ClientEnd<T> {
 
 impl<T> HandleBased for ClientEnd<T> {}
 
-/// The `Server` end of a FIDL connection.
+/// The `Server` end of a MIDL connection.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ServerEnd<T> {
     inner: Channel,

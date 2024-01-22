@@ -6,7 +6,7 @@ use std::{
 
 use super::Context;
 use crate::{
-    ast::{self, Declaration},
+    ast,
     diagnotics::DiagnosticsError,
 };
 
@@ -90,7 +90,7 @@ impl<'a, 'ctx, 'd, 'e> Lookup<'a, 'ctx, 'd, 'e> {
         // internal one.
 
         for decl in results.iter() {
-            if let ast::Declaration::Builtin(builtin_decl) = decl.as_ref() {
+            if let ast::Declaration::Builtin(builtin_decl) = decl {
                 if builtin_decl.borrow().is_internal() {
                     return None;
                 }
@@ -327,6 +327,7 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
             ast::Element::Builtin(_) => {}
             ast::Element::Bits => todo!(),
             ast::Element::Enum => todo!(),
+            ast::Element::Resource => {}
             ast::Element::Protocol(_) => {}
             ast::Element::Builtin(_) => {}
             ast::Element::Struct(_) => {}
@@ -355,9 +356,9 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
         }
     }
 
-    fn visit_constant(&self, constant: &ast::ConstantValue, context: &ResolveContext) {
+    fn visit_constant(&self, constant: &ast::Constant, context: &ResolveContext) {
         match constant {
-            ast::ConstantValue::Identifier(identifier_constant) => {
+            ast::Constant::Identifier(identifier_constant) => {
                 self.visit_reference(&identifier_constant.reference, context);
             }
             _ => return,

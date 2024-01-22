@@ -1,108 +1,25 @@
 {{!
-// Copyright 2023 MeshX Authors. All rights reserved.
+// Copyright 2024 MeshX Authors. All rights reserved.
 // Copyright 2018 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 }}
 
-{{#if members}}
-
-{{#each doc_comments}}
+{{#each (doc_comments ir.maybe_attributes)}}
 ///{{ this }}
 {{/each}}
-{{! TODO derives }}
-{{#if use_fidl_struct_copy }}
+{{#if use_midl_struct_copy }}
 #[repr(C)]
-{{/if}}
-pub struct {{ name }} {
+{{/if }}
+pub struct {{ name }}{{#unless members }};{{ else }}{
     {{#each members }}
-    {{#each doc_comments}}
+    {{#each (doc_comments this.ir.doc_comments) }}
     ///{{ this }}
     {{/each}}
-    pub {{ name }}: {{ type }},
-    {{/each}}
+    pub {{ this.name }}: {{{this.type.owned}}},
+    {{/each }}
 }
+{{/unless }}
 
-{{#if is_value_type }}
-impl midl::encoding::Persistable for {{ name }} {}
-{{/if}}
-
-{{#if use_fidl_struct_copy}}
-fidl_struct_copy! {
-{{else}}
-fidl_struct! {
-{{/if}}
-    name: {{ name }},
-    members: [
-        {{#each members }}
-        {{ name }} {
-            ty: {{ type }},
-            offset_v1: {{ offset_v1 }},
-            offset_v2: {{ offset_v2 }},
-            {{#if_cond has_handle_metadata "&&" ../use_fidl_struct_copy}}
-            handle_metadata: {
-                handle_subtype: {{ handle_subtype }},
-                handle_rights: {{ handle_rights }},
-            },
-            {{/if_cond }}
-        },
-        {{/each}}
-    ],
-    padding_v1: [
-        {{#if use_fidl_struct_copy -}}
-        {{#each flattened_padding_markers_v1 }}
-        {
-            ty: {{ type }},
-            offset: {{ offset }},
-            mask: {{ mask }},
-        },
-        {{/each }}
-        {{else}}
-        {{#each padding_markers_v1 }}
-        {
-            ty: {{ type }},
-            offset: {{ offset }},
-            mask: {{ mask }},
-        },
-        {{/each }}
-        {{/if}}
-        ],
-    padding_v2: [
-        {{#if use_fidl_struct_copy}}
-        {{#each flattened_padding_markers_v2 }}
-        {
-            ty: {{ type }},
-            offset: {{ offset }},
-            mask: {{ mask }},
-        },
-        {{/each }}
-        {{else}}
-        {{#each padding_markers_v2 }}
-        {
-            ty: {{ type }},
-            offset: {{ offset }},
-            mask: {{ mask }},
-        },
-        {{/each }}
-        {{/if}}
-    ],
-    size_v1: {{ size_v1 }},
-    size_v2: {{ size_v2 }},
-    align_v1: {{ alignment_v1 }},
-    align_v2: {{ alignment_v2 }},
-}
-{{else}}
-
-{{#each doc_comments}}
-///{{ this }}
-{{/each}}
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct {{ name }};
-
-{{#if is_value_type }}
-impl fidl::encoding::Persistable for {{ name }} {}
-{{/if}}
-
-fidl_empty_struct!({{ name }});
-
-{{/if}}
+impl midl::{{#if is_value_type }}Persistable{{ else }}Standalone for {{ name }} {}
+{{/if }}

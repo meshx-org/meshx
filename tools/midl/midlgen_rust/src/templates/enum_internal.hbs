@@ -1,0 +1,70 @@
+{{!
+// Copyright 2024 MeshX Authors. All rights reserved.
+// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+}}
+
+unsafe impl midl::encoding::TypeMarker for {{name}} {
+    type Owned = Self;
+
+    #[inline(always)]
+    fn inline_align(_context: midl::encoding::Context) -> usize {
+        std::mem::align_of::<{{underlying_type}}>()
+    }
+
+    #[inline(always)]
+    fn inline_size(_context: midl::encoding::Context) -> usize {
+        std::mem::size_of::<{{underlying_type}}>()
+    }
+
+    #[inline(always)]
+    fn encode_is_copy() -> bool {
+        {{ir.strict}}
+    }
+
+    #[inline(always)]
+    fn decode_is_copy() -> bool {
+        false
+    }
+}
+
+impl midl::encoding::ValueTypeMarker for {{name}} {
+    type Borrowed<'a> = Self;
+    #[inline(always)]
+    fn borrow<'a>(value: &'a <Self as midl::encoding::TypeMarker>::Owned) -> Self::Borrowed<'a> {
+        *value
+    }
+}
+
+unsafe impl midl::encoding::Encode<Self> for {{name}} {
+    #[inline]
+    unsafe fn encode(self, encoder: &mut midl::encoding::Encoder<'_>, offset: usize, _depth: midl::encoding::Depth) -> midl::Result<()> {
+        encoder.debug_check_bounds::<Self>(offset);
+        encoder.write_num(self.into_primitive(), offset);
+        Ok(())
+    }
+}
+
+impl midl::encoding::Decode<Self> for {{name}} {
+    #[inline(always)]
+    fn new_empty() -> Self {
+        {{#if ir.strict}}
+        Self::{{ min_member }}
+        {{else}}
+        Self::unknown()
+        {{/if}}
+    }
+
+    #[inline]
+    unsafe fn decode(&mut self, decoder: &mut midl::encoding::Decoder<'_>, offset: usize, _depth: midl::encoding::Depth) -> midl::Result<()> {
+        decoder.debug_check_bounds::<Self>(offset);
+        let prim = decoder.read_num::<{{ underlying_type }}>(offset);
+        {{#if ir.strict }}
+        *self = Self::from_primitive(prim).ok_or(midl::Error::InvalidEnumValue)?;
+        {{else}}
+        *self = Self::from_primitive_allow_unknown(prim);
+        {{/if}}
+        Ok(())
+    }
+}

@@ -1,0 +1,22 @@
+[package]
+edition = "2021"
+name = "datasources"
+version = "0.1.0"
+
+#[lib]
+#crate-type = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-graphql = {version = "7.0", features = ["dynamic-schema"]}
+bitflags = "1.0"
+fiber_rust = {path = "../fiber_rust"}
+fiber_status = {path = "../fiber_status"}
+futures = "*"
+quaint = {version = "0.1", features = ["single-sqlite"]}
+slab = "*"
+tokio = {version = "1.35", features = ["rt", "macros"]}
+midl = {path = "../midl"}
+anyhow="*"
+meshx_component={path = "../meshx_component"}

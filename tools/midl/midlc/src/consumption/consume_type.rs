@@ -1,6 +1,6 @@
-use crate::ast::ConstantValue;
+use crate::ast::Constant;
 use crate::compiler::ParsingContext;
-use crate::consumption::consume_const::consume_constant_value;
+use crate::consumption::consume_const::consume_constant;
 use crate::consumption::helpers::consume_catch_all;
 
 use super::ast;
@@ -16,9 +16,9 @@ fn consume_layout_parameters(pair: Pair<'_>, ctx: &mut ParsingContext<'_>) -> Ve
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::constant => {
-                let constant = consume_constant_value(current, ctx);
+                let constant = consume_constant(current, ctx);
 
-                if let ConstantValue::Literal(literal) = constant {
+                if let Constant::Literal(literal) = constant {
                     let param = ast::LiteralLayoutParameter { literal };
 
                     params.push(ast::LayoutParameter::Literal(param))
@@ -48,7 +48,7 @@ pub(crate) fn consume_type_constructor(pair: Pair<'_>, ctx: &mut ParsingContext<
     let mut params_span = None;
     // TODO: params_signature
 
-    let mut constraits: Vec<ast::ConstantValue> = vec![];
+    let mut constraits: Vec<ast::Constant> = vec![];
     // TODO: constraits_signature
 
     for current in pair.into_inner() {

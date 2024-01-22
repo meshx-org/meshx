@@ -8,3 +8,6 @@ edition = "2021"
 [dependencies]
 moniker = {version = "0.1.0", path = "../moniker"}
 thiserror="1.0.30"
+
+[lib]
+crate-type   = ["rlib", "cdylib"]
