@@ -167,7 +167,7 @@ impl Protocol {
 
 impl Into<Declaration> for Protocol {
     fn into(self) -> Declaration {
-        Declaration::Protocol(Rc::new(RefCell::new(self)))
+        Declaration::Protocol { decl: Rc::new(RefCell::new(self)) }
     }
 }
 

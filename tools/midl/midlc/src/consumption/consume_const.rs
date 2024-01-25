@@ -26,12 +26,12 @@ pub(crate) fn consume_constant(pair: Pair<'_>, ctx: &mut ParsingContext<'_>) -> 
 
         match current.as_rule() {
             Rule::literal => {
-                
                 let literal = consume_literal(current, ctx);
                 let concrete_constant = ast::LiteralConstant {
                     literal,
-                    constant_value: Some(ast::ConstantValue::Bool(false)),
-                    span
+                    constant_value: None,
+                    span,
+                    compiled: false,
                 };
 
                 constant = Some(ast::Constant::Literal(concrete_constant));
@@ -40,8 +40,9 @@ pub(crate) fn consume_constant(pair: Pair<'_>, ctx: &mut ParsingContext<'_>) -> 
                 let name = consume_compound_identifier(&current, ctx);
                 let concrete_constant = ast::IdentifierConstant {
                     reference: ast::Reference::new_sourced(name),
-                    constant_value: Some(ast::ConstantValue::Bool(false)),
-                    span
+                    constant_value: None,
+                    span,
+                    compiled: false,
                 };
 
                 constant = Some(ast::Constant::Identifier(concrete_constant));

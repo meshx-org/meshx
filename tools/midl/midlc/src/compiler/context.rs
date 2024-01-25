@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::ast;
+use crate::ast::{self, VersionSelection};
 use crate::diagnotics::{Diagnostics, DiagnosticsError};
 use crate::source_file::SourceId;
 
@@ -23,6 +23,7 @@ pub(crate) struct Context<'db> {
     pub(crate) library: Rc<ast::Library>,
     pub(crate) all_libraries: Rc<RefCell<Libraries>>,
     pub(crate) diagnostics: &'db mut Diagnostics,
+    pub(crate) version_selection: VersionSelection
 }
 
 impl<'db> Context<'db> {
@@ -35,6 +36,7 @@ impl<'db> Context<'db> {
             library,
             all_libraries,
             diagnostics,
+            version_selection: VersionSelection
         }
     }
 

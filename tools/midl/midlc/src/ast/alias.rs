@@ -51,7 +51,7 @@ pub struct Alias {
 
 impl Into<Declaration> for Alias {
     fn into(self) -> Declaration {
-        Declaration::Alias(Rc::new(RefCell::new(self)))
+        Declaration::Alias { decl: Rc::new(RefCell::new(self)) }
     }
 }
 

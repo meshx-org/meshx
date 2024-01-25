@@ -106,8 +106,6 @@ pub(crate) fn consume_protocol_declaration(
     pair: Pair<'_>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<(ast::Protocol, Vec<ast::Declaration>), DiagnosticsError> {
-    log::error!("consume_protocol_declaration");
-
     let pair_span = pair.as_span();
 
     let mut identifier: Option<ast::Identifier> = None;
@@ -145,9 +143,7 @@ pub(crate) fn consume_protocol_declaration(
                 Err(err) => ctx.diagnostics.push_error(err),
             },
             Rule::protocol_event => {}
-            Rule::protocol_compose => {
-                consume_compose(ctx)
-            }
+            Rule::protocol_compose => consume_compose(ctx),
             Rule::comment_block => pending_field_comment = Some(current),
             Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(
                 "This line is not a valid field or attribute definition.",

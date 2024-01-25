@@ -1,25 +1,67 @@
 use std::{cell::RefCell, rc::Rc};
 
-use super::{CompoundIdentifier, Declaration, Element, Identifier, Library, Span};
+use super::{CompoundIdentifier, Declaration, Element, Identifier, Library, Name, Span};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Target {
-    pub element: Element,
+    pub target: Element,
     pub maybe_parent: Option<Declaration>,
 }
 
 impl Target {
     pub(crate) fn new(decl: Declaration) -> Self {
         Self {
-            element: decl.into(),
+            target: decl.into(),
             maybe_parent: None,
         }
     }
 
     pub(crate) fn new_member(member: Element, parent: Declaration) -> Self {
         Self {
-            element: member,
+            target: member,
             maybe_parent: Some(parent),
+        }
+    }
+
+    pub fn element_or_parent_decl(&self) {}
+
+    pub fn element(&self) -> Element {
+        self.target.clone()
+    }
+
+    pub fn name(self) -> Name {
+        match self.target {
+            Element::Bits |
+            Element::Builtin{..}|
+            Element::Const{..}|
+            Element::Enum|
+            Element::NewType|
+            Element::Protocol{..}|
+            Element::Resource|
+            // Element::Service|
+            Element::Struct{..}|
+            Element::Table|
+            Element::Alias{..}|
+            Element::Union|
+            Element::Overlay => {
+                self.target.as_decl().unwrap().name()
+            }
+            //Element::BitsMember => {
+            //    return self.maybe_parent.name.WithMemberName(std::string(static_cast<Bits::Member*>(target_)->name.data()));
+            //}
+            Element::EnumMember => {
+            // return self.maybe_parent.name.WithMemberName(std::string(member.name.data()));
+                todo!()
+            }
+            //Element::Library|
+            //Element::ProtocolCompose|
+            Element::ProtocolMethod{..} |
+            //Element::ResourceProperty|
+            //Element::ServiceMember|
+            Element::StructMember{..} |
+            Element::TableMember|
+            // Element::OverlayMember
+            Element::UnionMember => panic!("invalid element kind")
         }
     }
 }
@@ -67,7 +109,7 @@ pub struct Contextual {
     name: Identifier,
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
 pub enum ReferenceState {
     /// Initial state of a sourced reference.
     RawSourced(RawSourced),
@@ -83,7 +125,7 @@ pub enum ReferenceState {
     Failed,
 }
 
-impl std::fmt::Debug for ReferenceState {
+/*impl std::fmt::Debug for ReferenceState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ReferenceState::RawSourced(_) => write!(f, "RawSourced"),
@@ -100,7 +142,7 @@ impl std::fmt::Debug for ReferenceState {
             ReferenceState::Failed => write!(f, "Failed"),
         }
     }
-}
+} */
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Reference {
@@ -109,7 +151,6 @@ pub struct Reference {
 }
 
 impl Reference {
-    
     pub fn new_sourced(name: CompoundIdentifier) -> Self {
         assert!(!name.components.is_empty(), "expected at least one component");
 
@@ -130,7 +171,17 @@ impl Reference {
         self.span.is_none()
     }
 
-    pub(crate) fn resolve_to(&self, target: Target) {}
+    pub(crate) fn resolve_to(&self, target: Target) {
+        {
+            let state = self.state.borrow();
+            assert!(
+                matches!(*state, ReferenceState::Key(_) | ReferenceState::Contextual(_)),
+                "invalid state"
+            );
+        }
+
+        self.state.replace(ReferenceState::Resolved(target));
+    }
 
     pub fn raw_synthetic(&self) -> Option<RawSynthetic> {
         match *self.state.borrow() {

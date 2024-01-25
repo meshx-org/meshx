@@ -1,9 +1,13 @@
-use hcl::Identifier;
+use derivative::Derivative;
 
-use super::{Const, Element, LiteralConstant, Nullability, Reference, Span};
-use std::{cell::RefCell, str::FromStr};
+use crate::diagnotics::Diagnostics;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+use super::{
+    Const, Declaration, Element, Identifier, LiteralConstant, Name, Nullability, Reference, Span, VectorConstraints,
+};
+use std::{borrow::Borrow, cell::RefCell, rc::Rc, str::FromStr};
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub enum PrimitiveSubtype {
     Bool,
     Int8,
@@ -16,6 +20,11 @@ pub enum PrimitiveSubtype {
     Uint64,
     Float32,
     Float64,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+pub enum InternalSubtype {
+    FrameworkErr,
 }
 
 impl FromStr for PrimitiveSubtype {
@@ -73,8 +82,8 @@ impl IdentifierLayoutParameter {
     pub fn disambiguate(&self) {
         let resolved = self.reference.resolved();
 
-        match resolved.unwrap().element {
-            Element::Const(_) => {}
+        match resolved.unwrap().element() {
+            Element::Const { .. } => {}
             // Element::BitsMember => {}
             // Element::EnumMember(_) => {
             //    self.as_constant =  IdentifierConstant (source_signature(), reference, span);
@@ -158,7 +167,7 @@ impl TypeConstructor {
 pub struct VectorType {
     pub nullability: Nullability,
     pub element_count: u32,
-    pub element_type: Box<Type>,
+    pub element_type: Type,
 }
 
 impl VectorType {
@@ -169,8 +178,89 @@ impl VectorType {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PrimitiveType {
-    pub nullability: Nullability,
+    pub name: Name,
     pub subtype: PrimitiveSubtype,
+}
+
+impl PrimitiveType {
+    pub fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        /*if !resolve_and_merge_constraints(
+            resolver,
+            reporter,
+            constraints.span,
+            layout.resolved().name(),
+            nullptr,
+            constraints.items,
+            nullptr,
+        ) {
+            return Err(false);
+        }*/
+
+        Ok(Type::Primitive(Rc::from(PrimitiveType {
+            name: self.name.clone(),
+            subtype: self.subtype.clone(),
+        })))
+    }
+}
+
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
+pub struct StringType {
+    #[derivative(PartialEq = "ignore", Ord = "ignore", PartialOrd = "ignore")]
+    pub constraints: VectorConstraints,
+    pub name: Name,
+}
+
+impl StringType {
+    pub fn new(name: Name) -> Self {
+        Self {
+            constraints: VectorConstraints::default(),
+            name,
+        }
+    }
+
+    pub fn new_with_constraints(name: Name, constraints: VectorConstraints) -> Self {
+        Self { constraints, name }
+    }
+
+    pub fn max_size(&self) -> u32 {
+        0
+    }
+
+    pub fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        let c = VectorConstraints::default();
+        //if (!self.resolve_and_merge_constraints(resolver, reporter, constraints.span, layout.resolved().name(), nullptr, constraints.items, &c, out_params)) {
+        //  return false;
+        //}
+
+        Ok(Type::String(Rc::new(StringType::new_with_constraints(
+            self.name.clone(),
+            c,
+        ))))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct InternalType {
+    pub name: Name,
+    pub subtype: InternalSubtype,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct IdentifierType {
+    pub type_decl: Declaration,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -178,17 +268,14 @@ pub enum Type {
     ArrayType {
         element_type: Box<Type>,
     },
-    Vector(VectorType),
-    StringType {
-        nullable: bool,
-    },
+    Vector(Rc<VectorType>),
+    Primitive(Rc<PrimitiveType>),
+    Internal(Rc<InternalType>),
+    String(Rc<StringType>),
+    Identifier(Rc<IdentifierType>),
     RequestType {
         nullable: bool,
         subtype: String, // "test.handles/DriverProtocol",
-    },
-    Primitive(PrimitiveType),
-    IdentifierType {
-        reference: Reference,
     },
     HandleType {
         nullable: bool,
@@ -196,4 +283,24 @@ pub enum Type {
         subtype: String,
         rights: u32,
     },
+}
+
+impl Type {
+    pub fn is_nullable(&self) -> bool {
+        match self {
+            Type::ArrayType { element_type } => false,
+            Type::Vector(_) => false,
+            Type::Primitive(_) => false,
+            Type::Internal(_) => false,
+            Type::String(string) => string.constraints.nullabilty() == Nullability::Nullable,
+            Type::Identifier(_) => false,
+            Type::RequestType { nullable, subtype } => *nullable,
+            Type::HandleType {
+                nullable,
+                resource_identifier,
+                subtype,
+                rights,
+            } => *nullable,
+        }
+    }
 }

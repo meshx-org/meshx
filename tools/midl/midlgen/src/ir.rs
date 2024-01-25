@@ -669,7 +669,7 @@ pub enum Literal {
     #[serde(rename = "numeric")]
     NumericLiteral { value: String },
     #[serde(rename = "bool")]
-    BoolLiteral { value: String },
+    BoolLiteral { value: bool },
     #[default]
     #[serde(rename = "default")]
     DefaultLiteral,

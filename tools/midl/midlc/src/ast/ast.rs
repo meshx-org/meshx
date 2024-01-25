@@ -10,7 +10,7 @@ pub enum Literal {
     StringValue(String, Span),
 
     /// Any boolean value.
-    BoolValue(String, Span),
+    BoolValue(bool, Span),
 }
 
 impl Literal {

@@ -21,8 +21,8 @@ pub(crate) fn verify_names<'ctx>(ctx: &'ctx mut Context<'_>) {
     for decl in cloned_lib.declarations.borrow().structs.iter() {
         let test = decl.clone();
         match test {
-            ast::Declaration::Struct(r#struct) => {
-                validate_identifier(r#struct.borrow().identifier(), "struct", ctx)
+            ast::Declaration::Struct{ decl } => {
+                validate_identifier(decl.borrow().identifier(), "struct", ctx)
             }
             _ => unreachable!(),
         }

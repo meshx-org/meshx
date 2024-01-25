@@ -12,8 +12,9 @@ mod resource;
 mod span;
 mod r#struct;
 mod traits;
-//mod versioning_types;
 mod type_constructor;
+mod versioning_types;
+mod constraints;
 
 use multimap::MultiMap;
 use std::cell::{OnceCell, RefCell};
@@ -23,59 +24,75 @@ use std::rc::Rc;
 
 pub use ast::*;
 
-//pub use versioning_types::{Platform, Version, Availability};
 pub use alias::Alias;
 pub use attributes::{Attribute, AttributeArg, AttributeList};
 pub use comment::Comment;
 pub use identifier::{CompoundIdentifier, Identifier};
-pub use name::{Name, name_flat_name};
+pub use name::{name_flat_name, Name};
 pub use properties::{Nullability, Resourceness, Strictness};
 pub use protocol::{Protocol, ProtocolMethod};
-pub use r#const::{Const, Constant, ConstantValue, ConstantTrait, IdentifierConstant, LiteralConstant};
+pub use r#const::{Const, Constant, ConstantTrait, ConstantValue, IdentifierConstant, LiteralConstant};
 pub use r#struct::{Struct, StructMember};
 pub use reference::{Reference, ReferenceKey, ReferenceState, Target};
 pub use resource::{Resource, ResourceProperty};
 pub use span::Span;
 pub use traits::{WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
+pub use constraints::VectorConstraints;
 pub use type_constructor::{
-    IdentifierLayoutParameter, LayoutConstraints, LayoutParameter, LayoutParameterList, LiteralLayoutParameter,
-    PrimitiveSubtype, Type, TypeConstructor, TypeLayoutParameter,
+    InternalSubtype, InternalType, LayoutConstraints, LayoutParameter, LayoutParameterList, LiteralLayoutParameter,
+    PrimitiveSubtype, PrimitiveType, StringType, Type, TypeConstructor, TypeLayoutParameter,
 };
+pub use versioning_types::{Availability, AvailabilityInitArgs, Platform, Version, VersionRange, VersionSelection};
 
 use crate::source_file::SourceId;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Element {
+    // declarations
     Bits,
     Enum,
     Resource,
-    Alias(Rc<RefCell<Alias>>),
-    Builtin(Rc<RefCell<Builtin>>),
-    Struct(Rc<RefCell<Struct>>),
-    Protocol(Rc<RefCell<Protocol>>),
-    Const(Rc<RefCell<Const>>),
+    Alias { inner: Rc<RefCell<Alias>> },
+    Builtin { inner: Rc<RefCell<Builtin>> },
+    Struct { inner: Rc<RefCell<Struct>> },
+    Protocol { inner: Rc<RefCell<Protocol>> },
+    Const { inner: Rc<RefCell<Const>> },
+    NewType,
+    Table,
+    Union,
+    Overlay,
 
     // Elements that are not declarations
-    StructMember(Rc<StructMember>),
-    ProtocolMethod(Rc<ProtocolMethod>),
+    StructMember { inner: Rc<StructMember> },
+    ProtocolMethod { inner: Rc<ProtocolMethod> },
+    TableMember,
+    UnionMember,
+    EnumMember,
 }
 
 impl Element {
     fn is_decl(&self) -> bool {
         match self {
-            Element::Const(_) | Element::Struct(_) | Element::Protocol(_) | Element::Builtin(_) => true,
+            Element::Const { .. } | Element::Struct { .. } | Element::Protocol { .. } | Element::Builtin { .. } => true,
             _ => false,
         }
     }
 
     pub fn as_decl(&self) -> Option<Declaration> {
         match self {
-            Element::Const(element) => Some(Declaration::Const(element.clone())),
-            Element::Builtin(element) => Some(Declaration::Builtin(element.clone())),
-            Element::Struct(element) => Some(Declaration::Struct(element.clone())),
-            Element::Protocol(element) => Some(Declaration::Protocol(element.clone())),
+            Element::Const { inner } => Some(Declaration::Const { decl: inner.clone() }),
+            Element::Builtin { inner } => Some(Declaration::Builtin { decl: inner.clone() }),
+            Element::Struct { inner } => Some(Declaration::Struct { decl: inner.clone() }),
+            Element::Protocol { inner } => Some(Declaration::Protocol { decl: inner.clone() }),
             _ => None,
         }
+    }
+
+    pub fn availability(&self) -> Availability {
+        let mut availability = Availability::unbounded();
+        availability.narrow(VersionRange::new(Version::neg_inf(), Version::pos_inf()));
+
+        availability
     }
 }
 
@@ -83,25 +100,33 @@ impl Element {
 pub enum Declaration {
     Bits,
     Enum,
-    Resource(Rc<RefCell<Resource>>),
-    Alias(Rc<RefCell<Alias>>),
-    Const(Rc<RefCell<Const>>),
-    Struct(Rc<RefCell<Struct>>),
-    Protocol(Rc<RefCell<Protocol>>),
-    Builtin(Rc<RefCell<Builtin>>),
+    NewType,
+    Table,
+    Union,
+    Overlay,
+    Resource { decl: Rc<RefCell<Resource>> },
+    Alias { decl: Rc<RefCell<Alias>> },
+    Const { decl: Rc<RefCell<Const>> },
+    Struct { decl: Rc<RefCell<Struct>> },
+    Protocol { decl: Rc<RefCell<Protocol>> },
+    Builtin { decl: Rc<RefCell<Builtin>> },
 }
 
 impl Into<Element> for Declaration {
     fn into(self) -> Element {
         match self {
-            Declaration::Const(ref decl) => Element::Const(decl.clone()),
-            Declaration::Struct(ref decl) => Element::Struct(decl.clone()),
-            Declaration::Protocol(ref decl) => Element::Protocol(decl.clone()),
-            Declaration::Builtin(ref decl) => Element::Builtin(decl.clone()),
+            Declaration::Const { ref decl } => Element::Const { inner: decl.clone() },
+            Declaration::Struct { ref decl } => Element::Struct { inner: decl.clone() },
+            Declaration::Protocol { ref decl } => Element::Protocol { inner: decl.clone() },
+            Declaration::Builtin { ref decl } => Element::Builtin { inner: decl.clone() },
             Declaration::Bits => Element::Bits,
             Declaration::Enum => Element::Enum,
-            Declaration::Alias(ref decl) => Element::Alias(decl.clone()),
-            Declaration::Resource(..) => Element::Resource,
+            Declaration::Alias { ref decl } => Element::Alias { inner: decl.clone() },
+            Declaration::Resource { .. } => Element::Resource,
+            Declaration::NewType => Element::NewType,
+            Declaration::Table => Element::Table,
+            Declaration::Union => Element::Union,
+            Declaration::Overlay => Element::Overlay,
         }
     }
 }
@@ -109,14 +134,18 @@ impl Into<Element> for Declaration {
 impl Into<Element> for Rc<Declaration> {
     fn into(self) -> Element {
         match &*self {
-            Declaration::Const(ref decl) => Element::Const(decl.clone()),
-            Declaration::Struct(ref decl) => Element::Struct(decl.clone()),
-            Declaration::Protocol(ref decl) => Element::Protocol(decl.clone()),
-            Declaration::Builtin(ref decl) => Element::Builtin(decl.clone()),
-            Declaration::Alias(ref decl) => Element::Alias(decl.clone()),
-            Declaration::Bits => todo!(),
-            Declaration::Enum => todo!(),
-            Declaration::Resource(_) => todo!(),
+            Declaration::Const { ref decl } => Element::Const { inner: decl.clone() },
+            Declaration::Struct { ref decl } => Element::Struct { inner: decl.clone() },
+            Declaration::Protocol { ref decl } => Element::Protocol { inner: decl.clone() },
+            Declaration::Builtin { ref decl } => Element::Builtin { inner: decl.clone() },
+            Declaration::Alias { ref decl } => Element::Alias { inner: decl.clone() },
+            Declaration::Bits => Element::Bits,
+            Declaration::Enum => Element::Enum,
+            Declaration::Resource { .. } => Element::Resource,
+            Declaration::NewType => Element::NewType,
+            Declaration::Table => Element::Table,
+            Declaration::Union => Element::Union,
+            Declaration::Overlay => Element::Overlay,
         }
     }
 }
@@ -124,43 +153,58 @@ impl Into<Element> for Rc<Declaration> {
 impl Declaration {
     pub fn name(&self) -> Name {
         match self {
-            Declaration::Struct(decl) => decl.borrow().name().to_owned(),
-            Declaration::Protocol(decl) => decl.borrow().name().to_owned(),
-            Declaration::Const(decl) => decl.borrow().name().to_owned(),
-            Declaration::Builtin(decl) => decl.borrow().name().to_owned(),
-            Declaration::Alias(decl) => decl.borrow().name().to_owned(),
-            Declaration::Resource(decl) => decl.borrow().name().to_owned(),
+            Declaration::Struct { decl } => decl.borrow().name().to_owned(),
+            Declaration::Protocol { decl } => decl.borrow().name().to_owned(),
+            Declaration::Const { decl } => decl.borrow().name().to_owned(),
+            Declaration::Builtin { decl } => decl.borrow().name().to_owned(),
+            Declaration::Alias { decl } => decl.borrow().name().to_owned(),
+            Declaration::Resource { decl } => decl.borrow().name().to_owned(),
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
+            Declaration::NewType => todo!(),
+            Declaration::Table => todo!(),
+            Declaration::Union => todo!(),
+            Declaration::Overlay => todo!(),
         }
+    }
+
+    pub fn availability(&self) -> Availability {
+        let mut availability = Availability::unbounded();
+        availability.narrow(VersionRange::new(Version::neg_inf(), Version::pos_inf()));
+        availability
     }
 
     // Runs a function on every member of the decl, if it has any. Note that
     // unlike Library::traverse_elements, it does not call `visit(self)`.
     pub(crate) fn for_each_member(&self, visitor: &mut dyn FnMut(Element)) {
         match self {
-            Declaration::Struct(decl) => {
+            Declaration::Struct { decl } => {
                 for (_, member) in decl.borrow().iter_members() {
                     visitor(member.clone());
                 }
             }
-            Declaration::Protocol(decl) => {
+            Declaration::Protocol { decl } => {
                 for (_, method) in decl.borrow().iter_methods() {
-                    visitor(Element::ProtocolMethod(method.clone()));
+                    visitor(Element::ProtocolMethod { inner: method.clone() });
                 }
             }
-            Declaration::Const(_) => {}
-            Declaration::Builtin(_) => {}
-            Declaration::Alias(_) => {}
-            Declaration::Resource(_) => {}
+            Declaration::Const { .. } => {}
+            Declaration::Builtin { .. } => {}
+            Declaration::Alias { .. } => {}
+            Declaration::Resource { .. } => {}
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
+            Declaration::NewType => todo!(),
+            Declaration::Table => todo!(),
+            Declaration::Union => todo!(),
+            Declaration::Overlay => todo!(),
         };
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum BuiltinIdentity {
+    // Layouts (primitive)
     #[default]
     bool,
     int8,
@@ -173,23 +217,29 @@ pub(crate) enum BuiltinIdentity {
     uint64,
     float32,
     float64,
-    string,
-    array,
-    vector,
-    r#box,
-    client_end,
-    server_end,
-    optional,
-    byte,
-    transport_err,
+    // Layouts (other)
+    String,
+    // Layouts (templated)
+    StringArray,
+    Array,
+    Vector,
+    Box,
+    ClientEnd,
+    ServerEnd,
+    // Layouts (aliases)
+    Byte,
+    // Layouts (internal)
+    FrameworkErr,
+    // Constraints
+    Optional,
     MAX,
     HEAD,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Builtin {
-    id: BuiltinIdentity,
-    name: Name,
+    pub id: BuiltinIdentity,
+    pub name: Name,
 }
 
 impl Builtin {
@@ -199,7 +249,7 @@ impl Builtin {
 
     pub fn is_internal(&self) -> bool {
         match self.id {
-            BuiltinIdentity::transport_err => true,
+            BuiltinIdentity::FrameworkErr => true,
             _ => false,
         }
     }
@@ -259,14 +309,18 @@ impl Declarations {
         let all_ref = &mut self.all;
 
         match decl {
-            Declaration::Struct(_) => store_decl(decl, all_ref, &mut self.structs),
-            Declaration::Protocol(_) => store_decl(decl, all_ref, &mut self.protocols),
-            Declaration::Const(_) => store_decl(decl, all_ref, &mut self.consts),
-            Declaration::Alias(_) => store_decl(decl, all_ref, &mut self.builtins),
-            Declaration::Builtin(_) => store_decl(decl, all_ref, &mut self.builtins),
+            Declaration::Struct { .. } => store_decl(decl, all_ref, &mut self.structs),
+            Declaration::Protocol { .. } => store_decl(decl, all_ref, &mut self.protocols),
+            Declaration::Const { .. } => store_decl(decl, all_ref, &mut self.consts),
+            Declaration::Alias { .. } => store_decl(decl, all_ref, &mut self.builtins),
+            Declaration::Builtin { .. } => store_decl(decl, all_ref, &mut self.builtins),
+            Declaration::Resource { .. } => store_decl(decl, all_ref, &mut self.resources),
             Declaration::Bits => todo!(),
             Declaration::Enum => todo!(),
-            Declaration::Resource(_) => store_decl(decl, all_ref, &mut self.resources),
+            Declaration::NewType => todo!(),
+            Declaration::Table => todo!(),
+            Declaration::Union => todo!(),
+            Declaration::Overlay => todo!(),
         }
     }
 
@@ -399,6 +453,9 @@ pub struct Library {
     pub declaration_order: Vec<Declaration>,
 
     pub arbitrary_name_span: RefCell<Option<Span>>,
+
+    // Set during AvailabilityStep.
+    pub platform: Option<Platform>,
 }
 
 impl PartialOrd for Library {
@@ -430,10 +487,9 @@ impl Library {
                 Name::create_intrinsic(library.clone(), name), /*Name::new_intrinsic(&library, name)*/
             );
 
-            library
-                .declarations
-                .borrow_mut()
-                .insert(Declaration::Builtin(Rc::new(RefCell::new(decl))));
+            library.declarations.borrow_mut().insert(Declaration::Builtin {
+                decl: Rc::new(RefCell::new(decl)),
+            });
         };
 
         // An assertion in Declarations::Insert ensures that these insertions
@@ -449,15 +505,15 @@ impl Library {
         insert("uint64", BuiltinIdentity::uint64);
         insert("float32", BuiltinIdentity::float32);
         insert("float64", BuiltinIdentity::float64);
-        insert("string", BuiltinIdentity::string);
-        insert("box", BuiltinIdentity::r#box);
-        insert("array", BuiltinIdentity::array);
-        insert("vector", BuiltinIdentity::vector);
-        insert("client_end", BuiltinIdentity::client_end);
-        insert("server_end", BuiltinIdentity::server_end);
-        insert("byte", BuiltinIdentity::byte);
-        insert("TransportErr", BuiltinIdentity::transport_err);
-        insert("optional", BuiltinIdentity::optional);
+        insert("string", BuiltinIdentity::String);
+        insert("box", BuiltinIdentity::Box);
+        insert("array", BuiltinIdentity::Array);
+        insert("vector", BuiltinIdentity::Vector);
+        insert("client_end", BuiltinIdentity::ClientEnd);
+        insert("server_end", BuiltinIdentity::ServerEnd);
+        insert("byte", BuiltinIdentity::Byte);
+        insert("FrameworkErr", BuiltinIdentity::FrameworkErr);
+        insert("optional", BuiltinIdentity::Optional);
         insert("MAX", BuiltinIdentity::MAX);
         insert("HEAD", BuiltinIdentity::HEAD);
 
@@ -533,13 +589,17 @@ impl std::ops::Index<DeclarationId> for Declarations {
 
 fn top_idx_to_top_id(top_idx: usize, decl: &Declaration) -> DeclarationId {
     match decl {
-        Declaration::Protocol(_) => DeclarationId::Protocol(ProtocolId(top_idx as u32)),
-        Declaration::Struct(_) => DeclarationId::Struct(StructId(top_idx as u32)),
-        Declaration::Const(_) => DeclarationId::Const(ConstId(top_idx as u32)),
-        Declaration::Builtin(_) => DeclarationId::Builtin(BuiltinId(top_idx as u32)),
+        Declaration::Protocol { .. } => DeclarationId::Protocol(ProtocolId(top_idx as u32)),
+        Declaration::Struct { .. } => DeclarationId::Struct(StructId(top_idx as u32)),
+        Declaration::Const { .. } => DeclarationId::Const(ConstId(top_idx as u32)),
+        Declaration::Builtin { .. } => DeclarationId::Builtin(BuiltinId(top_idx as u32)),
         Declaration::Bits => todo!(),
         Declaration::Enum => todo!(),
-        Declaration::Alias(_) => todo!(),
-        Declaration::Resource(_) => todo!(),
+        Declaration::Alias { .. } => todo!(),
+        Declaration::Resource { .. } => todo!(),
+        Declaration::NewType => todo!(),
+        Declaration::Table => todo!(),
+        Declaration::Union => todo!(),
+        Declaration::Overlay => todo!(),
     }
 }

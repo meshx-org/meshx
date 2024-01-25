@@ -13,7 +13,7 @@
             ],
             "outputs": ["{workspaceRoot}/dist/sdk/midl/meshx.io/ir.json"],
             "options": {
-                "outDir": "dist/sdk/midl/meshx.component.resolver",
+                "outDir": "dist/sdk/midl/meshx.io",
                 "midlJson": "./midl.json",
                 "srcs": ["./io.midl", "./node.midl", "./directory.midl"],
                 "language": "rust"

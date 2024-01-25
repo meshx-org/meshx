@@ -114,7 +114,7 @@ pub struct Struct {
 
 impl Into<Declaration> for Struct {
     fn into(self) -> Declaration {
-        Declaration::Struct(Rc::new(RefCell::new(self)))
+        Declaration::Struct { decl: Rc::new(RefCell::new(self)) }
     }
 }
 

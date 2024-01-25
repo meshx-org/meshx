@@ -648,7 +648,7 @@ impl Compiler {
                 }
                 value.clone()
             }
-            midlgen::ir::Literal::BoolLiteral { value } => value.clone(),
+            midlgen::ir::Literal::BoolLiteral { value } => value.clone().to_string(),
             midlgen::ir::Literal::DefaultLiteral => "::Default::default()".to_string(),
         }
     }

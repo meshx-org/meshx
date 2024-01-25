@@ -2,19 +2,25 @@ use derivative::Derivative;
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    AttributeList, Comment, Declaration, Identifier, Literal, Name, Reference, Span, TypeConstructor, WithAttributes,
-    WithDocumentation, WithIdentifier, WithName, WithSpan,
+    AttributeList, Comment, Declaration, Identifier, Literal, Name, Reference, Span, Type, TypeConstructor,
+    WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan,
 };
+
+struct Numeric<T>(T);
 
 #[derive(Debug, Clone)]
 pub enum ConstantValue {
-    Bool(bool),
     Float64(f64),
     Float32(f32),
     Int8(i8),
     Int16(i16),
     Int32(i32),
     Int64(i64),
+    Uint8(u8),
+    Uint16(u16),
+    Uint32(u32),
+    Uint64(u64),
+    Bool(bool),
     String(String),
 }
 
@@ -29,6 +35,10 @@ impl std::fmt::Display for ConstantValue {
             ConstantValue::Int32(val) => write!(f, "{}", val),
             ConstantValue::Int64(val) => write!(f, "{}", val),
             ConstantValue::String(val) => write!(f, "{}", val),
+            ConstantValue::Uint8(val) => write!(f, "{}", val),
+            ConstantValue::Uint16(val) => write!(f, "{}", val),
+            ConstantValue::Uint32(val) => write!(f, "{}", val),
+            ConstantValue::Uint64(val) => write!(f, "{}", val),
         }
     }
 }
@@ -37,6 +47,7 @@ pub trait ConstantTrait {
     fn value(&self) -> ConstantValue;
     fn span(&self) -> &Span;
     fn is_resolved(&self) -> bool;
+    fn resolve_to(&mut self, value: ConstantValue, r#type: Type);
 }
 
 /// Represents an identifier constant
@@ -56,6 +67,10 @@ pub struct IdentifierConstant {
     #[derivative(Ord = "ignore")]
     pub(crate) constant_value: Option<ConstantValue>,
     pub(crate) span: Span,
+
+    /// compiled tracks whether we attempted to resolve this constant, to avoid
+    /// resolving twice a constant which cannot be resolved.
+    pub compiled: bool,
 }
 
 impl ConstantTrait for IdentifierConstant {
@@ -70,6 +85,12 @@ impl ConstantTrait for IdentifierConstant {
 
     fn span(&self) -> &Span {
         &self.span
+    }
+
+    fn resolve_to(&mut self, value: ConstantValue, r#type: Type) {
+        assert!(!self.is_resolved(), "constants should only be resolved once");
+        self.constant_value = Some(value);
+        // self.r#type = r#type;
     }
 }
 
@@ -90,6 +111,10 @@ pub struct LiteralConstant {
     #[derivative(Ord = "ignore")]
     pub(crate) constant_value: Option<ConstantValue>,
     pub(crate) span: Span,
+
+    /// compiled tracks whether we attempted to resolve this constant, to avoid
+    /// resolving twice a constant which cannot be resolved.
+    pub compiled: bool,
 }
 
 impl ConstantTrait for LiteralConstant {
@@ -109,12 +134,53 @@ impl ConstantTrait for LiteralConstant {
     fn span(&self) -> &Span {
         &self.span
     }
+
+    fn resolve_to(&mut self, value: ConstantValue, r#type: Type) {
+        assert!(!self.is_resolved(), "constants should only be resolved once");
+        self.constant_value = Some(value);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Constant {
     Identifier(IdentifierConstant),
     Literal(LiteralConstant),
+}
+
+impl Constant {
+    pub fn is_resolved(&self) -> bool {
+        match self {
+            Constant::Identifier(c) => c.constant_value.is_some(),
+            Constant::Literal(c) => c.constant_value.is_some(),
+        }
+    }
+
+    pub fn value(&self) -> ConstantValue {
+        assert!(
+            self.is_resolved(),
+            "accessing the value of an unresolved Constant: %s",
+            // span.data().c_str()
+        );
+
+        match self {
+            Constant::Identifier(c) => c.constant_value.clone().unwrap(),
+            Constant::Literal(c) => c.constant_value.clone().unwrap(),
+        }
+    }
+
+    pub fn set_compiled(&mut self, value: bool) {
+        match self {
+            Constant::Identifier(c) => c.compiled = value,
+            Constant::Literal(c) => c.compiled = value,
+        }
+    }
+
+    pub fn compiled(&self) -> bool {
+        match self {
+            Constant::Identifier(c) => c.compiled,
+            Constant::Literal(c) => c.compiled,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -164,7 +230,9 @@ pub struct Const {
 
 impl Into<Declaration> for Const {
     fn into(self) -> Declaration {
-        Declaration::Const(Rc::new(RefCell::new(self)))
+        Declaration::Const {
+            decl: Rc::new(RefCell::new(self)),
+        }
     }
 }
 

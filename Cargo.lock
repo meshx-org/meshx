@@ -1762,6 +1762,7 @@ version = "0.1.0"
 name = "midlc"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "clap",
  "colored",
  "derivative",

@@ -1,7 +1,9 @@
+use std::rc::Rc;
+
 use midlgen::ir::{self, EncodedCompoundIdentifier};
 
 use crate::{
-    ast::{self, ConstantTrait},
+    ast::{self, ConstantTrait, ConstantValue},
     compiler, ExperimentalFlags,
 };
 
@@ -44,8 +46,8 @@ impl JSONGenerator {
         decls
             .into_iter()
             .map(|decl| {
-                if let ast::Declaration::Const(const_decl) = decl {
-                    self.generate_const(const_decl.borrow().clone())
+                if let ast::Declaration::Const { decl } = decl {
+                    self.generate_const(decl.borrow().clone())
                 } else {
                     panic!("")
                 }
@@ -77,14 +79,14 @@ impl JSONGenerator {
         }
     }
 
-    fn generate_nullable(&self, value: ast::Nullability) -> bool {
+    fn generate_nullable(&self, value: &ast::Nullability) -> bool {
         match value {
             ast::Nullability::Nullable => true,
             ast::Nullability::Nonnullable => false,
         }
     }
 
-    fn generate_primitive_subtype(&self, value: ast::PrimitiveSubtype) -> ir::PrimitiveSubtype {
+    fn generate_primitive_subtype(&self, value: &ast::PrimitiveSubtype) -> ir::PrimitiveSubtype {
         match value {
             ast::PrimitiveSubtype::Bool => ir::PrimitiveSubtype::Bool,
             ast::PrimitiveSubtype::Int8 => ir::PrimitiveSubtype::Int8,
@@ -100,22 +102,47 @@ impl JSONGenerator {
         }
     }
 
+    fn generate_type_shape(&self) -> ir::TypeShape {
+        ir::TypeShape {
+            inline_size: 0,
+            alignment: 0,
+            depth: 0,
+            max_handles: 0,
+            max_out_of_line: 0,
+            has_padding: false,
+            has_flexible_envelope: false,
+        }
+    }
+
     fn generate_type(&self, value: ast::Type) -> ir::Type {
         match value {
             ast::Type::Vector(r#type) => ir::Type::VectorType {
-                element_type: Box::from(self.generate_type(*r#type.element_type.clone())),
+                element_type: Box::from(self.generate_type(r#type.element_type.clone())),
                 element_count: Some(r#type.element_size()),
-                nullable: self.generate_nullable(r#type.nullability),
+                nullable: self.generate_nullable(&r#type.nullability),
             },
+            ast::Type::String(ref r#type) => {
+                let mut element_count = None;
+
+                if r#type.max_size() < std::u32::MAX {
+                    element_count = Some(r#type.max_size());
+                }
+
+                ir::Type::StringType {
+                    element_count,
+                    nullable: self.generate_nullable(&r#type.as_ref().constraints.nullabilty()),
+                    type_shape_v2: self.generate_type_shape(),
+                }
+            }
             ast::Type::Primitive(r#type) => ir::Type::PrimitiveType {
-                primitive_subtype: self.generate_primitive_subtype(r#type.subtype),
+                primitive_subtype: self.generate_primitive_subtype(&r#type.subtype),
             },
             _ => panic!("unsupported type: {:?}", value),
         }
     }
 
     fn generate_type_and_from_alias(&self, parent_type_kind: TypeKind, value: ast::TypeConstructor) -> ir::Type {
-        let r#type = value.r#type;
+        let r#type = value.clone().r#type;
         // let invocation = value.resolved_params;
 
         // if (ShouldExposeAliasOfParametrizedType(*type)) {
@@ -129,6 +156,8 @@ impl JSONGenerator {
         //    return;
         //}
 
+        log::debug!("generate_type_and_from_alias: {:#?}", value.clone());
+
         self.generate_type(r#type.unwrap())
     }
 
@@ -140,19 +169,15 @@ impl JSONGenerator {
         }
     }
 
-    fn generate_constant_value(&self, value: ast::ConstantValue) -> String {
-        value.to_string()
-    }
-
     fn generate_constant(&self, value: ast::Constant) -> ir::Constant {
         match value {
             ast::Constant::Identifier(identifier) => ir::Constant::Identifier {
-                value: self.generate_constant_value(identifier.value()),
+                value: identifier.value().to_string(),
                 expression: identifier.span().data.clone(),
                 identifier: EncodedCompoundIdentifier("".to_string()), //identifier.reference.resolved().name(),
             },
             ast::Constant::Literal(literal) => ir::Constant::LiteralConstant {
-                value: self.generate_constant_value(literal.value()),
+                value: literal.value().to_string(),
                 expression: literal.span().data.clone(),
                 literal: self.generate_literal(literal),
             },

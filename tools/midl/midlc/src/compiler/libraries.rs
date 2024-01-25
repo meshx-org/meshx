@@ -1,5 +1,4 @@
 use std::{
-    borrow::Borrow,
     cell::RefCell,
     collections::{BTreeSet, HashMap},
     rc::Rc,
@@ -8,12 +7,10 @@ use std::{
 use crate::{
     ast::{self, Declaration, Library},
     compiler::Dependency,
+    diagnotics::Diagnostics,
 };
 
-use super::Compilation;
-
-#[derive(Debug)]
-pub(crate) struct Typespace;
+use super::{typespace::Typespace, Compilation};
 
 /// Helper struct to calculate Compilation::direct_and_composed_dependencies.
 #[derive(PartialEq, Eq, PartialOrd)]
@@ -47,12 +44,18 @@ pub(crate) struct Libraries {
 
 impl Libraries {
     pub(crate) fn new() -> Self {
+        let root_library = Library::new_root();
+
         Self {
-            typespace: Rc::new(Typespace),
+            typespace: Rc::new(Typespace::new(root_library.clone(), Rc::from(Diagnostics::new()))),
             libraries: vec![],
             libraries_by_name: HashMap::new(),
-            root_library: Library::new_root(),
+            root_library,
         }
+    }
+
+    pub fn typespace(&self) -> Rc<Typespace> {
+        self.typespace.clone()
     }
 
     /// Insert |library|. It must only depend on already-inserted libraries.

@@ -6,7 +6,7 @@ use std::{
 
 use super::Context;
 use crate::{
-    ast,
+    ast::{self, Declaration},
     diagnotics::DiagnosticsError,
 };
 
@@ -47,13 +47,13 @@ struct ResolveContext {
     enclosing: ast::Element,
 }
 
-struct Lookup<'a, 'ctx, 'd, 'e> {
-    step: &'a ResolveStep<'ctx, 'd, 'e>,
+struct Lookup<'a, 'ctx, 'd> {
+    step: &'a ResolveStep<'ctx, 'd>,
     reference: &'a ast::Reference,
 }
 
-impl<'a, 'ctx, 'd, 'e> Lookup<'a, 'ctx, 'd, 'e> {
-    fn new(step: &'a ResolveStep<'ctx, 'd, 'e>, reference: &'a ast::Reference) -> Self {
+impl<'a, 'ctx, 'd> Lookup<'a, 'ctx, 'd> {
+    fn new(step: &'a ResolveStep<'ctx, 'd>, reference: &'a ast::Reference) -> Self {
         Self { step, reference }
     }
 
@@ -90,8 +90,8 @@ impl<'a, 'ctx, 'd, 'e> Lookup<'a, 'ctx, 'd, 'e> {
         // internal one.
 
         for decl in results.iter() {
-            if let ast::Declaration::Builtin(builtin_decl) = decl {
-                if builtin_decl.borrow().is_internal() {
+            if let ast::Declaration::Builtin { decl } = decl {
+                if decl.borrow().is_internal() {
                     return None;
                 }
             }
@@ -153,7 +153,7 @@ impl<'a, 'ctx, 'd, 'e> Lookup<'a, 'ctx, 'd, 'e> {
 ///
 /// Note that ResolveStep does not resolve constant values (i.e. calling
 /// Constant::ResolveTo). That happens in the CompileStep.
-pub(crate) struct ResolveStep<'ctx, 'd, 'e> {
+pub(crate) struct ResolveStep<'ctx, 'd> {
     ctx: &'ctx mut Context<'d>,
 
     /// The version graph for this library: directed, possibly cyclic, possibly
@@ -161,10 +161,10 @@ pub(crate) struct ResolveStep<'ctx, 'd, 'e> {
     /// all the current library's elements, plus elements from external libraries
     /// it references. The latter have in-degree zero, i.e. they only appear as map
     /// keys and never in the sets of outgoing neighbors.
-    graph: RefCell<BTreeMap<&'e ast::Element, NodeInfo>>,
+    graph: RefCell<BTreeMap<ast::Element, NodeInfo>>,
 }
 
-impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
+impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
     pub fn new(ctx: &'ctx mut Context<'d>) -> Self {
         Self {
             ctx,
@@ -179,12 +179,10 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
     }
 
     fn run_impl(&self) {
-        let lib = self.ctx.library.clone();
-
         // In a single pass:
         // (1) parse all references into keys/contextuals;
         // (2) insert reference edges into the graph.
-        lib.traverse_elements(&mut |element| {
+        self.ctx.library.traverse_elements(&mut |element| {
             self.visit_element(
                 element.clone(),
                 &ResolveContext {
@@ -195,47 +193,30 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
             );
         });
 
-        // Add all elements of this library to the graph, with membership edges.
-        /*for entry in ctx.library.declarations.borrow() {
-            let decl = entry.second;
-            // Note: It's important to insert decl here so that (1) we properly
-            // initialize its points in the next loop, and (2) we can always recursively
-            // look up a neighbor in the graph, even if it has out-degree zero.
-            let idx = self.graph.insert(decl, NodeInfo::default());
-
-            decl.for_each_member(|member: &Element| {
-                self.graph[member].neighbors.insert(member);
-            });
-        }*/
-
-        /*{
-            // In a single pass:
-            // (1) parse all references into keys/contextuals;
-            // (2) insert reference edges into the graph.
-            ctx.library.traverse_elements(|element: &Element| {
-                visit_element(element, Context(Context::Mode::kParseAndInsert, element));
-            });
+        {
+            let mut graph = self.graph.borrow_mut();
+            println!("d {:?}", graph);
 
             // Add all elements of this library to the graph, with membership edges.
-            for entry in ctx.library.declarations.all {
-                let decl = entry.second;
+            for (_, decl) in self.ctx.library.declarations.borrow().all.flat_iter() {
+                let el = decl.clone().into();
                 // Note: It's important to insert decl here so that (1) we properly
                 // initialize its points in the next loop, and (2) we can always recursively
                 // look up a neighbor in the graph, even if it has out-degree zero.
-                let idx = self.graph.insert(decl, NodeInfo::default());
+                let _idx = graph.insert(el, NodeInfo::default());
 
-                decl.for_each_member(|member: &Element| {
-                    self.graph[member].neighbors.insert(member);
+                decl.for_each_member(&mut |member: ast::Element| {
+                    graph.get_mut(&member).unwrap().neighbors.insert(member);
                 });
             }
 
             // Initialize point sets for each element in the graph.
-            for (element, info) in self.graph.iter() {
+            /*for (element, info) in graph.iter() {
                 // There shouldn't be any library elements in the graph because they are
                 // special (they don't get split, so their availabilities stop at
                 // kInherited). We don't add membership edges to them, and we specifically
                 // avoid adding reference edges to them in ResolveStep::ParseReference.
-                assert!(element.kind != Element::Kind::kLibrary);
+                assert!(element.kind != ElementKind::Library);
 
                 // Each element starts with between 2 and 5 points. All have (1) `added` and
                 // (2) `removed`. Some have (3) `deprecated`. Some are added back for legacy
@@ -243,10 +224,10 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
                 // libraries (that exist due to reference edges) only ever have 2 points
                 // because those libraries are already compiled, hence post-decomposition.
                 info.points = element.availability.points();
-            }
+            } */
 
             // Run the temporal decomposition algorithm.
-            let worklist: Vec<&Element> = vec![];
+            /*let worklist: Vec<&Element> = vec![];
             worklist.reserve(self.graph.len());
             for (element, info) in self.graph.iter() {
                 worklist.push_back(element);
@@ -273,11 +254,11 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
                         }
                     }
                 }
-            }
-        }*/
+            }*/
+        }
 
         // Resolve all references and validate them.
-        lib.traverse_elements(&mut |element| {
+        self.ctx.library.traverse_elements(&mut |element| {
             let context = ResolveContext {
                 mode: ResolveMode::ResolveAndValidate,
                 allow_contextual: false,
@@ -292,46 +273,53 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
         // log::debug!("visit_element: {:?}", element);
 
         // TODO: attribute parsing
-        //for (let attribute : element.attributes.attributes) {
+        // for  attribute in element.attributes.attributes {
         //    for (let arg : attribute.args) {
         //        visit_constant(arg.value.get(), context);
         //    }
-        //}
+        // }
 
         match element {
-            ast::Element::Const(const_decl) => {
-                self.visit_type_constructor(&const_decl.borrow().type_ctor, context);
-                self.visit_constant(&const_decl.borrow().value, context);
+            ast::Element::Const { inner } => {
+                self.visit_type_constructor(&inner.borrow().type_ctor, context);
+                self.visit_constant(&inner.borrow().value, context);
             }
-            ast::Element::StructMember(mut struct_member) => {
-                self.visit_type_constructor(&struct_member.member_type_ctor, context);
+            ast::Element::StructMember { inner } => {
+                self.visit_type_constructor(&inner.member_type_ctor, context);
 
                 //if (let constant = struct_member.maybe_default_value) {
                 //    self.visit_constant(constant.get(), context);
                 //}
             }
-            ast::Element::ProtocolMethod(method) => {
-                if let Some(type_ctor) = &method.maybe_request {
+            ast::Element::ProtocolMethod { inner } => {
+                if let Some(type_ctor) = &inner.maybe_request {
                     self.visit_type_constructor(&type_ctor, context);
                 }
 
-                if let Some(type_ctor) = &method.maybe_response {
+                if let Some(type_ctor) = &inner.maybe_response {
                     self.visit_type_constructor(&type_ctor, context);
                 }
             }
-            ast::Element::Alias(alias_decl) => {
-                self.visit_type_constructor(&alias_decl.borrow().partial_type_ctor, context);
+            ast::Element::Alias { inner } => {
+                self.visit_type_constructor(&inner.borrow().partial_type_ctor, context);
             }
-            ast::Element::Protocol(_) => {}
-            ast::Element::Struct(_) => {}
-            ast::Element::Builtin(_) => {}
-            ast::Element::Bits => todo!(),
-            ast::Element::Enum => todo!(),
+            ast::Element::Protocol { .. } => {}
+            ast::Element::Struct { .. } => {}
+            ast::Element::Builtin { .. } => {}
+            ast::Element::Bits => {}
+            ast::Element::Enum => {}
             ast::Element::Resource => {}
-            ast::Element::Protocol(_) => {}
-            ast::Element::Builtin(_) => {}
-            ast::Element::Struct(_) => {}
-            ast::Element::Const(_) => {}
+            ast::Element::Protocol { .. } => {}
+            ast::Element::Builtin { .. } => {}
+            ast::Element::Struct { .. } => {}
+            ast::Element::Const { .. } => {}
+            ast::Element::NewType => {}
+            ast::Element::Table => {}
+            ast::Element::Union => {}
+            ast::Element::Overlay => {}
+            ast::Element::TableMember => {}
+            ast::Element::UnionMember => {}
+            ast::Element::EnumMember => {}
         }
     }
 
@@ -369,7 +357,7 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
         match context.mode {
             ResolveMode::ParseAndInsert => {
                 self.parse_reference(reference, context);
-                // self.insert_reference_edges(reference, context);
+                self.insert_reference_edges(reference, context);
             }
             ResolveMode::ResolveAndValidate => {
                 self.resolve_reference(reference, context);
@@ -421,7 +409,7 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
             .raw_synthetic()
             .unwrap()
             .target
-            .element
+            .element()
             .as_decl()
             .expect("only declarations are expected")
             .name();
@@ -563,12 +551,12 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
                     continue;
                 }
 
-                let mut mut_graph = self.graph.borrow_mut();
+                let mut graph = self.graph.borrow_mut();
 
                 // Only insert an edge if we have a chance of resolving to this target
                 // post-decomposition (as opposed to one of the other same-named targets).
                 //if (VersionSet::Intersect(target.availability.set(), enclosing.availability.set())) {
-                mut_graph.get_mut(&target).unwrap().neighbors.insert(enclosing);
+                // mut_graph.get_mut(&target).unwrap().neighbors.insert(enclosing);
                 //}
             }
         }
@@ -585,7 +573,7 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
                 return;
             }
             ast::ReferenceState::Contextual(_) => self.resolve_contextual_reference(reference, context),
-            ast::ReferenceState::Key(_) => {} // self.resolve_key_reference(reference, context),
+            ast::ReferenceState::Key(_) => self.resolve_key_reference(reference, context),
             _ => panic!("unexpected reference state"),
         }
 
@@ -597,12 +585,16 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
 
     fn resolve_contextual_reference(&self, reference: &ast::Reference, context: &ResolveContext) {}
 
-    /*fn resolve_key_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
-        let decl = lookup_decl_by_key(reference, context);
-        if !decl {
+    fn resolve_key_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
+        let decl = self.lookup_decl_by_key(reference, context);
+
+        println!("{:?}", decl);
+
+        if decl.is_none() {
             return;
         }
 
+        let decl = decl.expect("early return if none");
         let ref_key = reference.key().unwrap();
 
         if ref_key.member_name.is_none() {
@@ -611,15 +603,68 @@ impl<'ctx, 'd, 'e> ResolveStep<'ctx, 'd, 'e> {
         }
 
         let lookup = Lookup::new(self, reference);
-        let member = lookup.must_member(decl, &ref_key.member_name.unwrap());
+        let member = lookup.must_member(decl.clone(), &ref_key.member_name.unwrap());
         if member.is_none() {
             return;
         }
 
         reference.resolve_to(ast::Target::new_member(member.unwrap(), decl));
-    }*/
+    }
 
-    fn lookup_decl_by_key() {}
+    fn lookup_decl_by_key(&self, reference: &ast::Reference, context: &ResolveContext) -> Option<Declaration> {
+        let key = reference.key().unwrap();
+        let platform = key.library.platform;
+
+        let declarations = key.library.declarations.borrow();
+        let iter = declarations.all.get_vec(&key.decl_name).expect("key must exist");
+
+        // Case #1: source and target libraries are versioned in the same platform.
+        if self.ctx.library.platform == platform {
+            for decl in iter {
+                let us = context.enclosing.availability().range();
+                let them = decl.availability().range();
+
+                if let Some(overlap) = ast::VersionRange::intersect(Some(us), Some(them)) {
+                    assert!(overlap == us, "referencee must outlive referencer");
+                    return Some(decl.clone());
+                } else {
+                    println!("no overlap");
+                }
+            }
+
+            // TODO(https://fxbug.dev/67858): Provide a nicer error message in the case where a
+            // decl with that name does exist, but in a different version range.
+            self.ctx.diagnostics.push_error(DiagnosticsError::new_name_not_found(
+                reference.span.clone().unwrap(),
+                &key.decl_name,
+                &key.library.name.get().unwrap().clone(),
+            ));
+
+            return None;
+        }
+
+        // Case #2: source and target libraries are versioned in different platforms.
+        let version = self
+            .ctx
+            .version_selection
+            .lookup(platform.expect("runs after availaiblty step"));
+
+        for decl in iter {
+            if decl.availability().range().contains(version) {
+                return Some(decl.clone());
+            }
+        }
+
+        // TODO(https://fxbug.dev/67858): Provide a nicer error message in the case where a
+        // decl with that name does exist, but in a different version range.
+        self.ctx.diagnostics.push_error(DiagnosticsError::new_name_not_found(
+            reference.span.clone().unwrap(),
+            &key.decl_name,
+            &key.library.name.get().unwrap().clone(),
+        ));
+
+        None
+    }
 
     fn validate_reference(&self, reference: &ast::Reference, context: &ResolveContext) {}
 }

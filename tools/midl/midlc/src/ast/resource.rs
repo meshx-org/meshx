@@ -47,12 +47,14 @@ pub struct Resource {
 
     // Set during construction.
     // pub(crate) subtype_ctor: TypeConstructor,
-    pub(crate) properties: Vec<ResourceProperty>
+    pub(crate) properties: Vec<ResourceProperty>,
 }
 
 impl Into<Declaration> for Resource {
     fn into(self) -> Declaration {
-        Declaration::Resource(Rc::new(RefCell::new(self)))
+        Declaration::Resource {
+            decl: Rc::new(RefCell::new(self)),
+        }
     }
 }
 

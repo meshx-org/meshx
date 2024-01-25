@@ -2,6 +2,7 @@
 
 #![deny(rust_2018_idioms, unsafe_code)]
 #![feature(map_try_insert)]
+#![feature(try_blocks)]
 #![feature(iter_next_chunk)]
 #![feature(extend_one)]
 #![feature(once_cell)]
@@ -163,7 +164,7 @@ fn main() -> std::io::Result<()> {
             paths.collect::<Vec<_>>().into_iter().for_each(|path| {
                 let lib_sources = path
                     .map(|path| {
-                        log::debug!("read file: {}", path.file_name().unwrap().to_str().unwrap());
+                        log::trace!("read file: {}", path.file_name().unwrap().to_str().unwrap());
 
                         let source_file = SourceFile::new(path.as_path());
 
