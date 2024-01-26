@@ -6,6 +6,7 @@ mod consume_import;
 mod consume_library;
 mod consume_protocol;
 mod consume_struct;
+mod consume_enum;
 mod consume_type;
 mod consume_value;
 mod helpers;
@@ -17,12 +18,16 @@ use consume_const::consume_constant_declaration;
 use consume_import::consume_import;
 use consume_library::consume_library_declaration;
 use consume_protocol::consume_protocol_declaration;
-use consume_struct::consume_struct_declaration;
 use consume_type::consume_type_constructor;
+use consume_struct::consume_struct_layout;
+use consume_enum::consume_enum_layout;
 
 use self::helpers::consume_catch_all;
 use super::ast;
-use crate::{compiler::ParsingContext, diagnotics::DiagnosticsError, ast::Name};
+use crate::{
+    ast::Name, compiler::ParsingContext,
+    diagnotics::DiagnosticsError,
+};
 pub use parser::{MIDLParser, Rule};
 use pest::iterators::{Pair, Pairs};
 
@@ -152,15 +157,59 @@ fn consume_resource_declaration(
     })
 }
 
+pub(crate) fn consume_layout_declaration(
+    token: Pair<'_, Rule>,
+    ctx: &mut ParsingContext<'_>,
+) -> Result<ast::Declaration, DiagnosticsError> {
+    debug_assert!(token.as_rule() == Rule::layout_declaration);
+
+    let mut identifier = None;
+    let mut name = None;
+    let mut declaration: ast::Declaration;
+    let span = token.as_span();
+
+    for current in token.into_inner() {
+        match current.as_rule() {
+            Rule::TYPE_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
+            Rule::identifier => {
+                let name_span = current.as_span();
+                let name_span = ast::Span::from_pest(name_span, ctx.source_id);
+
+                identifier = Some(consume_identifier(&current, ctx));
+                name = Some(Name::create_sourced(ctx.library.clone(), name_span));
+            }
+            Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
+            Rule::inline_struct_layout => {
+                return consume_struct_layout(current, identifier.unwrap().clone(), name.unwrap(), ctx);
+            }
+            Rule::inline_enum_layout => {
+                println!("consume enum");
+                return consume_enum_layout(current, identifier.unwrap().clone(), name.unwrap(), ctx);
+            } 
+            _ => consume_catch_all(&current, "struct"),
+        }
+    }
+
+    Err(DiagnosticsError::new("", ast::Span::from_pest(span, ctx.source_id)))
+}
+
 pub(crate) fn consume_source(pairs: Pairs<'_, Rule>, ctx: &mut ParsingContext<'_>) {
     // initial parsing
     for pair in pairs {
         if let Rule::library = pair.as_rule() {
             for declaration_pair in pair.into_inner() {
                 match declaration_pair.as_rule() {
-                    Rule::struct_declaration => {
-                        let struct_declaration = consume_struct_declaration(declaration_pair, None, ctx);
-                        match struct_declaration {
+                    //Rule::struct_declaration => {
+                    //    let struct_declaration = consume_struct_declaration(declaration_pair, None, ctx);
+                    //    match struct_declaration {
+                    //        Ok(decl) => ctx.library.declarations.borrow_mut().insert(decl.into()),
+                    //        Err(err) => ctx.diagnostics.push_error(err),
+                    //    }
+                    //}
+                    Rule::layout_declaration => {
+                        let any_declaration = consume_layout_declaration(declaration_pair, ctx);
+
+                        match any_declaration {
                             Ok(decl) => ctx.library.declarations.borrow_mut().insert(decl.into()),
                             Err(err) => ctx.diagnostics.push_error(err),
                         }
@@ -208,8 +257,6 @@ pub(crate) fn consume_source(pairs: Pairs<'_, Rule>, ctx: &mut ParsingContext<'_
                     Rule::import_declaration => {
                         consume_import(&declaration_pair, ctx);
                     }
-
-                    Rule::layout_declaration => {}
                     Rule::EOI => {}
                     _ => consume_catch_all(&declaration_pair, "declaration"),
                 }

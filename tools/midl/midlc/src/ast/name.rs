@@ -65,6 +65,14 @@ impl Name {
         }
     }
 
+    pub fn with_member_name(&self, member_name: String) -> Name {
+        assert!(!self.member_name.is_some(), "already has a member name");
+
+        let mut new_name = self.clone();
+        new_name.member_name = Some(member_name);
+        new_name
+    }
+
     pub fn full_name(&self) -> String {
         let mut name = self.decl_name();
 

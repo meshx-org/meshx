@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use midlgen::ir::{self, EncodedCompoundIdentifier};
+use midlgen::ir::{self, EncodedCompoundIdentifier, Identifier};
 
 use crate::{
     ast::{self, ConstantTrait, ConstantValue},
@@ -28,11 +28,11 @@ impl JSONGenerator {
 
         let ir = ir::Root {
             name: ir::EncodedLibraryIdentifier("".to_string()),
-            table_declarations: vec![],
             const_declarations: self.generate_const_declarations(&self.compilation.declarations.consts),
-            enum_declarations: vec![],
-            struct_declarations: vec![],
+            enum_declarations: self.generate_enum_declarations(&self.compilation.declarations.enums),
+            struct_declarations: self.generate_struct_declarations(&self.compilation.declarations.structs),
             protocol_declarations: vec![],
+            table_declarations: vec![],
             union_declarations: vec![],
             bits_declarations: vec![],
             experiments: vec![],
@@ -48,6 +48,32 @@ impl JSONGenerator {
             .map(|decl| {
                 if let ast::Declaration::Const { decl } = decl {
                     self.generate_const(decl.borrow().clone())
+                } else {
+                    panic!("")
+                }
+            })
+            .collect()
+    }
+
+    fn generate_struct_declarations(&self, decls: &Vec<ast::Declaration>) -> Vec<ir::Struct> {
+        decls
+            .into_iter()
+            .map(|decl| {
+                if let ast::Declaration::Struct { decl } = decl {
+                    self.generate_struct(decl.borrow().clone())
+                } else {
+                    panic!("")
+                }
+            })
+            .collect()
+    }
+
+    fn generate_enum_declarations(&self, decls: &Vec<ast::Declaration>) -> Vec<ir::Enum> {
+        decls
+            .into_iter()
+            .map(|decl| {
+                if let ast::Declaration::Enum { decl } = decl {
+                    self.generate_enum(decl.borrow().clone())
                 } else {
                     panic!("")
                 }
@@ -156,8 +182,6 @@ impl JSONGenerator {
         //    return;
         //}
 
-        log::debug!("generate_type_and_from_alias: {:#?}", value.clone());
-
         self.generate_type(r#type.unwrap())
     }
 
@@ -174,7 +198,7 @@ impl JSONGenerator {
             ast::Constant::Identifier(identifier) => ir::Constant::Identifier {
                 value: identifier.value().to_string(),
                 expression: identifier.span().data.clone(),
-                identifier: EncodedCompoundIdentifier("".to_string()), //identifier.reference.resolved().name(),
+                identifier: self.generate_name(identifier.reference.resolved().unwrap().name()),
             },
             ast::Constant::Literal(literal) => ir::Constant::LiteralConstant {
                 value: literal.value().to_string(),
@@ -190,6 +214,46 @@ impl JSONGenerator {
             location: self.generate_location(value.span),
             r#type: self.generate_type_and_from_alias(TypeKind::Concrete, value.type_ctor),
             value: self.generate_constant(value.value),
+        }
+    }
+
+    fn generate_struct(&self, value: ast::Struct) -> ir::Struct {
+        ir::Struct {
+            name: self.generate_name(value.name),
+            location: self.generate_location(value.span),
+            resourceness: ir::Resourceness(false),
+            maybe_attributes: None,
+            is_empty_success_struct: false,
+            members: vec![],
+            max_handles: None,
+            type_shape_v2: self.generate_type_shape(),
+        }
+    }
+
+    fn generate_identifier(&self, value: ast::Identifier) -> ir::Identifier {
+        ir::Identifier(value.value)
+    }
+
+    fn generate_enum(&self, value: ast::Enum) -> ir::Enum {
+        let mut members = vec![];
+
+        for member in value.members {
+            let member = member.borrow();
+
+            members.push(ir::EnumMember {
+                name: self.generate_identifier(member.name.clone()),
+                value: self.generate_constant(member.value.clone()),
+            })
+        }
+
+        ir::Enum {
+            name: self.generate_name(value.name),
+            location: self.generate_location(value.span),
+            maybe_attributes: vec![],
+            r#type: ir::PrimitiveSubtype::Uint32,
+            members,
+            is_strict: false,
+            raw_unknown_value: None,
         }
     }
 }

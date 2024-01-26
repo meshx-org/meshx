@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::consume_identifier;
@@ -8,26 +9,31 @@ use super::{helpers::Pair, Rule};
 use crate::ast::{self, Element, Name};
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
+use crate::consumption::consume_const::consume_constant;
+use crate::consumption::identifier_type_for_decl;
 use crate::diagnotics::DiagnosticsError;
 
-fn consume_struct_member(
+fn consume_enum_member(
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
     ctx: &mut ParsingContext<'_>,
-) -> Result<ast::StructMember, DiagnosticsError> {
-    debug_assert!(pair.as_rule() == Rule::struct_layout_member);
+) -> Result<ast::EnumMember, DiagnosticsError> {
+    debug_assert!(pair.as_rule() == Rule::value_layout_member);
 
     let pair_span = pair.as_span();
     let mut name: Option<ast::Identifier> = None;
     let attributes: Vec<ast::Attribute> = Vec::new();
     let mut comment: Option<ast::Comment> = block_comment.and_then(consume_comment_block);
-    let mut member_type_ctor: Option<ast::TypeConstructor> = None;
+    let mut member_value: Option<ast::Constant> = None;
 
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::identifier => name = Some(consume_identifier(&current, ctx)),
-            Rule::type_constructor => member_type_ctor = Some(consume_type_constructor(current, ctx)),
+            Rule::constant => {
+                member_value = Some(consume_constant(current, ctx));
+            }
             Rule::inline_attribute_list => {}
+
             Rule::trailing_comment => {
                 comment = match (comment, consume_trailing_comment(current)) {
                     (c, None) | (None, c) => c,
@@ -36,45 +42,47 @@ fn consume_struct_member(
                     }),
                 };
             }
-            _ => consume_catch_all(&current, "struct member"),
+            _ => consume_catch_all(&current, "enum member"),
         }
     }
 
-    match (name, member_type_ctor) {
-        (Some(name), Some(member_type_ctor)) => Ok(ast::StructMember {
+    match (name, member_value) {
+        (Some(name), Some(value)) => Ok(ast::EnumMember {
             name,
             documentation: None,
             attributes,
-            member_type_ctor,
+            value,
             span: ast::Span::from_pest(pair_span, ctx.source_id),
         }),
-        _ => panic!("Encountered impossible struct member declaration during parsing"),
+        _ => panic!("Encountered impossible enum member declaration during parsing"),
     }
 }
 
-pub(crate) fn consume_struct_layout(
+pub(crate) fn consume_enum_layout(
     token: Pair<'_>,
     identifier: ast::Identifier,
     name: ast::Name,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
-    debug_assert!(token.as_rule() == Rule::inline_struct_layout);
+    debug_assert!(token.as_rule() == Rule::inline_enum_layout);
 
     let token_span = token.as_span();
-
     let attributes = ast::AttributeList(vec![]);
     let mut members = Vec::new();
     let mut pending_field_comment = None;
+    let mut subtype_ctor = None;
 
     for current in token.into_inner() {
         match current.as_rule() {
-            Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
+            Rule::ENUM_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
+            Rule::type_constructor => {
+                // optional subtype
+                subtype_ctor = Some(consume_type_constructor(current, ctx));
+            }
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
-            Rule::struct_layout_member => match consume_struct_member(current, pending_field_comment.take(), ctx) {
+            Rule::value_layout_member => match consume_enum_member(current, pending_field_comment.take(), ctx) {
                 Ok(member) => {
-                    members.push(Element::StructMember {
-                        inner: Rc::from(member),
-                    });
+                    members.push(Rc::new(RefCell::new(member)));
                 }
                 Err(err) => ctx.diagnostics.push_error(err),
             },
@@ -84,17 +92,21 @@ pub(crate) fn consume_struct_layout(
                 "This line is not a valid field or attribute definition.",
                 ast::Span::from_pest(current.as_span(), ctx.source_id),
             )),
-            _ => consume_catch_all(&current, "struct"),
+            _ => consume_catch_all(&current, "enum"),
         }
     }
 
-    Ok(ast::Struct {
+    Ok(ast::Enum {
         identifier,
         name,
         members,
         attributes,
         documentation: None,
+        unknown_value_signed: 0,
+        unknown_value_unsigned: 0,
         span: ast::Span::from_pest(token_span, ctx.source_id),
+        subtype_ctor: subtype_ctor.unwrap_or(identifier_type_for_decl(ctx.default_underlying_type.clone())),
+        r#type: None,
     }
     .into())
 }

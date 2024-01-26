@@ -5,7 +5,6 @@
 #![feature(try_blocks)]
 #![feature(iter_next_chunk)]
 #![feature(extend_one)]
-#![feature(once_cell)]
 
 #[macro_use]
 extern crate pest_derive;
@@ -121,13 +120,15 @@ fn compile(
         panic!("No library was produced.\n");
     }
 
-    // log::debug!("all {:#?}", all_libraries);
+    log::debug!("all {:#?}", all_libraries);
 
     if !success {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, "Compilation failed"));
     }
 
     let compilation = all_libraries.borrow_mut().filter(0);
+
+    println!("compilation {:#?}", compilation);
 
     // Verify that the produced library's name matches the expected name.
     /*std::string produced_name = fidlc::NameLibrary(compilation->library_name);

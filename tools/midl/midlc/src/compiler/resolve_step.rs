@@ -10,16 +10,13 @@ use crate::{
     diagnotics::DiagnosticsError,
 };
 
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-struct Version;
-
 #[derive(Debug, Clone, Default)]
 // Per-node information for the version graph.
 struct NodeInfo {
     // Set of points at which to split this element in the final decomposition.
     // It initially contains 2 endpoints (or 3 points with deprecation), and
     // then receives more points from incoming neighbours.
-    points: BTreeSet<Version>,
+    points: BTreeSet<ast::Version>,
 
     // Set of outgoing neighbors. These are either *membership edges* (from
     // child to parent, e.g. struct member to struct) or *reference edges* (from
@@ -123,7 +120,7 @@ impl<'a, 'ctx, 'd> Lookup<'a, 'ctx, 'd> {
 
     fn must_member(&self, parent: ast::Declaration, name: &String) -> Option<ast::Element> {
         match parent {
-            ast::Declaration::Bits | ast::Declaration::Enum => {
+            ast::Declaration::Bits | ast::Declaration::Enum { .. } => {
                 if let Some(member) = self.try_member(parent, name) {
                     return Some(member);
                 }
@@ -198,7 +195,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             println!("d {:?}", graph);
 
             // Add all elements of this library to the graph, with membership edges.
-            for (_, decl) in self.ctx.library.declarations.borrow().all.flat_iter() {
+            /*for (_, decl) in self.ctx.library.declarations.borrow().all.flat_iter() {
                 let el = decl.clone().into();
                 // Note: It's important to insert decl here so that (1) we properly
                 // initialize its points in the next loop, and (2) we can always recursively
@@ -208,7 +205,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 decl.for_each_member(&mut |member: ast::Element| {
                     graph.get_mut(&member).unwrap().neighbors.insert(member);
                 });
-            }
+            }*/
 
             // Initialize point sets for each element in the graph.
             /*for (element, info) in graph.iter() {
@@ -284,6 +281,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 self.visit_type_constructor(&inner.borrow().type_ctor, context);
                 self.visit_constant(&inner.borrow().value, context);
             }
+            ast::Element::Struct { .. } => {}
             ast::Element::StructMember { inner } => {
                 self.visit_type_constructor(&inner.member_type_ctor, context);
 
@@ -291,6 +289,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 //    self.visit_constant(constant.get(), context);
                 //}
             }
+            ast::Element::Protocol { .. } => {}
             ast::Element::ProtocolMethod { inner } => {
                 if let Some(type_ctor) = &inner.maybe_request {
                     self.visit_type_constructor(&type_ctor, context);
@@ -301,25 +300,26 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 }
             }
             ast::Element::Alias { inner } => {
-                self.visit_type_constructor(&inner.borrow().partial_type_ctor, context);
+                let alias_decl = inner.borrow();
+                self.visit_type_constructor(&alias_decl.partial_type_ctor, context);
             }
-            ast::Element::Protocol { .. } => {}
-            ast::Element::Struct { .. } => {}
+            ast::Element::Enum { inner } => {
+                let enum_decl = inner.borrow();
+                self.visit_type_constructor(&enum_decl.subtype_ctor, context);
+            }
+            ast::Element::EnumMember { inner } => {
+                let enum_member = inner.borrow();
+                self.visit_constant(&enum_member.value, context);
+            }
             ast::Element::Builtin { .. } => {}
             ast::Element::Bits => {}
-            ast::Element::Enum => {}
             ast::Element::Resource => {}
-            ast::Element::Protocol { .. } => {}
-            ast::Element::Builtin { .. } => {}
-            ast::Element::Struct { .. } => {}
-            ast::Element::Const { .. } => {}
-            ast::Element::NewType => {}
-            ast::Element::Table => {}
-            ast::Element::Union => {}
-            ast::Element::Overlay => {}
-            ast::Element::TableMember => {}
-            ast::Element::UnionMember => {}
-            ast::Element::EnumMember => {}
+            ast::Element::NewType => todo!(),
+            ast::Element::Table => todo!(),
+            ast::Element::Union => todo!(),
+            ast::Element::Overlay => todo!(),
+            ast::Element::TableMember => todo!(),
+            ast::Element::UnionMember => todo!(),
         }
     }
 
@@ -587,8 +587,6 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
 
     fn resolve_key_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
         let decl = self.lookup_decl_by_key(reference, context);
-
-        println!("{:?}", decl);
 
         if decl.is_none() {
             return;

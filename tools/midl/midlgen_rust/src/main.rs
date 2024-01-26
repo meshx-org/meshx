@@ -41,7 +41,7 @@ struct Generator {
 handlebars::handlebars_helper!(doc_comments: |*args| {
 
     //let ir: Vec<ir::Attribute> = serde_json::from_value(args[0].clone()).unwrap();
-    //println!("{:?}", ir);
+     
 
     vec![] as Vec<String>
 });

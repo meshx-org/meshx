@@ -24,6 +24,78 @@ pub enum ConstantValue {
     String(String),
 }
 
+impl From<ConstantValue> for u8 {
+    fn from(value: ConstantValue) -> Self {
+        match value {
+            ConstantValue::Uint8(v) => v,
+            _ => panic!("cannot covert constant {} into u8 value", value),
+        }
+    }
+}
+
+impl From<ConstantValue> for u16 {
+    fn from(value: ConstantValue) -> Self {
+        match value {
+            ConstantValue::Uint16(v) => v,
+            _ => panic!("cannot covert constant {} into u16 value", value),
+        }
+    }
+}
+
+impl From<ConstantValue> for u32 {
+    fn from(value: ConstantValue) -> Self {
+        match value {
+            ConstantValue::Uint32(v) => v,
+            _ => panic!("cannot covert constant {} into u32 value", value),
+        }
+    }
+}
+
+impl From<ConstantValue> for u64 {
+    fn from(value: ConstantValue) -> Self {
+        match value {
+            ConstantValue::Uint64(v) => v,
+            _ => panic!("cannot covert constant {} into u64 value", value),
+        }
+    }
+}
+
+impl From<ConstantValue> for i8 {
+    fn from(value: ConstantValue) -> Self {
+        match value {
+            ConstantValue::Int8(v) => v,
+            _ => panic!("cannot covert constant {} into i8 value", value),
+        }
+    }
+}
+
+impl From<ConstantValue> for i16 {
+    fn from(value: ConstantValue) -> Self {
+        match value {
+            ConstantValue::Int16(v) => v,
+            _ => panic!("cannot covert constant {} into i16 value", value),
+        }
+    }
+}
+
+impl From<ConstantValue> for i32 {
+    fn from(value: ConstantValue) -> Self {
+        match value {
+            ConstantValue::Int32(v) => v,
+            _ => panic!("cannot covert constant {} into i32 value", value),
+        }
+    }
+}
+
+impl From<ConstantValue> for i64 {
+    fn from(value: ConstantValue) -> Self {
+        match value {
+            ConstantValue::Int64(v) => v,
+            _ => panic!("cannot covert constant {} into i64 value", value),
+        }
+    }
+}
+
 impl std::fmt::Display for ConstantValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -101,8 +173,8 @@ pub struct LiteralConstant {
     /// The literal value of the constant.
     ///
     /// ```ignore
-    /// const FOO u32 = 10
-    ///                 ^^
+    /// const FOO uint32 = 10
+    ///                    ^^
     /// ```
     pub(crate) literal: Literal,
 
@@ -110,6 +182,7 @@ pub struct LiteralConstant {
     #[derivative(PartialOrd = "ignore")]
     #[derivative(Ord = "ignore")]
     pub(crate) constant_value: Option<ConstantValue>,
+
     pub(crate) span: Span,
 
     /// compiled tracks whether we attempted to resolve this constant, to avoid

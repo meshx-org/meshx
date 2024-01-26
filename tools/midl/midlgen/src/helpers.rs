@@ -105,12 +105,10 @@ impl HelperDef for CommentsHelper {
         println!("{:#?}", ir);
 
         let val = json!(["test"]);
-         
+
         println!("{:#?}", val);
         rc.set_context(Context::wraps(val).unwrap());
 
-        
-
-         Ok(())
+        Ok(())
     }
 }

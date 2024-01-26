@@ -122,7 +122,7 @@ impl Libraries {
             //filter_internal(&dst.bits, src.bits);
             filter_internal(&mut dst.builtins, src.builtins);
             filter_internal(&mut dst.consts, src.consts);
-            //filter_internal(&dst.enums, src.enums);
+            filter_internal(&mut dst.enums, src.enums);
             //filter_internal(&dst.new_types, src.new_types);
             filter_internal(&mut dst.protocols, src.protocols);
             filter_internal(&mut dst.resources, src.resources);

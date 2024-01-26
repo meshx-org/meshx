@@ -34,7 +34,7 @@ impl Target {
             Element::Bits |
             Element::Builtin{..}|
             Element::Const{..}|
-            Element::Enum|
+            Element::Enum {..}|
             Element::NewType|
             Element::Protocol{..}|
             Element::Resource|
@@ -49,9 +49,9 @@ impl Target {
             //Element::BitsMember => {
             //    return self.maybe_parent.name.WithMemberName(std::string(static_cast<Bits::Member*>(target_)->name.data()));
             //}
-            Element::EnumMember => {
-            // return self.maybe_parent.name.WithMemberName(std::string(member.name.data()));
-                todo!()
+            Element::EnumMember{ inner } => {
+                let member = inner.borrow();
+                return self.maybe_parent.unwrap().name().with_member_name(member.name.value.clone());  
             }
             //Element::Library|
             //Element::ProtocolCompose|

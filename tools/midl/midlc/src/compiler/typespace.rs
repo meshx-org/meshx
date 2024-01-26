@@ -120,11 +120,12 @@ impl<'a> TypeCreator<'a> {
     }
 
     fn create(&self) -> Option<ast::Type> {
+        println!("l: {:?}", self.layout);
         let target = self.layout.resolved().unwrap().element().as_decl().unwrap();
 
         match target {
             ast::Declaration::Bits|
-            ast::Declaration::Enum|
+            ast::Declaration::Enum{..}|
             ast::Declaration::NewType|
             ast::Declaration::Struct {..}|
             ast::Declaration::Table|

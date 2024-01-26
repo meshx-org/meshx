@@ -31,7 +31,7 @@ pub struct Declarations {
     // bits: Vec<Rc<RefCell<Bits>>>,
     pub builtins: Vec<ast::Declaration>,
     pub consts: Vec<ast::Declaration>,
-    // enums: Vec<Rc<RefCell<ast::Enum>>>,
+    pub enums: Vec<ast::Declaration>,
     // new_types: Vec<Rc<RefCell<NewType>>>,
     pub protocols: Vec<ast::Declaration>,
     pub resources: Vec<ast::Declaration>,

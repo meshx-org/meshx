@@ -520,7 +520,7 @@ pub struct StructMember {
 }
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
-pub struct Resourceness(bool);
+pub struct Resourceness(pub bool);
 
 pub const RESOURCE_TYPE: Resourceness = Resourceness(true);
 pub const VALUE_TYPE: Resourceness = Resourceness(true);
@@ -741,7 +741,7 @@ pub struct Enum {
     pub is_strict: bool,
 
     #[serde(rename = "maybe_unknown_value")]
-    raw_unknown_value: Option<u64>,
+    pub raw_unknown_value: Option<u64>,
 }
 
 impl Decl for Enum {

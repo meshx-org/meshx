@@ -12,7 +12,7 @@
 // This is the basic syntax of Pest grammar files:
 // https://pest.rs/book/grammars/syntax.html#cheat-sheet
 
-library              =  { SOI ~ (library_declaration | import_declaration | resource_declaration | alias_declaration | const_declaration | struct_declaration | protocol_declaration | comment_block | empty_lines | CATCH_ALL)* ~ EOI }
+library              =  { SOI ~ (library_declaration | import_declaration | resource_declaration | layout_declaration | alias_declaration | const_declaration | protocol_declaration | comment_block | empty_lines | CATCH_ALL)* ~ EOI }
 
 declaration_list     = _{ (declaration ~ NEWLINE+) * ~ declaration? }
 declaration          = _{ alias_declaration | library_declaration | import_declaration  | const_declaration  | struct_declaration | protocol_declaration }
@@ -50,8 +50,8 @@ struct_declaration =  {
 layout_declaration =  { 
     block_attribute_list 
     ~ TYPE_KEYWORD 
-    ~ identifier 
-    ~ "=" 
+    ~ identifier
+    ~ "="
     ~ inline_layout
 }
 
@@ -92,30 +92,61 @@ protocol_result       =  { "->" ~ parameter_list ~ ( "error" ~ type_constructor 
 protocol_event        =  { block_attribute_list ~ "->" ~ identifier ~ parameter_list }
 protocol_compose      =  { block_attribute_list ~ COMPOSE_KEYWORD ~ compound_identifier }
 
-parameter_list        =   { "(" ~ (struct_declaration | identifier ) ~ ")" }
+parameter_list        =  { "(" ~ (struct_declaration | identifier ) ~ ")" }
 
 layout                = _{ compound_identifier | inline_layout }
-layout_subtype        =  { type_constructor }
+layout_subtype        = _{ ":" ~ type_constructor }
 layout_body           =  { 
 							BLOCK_OPEN 
                             ~ (value_layout | struct_layout | ordinal_layout) 
                             ~ BLOCK_CLOSE
                          }
 
-value_layout          =  { ( NEWLINE* ~ value_layout_member ~ NEWLINE* )+ }
-value_layout_member   =  { identifier ~ "=" ~ constant ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
-struct_layout         =  { ( NEWLINE* ~ struct_layout_member ~ NEWLINE* )+ }
-struct_layout_member  =  { member_field ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
-ordinal_layout        =  { ( NEWLINE* ~ ordinal_layout_member ~ NEWLINE* )+ }
-ordinal_layout_member =  { "#" ~ ordinal ~ (member_field | RESERVED_KEYWORD) ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
+value_layout          = _{ ( NEWLINE* ~ value_layout_member ~ NEWLINE* )+ }
+value_layout_member   =  { identifier ~ "=" ~ constant~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
+struct_layout         = _{ ( NEWLINE* ~ struct_layout_member ~ NEWLINE* )+ }
+struct_layout_member  =  { comment_block? ~ member_field ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
+ordinal_layout        = _{ ( NEWLINE* ~ ordinal_layout_member ~ NEWLINE* )+ }
+ordinal_layout_member =  { ordinal ~ ":" ~ (member_field | RESERVED_KEYWORD) ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
 
 member_field          = _{ identifier ~ type_constructor }
-inline_layout        =  { 
+inline_layout        = _{ inline_union_layout | inline_table_layout | inline_enum_layout | inline_struct_layout }
+
+inline_struct_layout =  { 
 							block_attribute_list
                             ~ declaration_modifiers* 
-                            ~ (STRUCT_KEYWORD | TABLE_KEYWORD | ENUM_KEYWORD | UNION_KEYWORD | BITS_KEYWORD)
-                            ~ layout_subtype? 
-                            ~ layout_body 
+                            ~ STRUCT_KEYWORD
+                            ~ BLOCK_OPEN 
+                            ~ struct_layout 
+                            ~ BLOCK_CLOSE
+                        }
+
+inline_table_layout  =  {
+							block_attribute_list
+                            ~ declaration_modifiers* 
+                            ~ TABLE_KEYWORD
+                            ~ BLOCK_OPEN 
+                            ~ ordinal_layout 
+                            ~ BLOCK_CLOSE
+                        }
+                        
+inline_union_layout  =  { 
+							block_attribute_list
+                            ~ declaration_modifiers* 
+                            ~ UNION_KEYWORD
+                            ~ BLOCK_OPEN 
+                            ~ ordinal_layout 
+                            ~ BLOCK_CLOSE
+                        }
+                        
+inline_enum_layout  =  { 
+							block_attribute_list
+                            ~ declaration_modifiers* 
+                            ~ ENUM_KEYWORD
+                            ~ layout_subtype?
+                            ~ BLOCK_OPEN
+                            ~ value_layout
+                            ~ BLOCK_CLOSE
                         }
 
 layout_parameters    = !{ layout_parameter ~ ("," ~ layout_parameter ~ WHITESPACE* )*  }
@@ -186,11 +217,6 @@ IMPORT_KEYWORD   = _{ "import" }
 ALIAS_KEYWORD    = _{ "alias" }
 RESOURCE_KEYWORD = _{ "resource" }
 AS_KEYWORD       = _{ "as" }
-ENUM_KEYWORD     = _{ "enum" }
-STRUCT_KEYWORD   = _{ "struct" }
-TABLE_KEYWORD    = _{ "table" }
-UNION_KEYWORD    = _{ "union" }
-BITS_KEYWORD     = _{ "bits" }
 TYPE_KEYWORD     = _{ "type" }
 CONST_KEYWORD    = _{ "const" }
 COMPOSE_KEYWORD  = _{ "compose" }
@@ -199,6 +225,11 @@ STRICT_KEYWORD   = _{ "strict" }
 RESERVED_KEYWORD = _{ "reserved" }
 FLEXIBLE_KEYWORD = _{ "flexible" }
 ERROR_KEYWORD    = _{ "error" }
+STRUCT_KEYWORD   = _{ "struct" }
+ENUM_KEYWORD     = _{ "enum" }
+TABLE_KEYWORD    = _{ "table" }
+UNION_KEYWORD    = _{ "union" }
+BITS_KEYWORD     = _{ "bits" }
 
 KEYWORDS         = _{ "true" | "false" | declaration_modifiers | TYPE_KEYWORD | LIBRARY_KEYWORD | CONST_KEYWORD | COMPOSE_KEYWORD | PROTOCOL_KEYWORD | ERROR_KEYWORD | RESERVED_KEYWORD }
 

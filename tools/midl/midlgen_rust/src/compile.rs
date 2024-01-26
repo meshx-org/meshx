@@ -898,12 +898,12 @@ pub fn compile(ir: midlgen::ir::Root) -> Root {
         consts.push(compiler.compile_const(const_decl));
     }
 
-    for union_decl in ir.enum_declarations {
-        enums.push(compiler.compile_enum(union_decl));
+    for enum_decl in ir.enum_declarations {
+        enums.push(compiler.compile_enum(enum_decl));
     }
 
-    for enum_decl in ir.union_declarations {
-        unions.push(compiler.compile_union(enum_decl));
+    for union_decl in ir.union_declarations {
+        unions.push(compiler.compile_union(union_decl));
     }
 
     for struct_decl in ir.struct_declarations {

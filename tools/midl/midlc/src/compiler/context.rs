@@ -23,7 +23,7 @@ pub(crate) struct Context<'db> {
     pub(crate) library: Rc<ast::Library>,
     pub(crate) all_libraries: Rc<RefCell<Libraries>>,
     pub(crate) diagnostics: &'db mut Diagnostics,
-    pub(crate) version_selection: VersionSelection
+    pub(crate) version_selection: VersionSelection,
 }
 
 impl<'db> Context<'db> {
@@ -36,7 +36,7 @@ impl<'db> Context<'db> {
             library,
             all_libraries,
             diagnostics,
-            version_selection: VersionSelection
+            version_selection: VersionSelection,
         }
     }
 
@@ -53,6 +53,7 @@ pub(crate) struct ParsingContext<'db> {
     pub(crate) all_libraries: Rc<RefCell<Libraries>>,
     pub(crate) diagnostics: &'db mut Diagnostics,
     pub(crate) source_id: SourceId,
+    pub(crate) default_underlying_type: ast::Declaration,
 }
 
 impl<'db> ParsingContext<'db> {
@@ -62,11 +63,19 @@ impl<'db> ParsingContext<'db> {
         diagnostics: &'db mut Diagnostics,
         source_id: SourceId,
     ) -> Self {
+        let default_underlying_type = all_libraries
+            .borrow()
+            .root_library()
+            .declarations
+            .borrow()
+            .lookup_builtin(ast::BuiltinIdentity::uint32);
+
         ParsingContext {
             library,
             source_id,
             diagnostics,
             all_libraries,
+            default_underlying_type,
         }
     }
 

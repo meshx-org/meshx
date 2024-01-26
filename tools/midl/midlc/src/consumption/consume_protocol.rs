@@ -10,7 +10,7 @@ use crate::ast::{CompoundIdentifier, Declaration};
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_attribute_list;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
-use crate::consumption::consume_struct::consume_struct_declaration;
+use crate::consumption::consume_struct::consume_struct_layout;
 use crate::diagnotics::DiagnosticsError;
 
 fn consume_parameter_list(
@@ -25,16 +25,17 @@ fn consume_parameter_list(
         match current.as_rule() {
             Rule::identifier => {}
             Rule::struct_declaration => {
-                let struct_declaration = consume_struct_declaration(
+                let struct_layout = consume_struct_layout(
                     current,
-                    Some(ast::Identifier {
+                    ast::Identifier {
                         value: String::from(parameter_name),
                         span: ast::Span::empty(),
-                    }),
+                    },
+                    ast::Name::create_intrinsic(ctx.library.clone(), ""),
                     ctx,
                 )
                 .unwrap();
-                declarations.push(struct_declaration.into());
+                declarations.push(struct_layout.into());
             }
             _ => consume_catch_all(&current, "parameter list"),
         }
