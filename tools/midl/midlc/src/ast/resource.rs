@@ -48,6 +48,11 @@ pub struct Resource {
     // Set during construction.
     // pub(crate) subtype_ctor: TypeConstructor,
     pub(crate) properties: Vec<ResourceProperty>,
+
+    // Set during compilation
+    pub(crate) compiled: bool,
+    pub(crate) compiling: bool,
+    pub(crate) recursive: bool
 }
 
 impl Into<Declaration> for Resource {

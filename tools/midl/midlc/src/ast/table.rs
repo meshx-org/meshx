@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    Attribute, AttributeList, Comment, Constant, Declaration, Element, Identifier, Name, RawOrdinal64, Span, Strictness, TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan
+    Attribute, AttributeList, Comment, Constant, Decl, Declaration, Element, Identifier, Name, RawOrdinal64, Span, Strictness, TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan
 };
 
 /// An opaque identifier for a field in an AST model. Use the
@@ -171,5 +171,23 @@ impl WithDocumentation for Table {
 impl WithName for Table {
     fn name(&self) -> &Name {
         &self.name
+    }
+}
+
+impl Decl for Table {
+    fn compiling(&self) -> bool {
+        todo!()
+    }
+
+    fn compiled(&self) -> bool {
+        todo!()
+    }
+
+    fn set_compiling(&mut self, val: bool) {
+        todo!()
+    }
+
+    fn set_compiled(&mut self, val: bool) {
+        todo!()
     }
 }

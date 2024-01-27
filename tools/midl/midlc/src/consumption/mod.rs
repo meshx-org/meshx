@@ -7,6 +7,7 @@ mod consume_import;
 mod consume_library;
 mod consume_protocol;
 mod consume_struct;
+mod consume_table;
 mod consume_type;
 mod consume_union;
 mod consume_value;
@@ -21,6 +22,7 @@ use consume_import::consume_import;
 use consume_library::consume_library_declaration;
 use consume_protocol::consume_protocol_declaration;
 use consume_struct::consume_struct_layout;
+use consume_table::consume_table_layout;
 use consume_type::consume_type_constructor;
 use consume_union::consume_union_layout;
 
@@ -152,7 +154,9 @@ fn consume_resource_declaration(
         documentation: None,
         properties,
         span: ast::Span::from_pest(token_span, ctx.source_id),
-        // subtype_ctor: maybe_type_ctor.unwrap_or(TypeConstructor {}),
+        compiled: false,
+        compiling: false,
+        recursive: false, // subtype_ctor: maybe_type_ctor.unwrap_or(TypeConstructor {}),
     })
 }
 
@@ -186,6 +190,9 @@ pub(crate) fn consume_layout_declaration(
             }
             Rule::inline_union_layout => {
                 return consume_union_layout(current, identifier.unwrap().clone(), name.unwrap(), ctx);
+            }
+            Rule::inline_table_layout => {
+                return consume_table_layout(current, identifier.unwrap().clone(), name.unwrap(), ctx);
             }
             Rule::CATCH_ALL => consume_catch_all(&current, "layout_declaration"),
             _ => todo!(),

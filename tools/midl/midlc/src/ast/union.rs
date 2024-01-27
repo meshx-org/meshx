@@ -1,7 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    Attribute, AttributeList, Comment, Constant, Declaration, Element, Identifier, Name, RawOrdinal64, Span, Strictness, TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan
+    Attribute, AttributeList, Comment, Constant, Decl, Declaration, Element, Identifier, Name, RawOrdinal64, Span,
+    Strictness, TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan,
 };
 
 /// An opaque identifier for a field in an AST model. Use the
@@ -125,6 +126,11 @@ pub struct Union {
 
     /// The location of this union in the text representation.
     pub(crate) span: Span,
+
+    // Set during compilation
+    pub(crate) compiled: bool,
+    pub(crate) compiling: bool,
+    pub(crate) recursive: bool,
 }
 
 impl Into<Declaration> for Union {
@@ -171,5 +177,23 @@ impl WithDocumentation for Union {
 impl WithName for Union {
     fn name(&self) -> &Name {
         &self.name
+    }
+}
+
+impl Decl for Union {
+    fn compiling(&self) -> bool {
+        self.compiling
+    }
+
+    fn compiled(&self) -> bool {
+        self.compiled
+    }
+
+    fn set_compiling(&mut self, val: bool) {
+        self.compiling = val;
+    }
+
+    fn set_compiled(&mut self, val: bool) {
+        self.compiled = val;
     }
 }

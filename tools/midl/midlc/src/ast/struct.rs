@@ -175,6 +175,14 @@ impl Decl for Struct {
     fn compiled(&self) -> bool {
         self.compiled
     }
+
+    fn set_compiling(&mut self, val: bool) {
+        self.compiling = val;
+    }
+
+    fn set_compiled(&mut self, val: bool) {
+        self.compiled = val;
+    }
 }
 
 impl TypeDecl for Struct {

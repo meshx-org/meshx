@@ -5,7 +5,7 @@ use super::{Constant, ConstantValue, Nullability, Resource};
 trait ConstraintStorage<ValueType> {
     const DEFAULT: ValueType;
 
-    fn resolve_constraint(resolver: &TypeResolver, param: &Constant, resource: &Resource) -> bool;
+    fn resolve_constraint(resolver: &TypeResolver<'_, '_>, param: &Constant, resource: &Resource) -> bool;
 
     //bool ReportMergeFailure(Reporter* reporter, const Name& layout_name,
     //                      const Constant* param) const override;
@@ -17,7 +17,7 @@ struct NullabilityConstraint(Nullability);
 impl ConstraintStorage<Nullability> for NullabilityConstraint {
     const DEFAULT: Nullability = Nullability::Nonnullable;
 
-    fn resolve_constraint(resolver: &TypeResolver, param: &Constant, resource: &Resource) -> bool {
+    fn resolve_constraint(resolver: &TypeResolver<'_, '_>, param: &Constant, resource: &Resource) -> bool {
         todo!()
     }
 }
@@ -34,7 +34,7 @@ struct SizeConstraint(Option<ConstantValue>);
 impl ConstraintStorage<Option<ConstantValue>> for SizeConstraint {
     const DEFAULT: Option<ConstantValue> = None;
 
-    fn resolve_constraint(resolver: &TypeResolver, param: &Constant, resource: &Resource) -> bool {
+    fn resolve_constraint(resolver: &TypeResolver<'_, '_>, param: &Constant, resource: &Resource) -> bool {
         todo!()
     }
 }

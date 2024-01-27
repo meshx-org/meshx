@@ -3,8 +3,8 @@ use derivative::Derivative;
 use crate::diagnotics::Diagnostics;
 
 use super::{
-    constraints::IdentifierConstraints, Const, Declaration, Element, Identifier, LiteralConstant, Name, Nullability,
-    Reference, Span, VectorConstraints,
+    constraints::IdentifierConstraints, Const, Constant, Declaration, Element, Identifier, LiteralConstant, Name,
+    Nullability, Reference, Span, VectorConstraints,
 };
 use std::{borrow::Borrow, cell::RefCell, rc::Rc, str::FromStr};
 
@@ -125,8 +125,21 @@ pub enum LayoutParameter {
 impl LayoutParameter {
     // A layout parameter is either a type constructor or a constant. One of these
     // two methods must return non-null, and the other one must return null.
+
     pub(crate) fn as_type_ctor(&self) -> Option<TypeConstructor> {
-        None
+        match self {
+            LayoutParameter::Identifier(id) => id.as_type_ctor.borrow().clone(),
+            LayoutParameter::Type(typ) => Some(typ.type_ctor.clone()),
+            LayoutParameter::Literal(_) => None,
+        }
+    }
+
+    pub(crate) fn as_constant(&self) -> Option<Constant> {
+        match self {
+            LayoutParameter::Identifier(_) => todo!(),
+            LayoutParameter::Type(_) => todo!(),
+            LayoutParameter::Literal(_) => todo!(),
+        }
     }
 }
 
@@ -164,16 +177,40 @@ impl TypeConstructor {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
 pub struct VectorType {
-    pub nullability: Nullability,
-    pub element_count: u32,
+    pub name: Name,
     pub element_type: Type,
+
+    #[derivative(PartialEq = "ignore", Ord = "ignore", PartialOrd = "ignore")]
+    pub constraints: VectorConstraints,
 }
 
 impl VectorType {
+    pub fn new(name: Name, element_type: Type) -> Self {
+        Self {
+            name,
+            element_type,
+            constraints: VectorConstraints::default(),
+        }
+    }
+
     pub fn element_size(&self) -> u32 {
-        self.element_count
+        let size = self.constraints.size().clone();
+        let size = if size.is_some() { size.unwrap().into() } else { std::u32::MAX };
+
+        size
+    }
+
+    pub fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        Ok(Type::Vector(Rc::from(self.clone())))
     }
 }
 
@@ -186,7 +223,7 @@ pub struct PrimitiveType {
 impl PrimitiveType {
     pub fn apply_constraints(
         &self,
-        resolver: &crate::compiler::TypeResolver,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
         diagnostics: Rc<Diagnostics>,
         constraints: &LayoutConstraints,
         layout: &Reference,
@@ -236,7 +273,7 @@ impl StringType {
 
     pub fn apply_constraints(
         &self,
-        resolver: &crate::compiler::TypeResolver,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
         diagnostics: Rc<Diagnostics>,
         constraints: &LayoutConstraints,
         layout: &Reference,
@@ -278,7 +315,7 @@ impl IdentifierType {
     }
     pub fn apply_constraints(
         &self,
-        resolver: &crate::compiler::TypeResolver,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
         diagnostics: Rc<Diagnostics>,
         constraints: &LayoutConstraints,
         layout: &Reference,

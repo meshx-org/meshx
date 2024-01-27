@@ -33,6 +33,9 @@ pub trait WithDocumentation {
 pub trait Decl {
     fn compiling(&self) -> bool;
     fn compiled(&self) -> bool;
+
+    fn set_compiling(&mut self, val: bool);
+    fn set_compiled(&mut self, val: bool);
 }
 
 pub trait TypeDecl: Decl {

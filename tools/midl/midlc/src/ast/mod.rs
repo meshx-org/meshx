@@ -43,15 +43,14 @@ pub use reference::{Reference, ReferenceKey, ReferenceState, Target};
 pub use resource::{Resource, ResourceProperty};
 pub use span::Span;
 pub use table::{Table, TableMember, TableMemberUsed};
-pub use traits::{WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
+pub use traits::{Decl, TypeDecl, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
 pub use type_constructor::{
     IdentifierType, InternalSubtype, InternalType, LayoutConstraints, LayoutParameter, LayoutParameterList,
     LiteralLayoutParameter, PrimitiveSubtype, PrimitiveType, StringType, Type, TypeConstructor, TypeLayoutParameter,
+    VectorType,
 };
 pub use union::{Union, UnionMember, UnionMemberUsed};
 pub use versioning_types::{Availability, AvailabilityInitArgs, Platform, Version, VersionRange, VersionSelection};
-
-use self::traits::TypeDecl;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Element {
@@ -184,16 +183,108 @@ impl Declaration {
         }
     }
 
-    pub(crate) fn as_type_decl(&self) -> Rc<RefCell<dyn TypeDecl>> {
+    pub(crate) fn set_recursive(&self, val: bool) -> bool {
         match self {
-            Declaration::Enum { decl } => decl.clone() as Rc<RefCell<dyn TypeDecl>>,
-            Declaration::Struct { ref decl } => decl.clone() as Rc<RefCell<dyn TypeDecl>>,
-            Declaration::Union { ref decl } => todo!(),
-            Declaration::Table { ref decl } => todo!(),
+            Declaration::Enum { decl } => {
+                decl.borrow_mut().recursive = val;
+                true
+            }
+            Declaration::Struct { decl } => {
+                decl.borrow_mut().recursive = val;
+                true
+            }
+            Declaration::Union { .. } => todo!(),
+            Declaration::Table { .. } => todo!(),
             Declaration::Bits => todo!(),
             Declaration::Overlay => todo!(),
             Declaration::NewType => todo!(),
             _ => panic!("not type decl"),
+        }
+    }
+
+    pub(crate) fn as_decl(&self) -> Rc<RefCell<dyn Decl>> {
+        match self {
+            Declaration::Enum { decl } => decl.clone() as Rc<RefCell<dyn Decl>>,
+            Declaration::Struct { decl } => decl.clone() as Rc<RefCell<dyn Decl>>,
+            Declaration::Union { decl } => decl.clone() as Rc<RefCell<dyn Decl>>,
+            Declaration::Table { decl } => decl.clone() as Rc<RefCell<dyn Decl>>,
+            Declaration::Const { decl } => decl.clone() as Rc<RefCell<dyn Decl>>,
+            Declaration::Bits => todo!(),
+            Declaration::Overlay => todo!(),
+            Declaration::NewType => todo!(),
+            Declaration::Resource { .. } => todo!(),
+            Declaration::Alias { .. } => todo!(),
+            Declaration::Protocol { .. } => todo!(),
+            Declaration::Builtin { .. } => todo!(),
+            // _ => panic!("not type decl"),
+        }
+    }
+
+    pub(crate) fn compiling(&self) -> bool {
+        match self {
+            Declaration::Union { decl } => decl.borrow().compiling,
+            Declaration::Enum { decl } => decl.borrow().compiling,
+            Declaration::Const { decl } => decl.borrow().compiling,
+            Declaration::Struct { decl } => decl.borrow().compiling,
+            Declaration::Table { .. } => todo!(),
+            Declaration::Resource { .. } => todo!(),
+            Declaration::Alias { .. } => todo!(),
+            Declaration::Protocol { .. } => todo!(),
+            Declaration::Builtin { .. } => todo!(),
+            Declaration::Bits => todo!(),
+            Declaration::NewType => todo!(),
+            Declaration::Overlay => todo!(),
+        }
+    }
+
+    pub(crate) fn compiled(&self) -> bool {
+        match self {
+            Declaration::Union { decl } => decl.borrow().compiled,
+            Declaration::Enum { decl } => decl.borrow().compiled,
+            Declaration::Const { decl } => decl.borrow().compiled,
+            Declaration::Struct { decl } => decl.borrow().compiled,
+            Declaration::Table { .. } => todo!(),
+            Declaration::Resource { .. } => todo!(),
+            Declaration::Alias { .. } => todo!(),
+            Declaration::Protocol { .. } => todo!(),
+            Declaration::Builtin { .. } => todo!(),
+            Declaration::Bits => todo!(),
+            Declaration::NewType => todo!(),
+            Declaration::Overlay => todo!(),
+        }
+    }
+
+    pub(crate) fn set_compiling(&mut self, val: bool) {
+        match self {
+            Declaration::Union { decl } => decl.borrow_mut().compiling = val,
+            Declaration::Enum { decl } => decl.borrow_mut().compiling = val,
+            Declaration::Const { decl } => decl.borrow_mut().compiling = val,
+            Declaration::Struct { decl } => decl.borrow_mut().compiling = val,
+            Declaration::Table { .. } => todo!(),
+            Declaration::Resource { decl } => decl.borrow_mut().compiling = val,
+            Declaration::Alias { .. } => todo!(),
+            Declaration::Protocol { .. } => todo!(),
+            Declaration::Builtin { .. } => todo!(),
+            Declaration::Bits => todo!(),
+            Declaration::NewType => todo!(),
+            Declaration::Overlay => todo!(),
+        }
+    }
+
+    pub(crate) fn set_compiled(&mut self, val: bool) {
+        match self {
+            Declaration::Union { decl } => decl.borrow_mut().compiled = val,
+            Declaration::Enum { decl } => decl.borrow_mut().compiled = val,
+            Declaration::Const { decl } => decl.borrow_mut().compiled = val,
+            Declaration::Struct { decl } => decl.borrow_mut().compiled = val,
+            Declaration::Resource { decl } => decl.borrow_mut().compiled = val,
+            Declaration::Table { .. } => todo!(),
+            Declaration::Alias { .. } => todo!(),
+            Declaration::Protocol { .. } => todo!(),
+            Declaration::Builtin { .. } => todo!(),
+            Declaration::Bits => todo!(),
+            Declaration::NewType => todo!(),
+            Declaration::Overlay => todo!(),
         }
     }
 

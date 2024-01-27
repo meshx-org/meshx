@@ -9,9 +9,9 @@ enum TransportSide {
     Server,
 }
 
-struct TypeCreator<'a> {
+struct TypeCreator<'a, 'r, 'd> {
     typespace: &'a Typespace,
-    resolver: &'a TypeResolver,
+    resolver: &'a TypeResolver<'r, 'd>,
     layout: &'a ast::Reference,
     parameters: &'a ast::LayoutParameterList,
     constraints: &'a ast::LayoutConstraints,
@@ -41,26 +41,36 @@ fn builtin_to_primitive_subtype(id: ast::BuiltinIdentity) -> Option<ast::Primiti
     }
 }
 
-impl<'a> TypeCreator<'a> {
-    fn ensure_number_of_layout_params(&self, num: u32) -> bool {
-        true
+impl<'a, 'r, 'd> TypeCreator<'a, 'r, 'd> {
+    fn ensure_number_of_layout_params(&self, expected_params: u32) -> bool {
+        let num_params = self.parameters.items.len();
+        if num_params == expected_params as usize {
+            return true;
+        }
+
+        let span_data = if num_params == 0 {
+            self.layout.span.as_ref().unwrap().data.clone()
+        } else {
+            self.parameters.span.as_ref().unwrap().data.clone()
+        };
+
+        // TODO: return reporter()->Fail(ErrWrongNumberOfLayoutParameters, span, layout_.resolved().name(),
+        //                 expected_params, num_params);
+
+        todo!();
+        return false;
     }
 
     fn create_alias_type(&self, decl: ast::Declaration) -> Option<ast::Type> {
         todo!()
     }
 
-    fn create_identifier_type(&self, decl: ast::Declaration) -> Option<ast::Type> {
-        {
-            let type_decl = decl.as_type_decl();
-            let mut type_decl = type_decl.borrow_mut();
-
-            if !type_decl.compiled() && !matches!(decl, ast::Declaration::Protocol { .. }) {
-                if type_decl.compiling() {
-                    type_decl.set_recursive(true);
-                } else {
-                    self.resolver.compile_decl(decl.clone());
-                }
+    fn create_identifier_type(&self, mut decl: ast::Declaration) -> Option<ast::Type> {
+        if !decl.compiled() && !matches!(decl, ast::Declaration::Protocol { .. }) {
+            if decl.compiling() {
+                decl.set_recursive(true);
+            } else {
+                self.resolver.compile_decl(&mut decl);
             }
         }
 
@@ -116,7 +126,31 @@ impl<'a> TypeCreator<'a> {
     }
 
     fn create_vector_type(&self) -> Option<ast::Type> {
-        todo!()
+        if !self.ensure_number_of_layout_params(1) {
+            return None;
+        }
+
+        if let Ok(typ) = self
+            .resolver
+            .resolve_param_as_type(self.layout, self.parameters.items.get(0).unwrap())
+        {
+            //self.out_params.element_type_resolved = element_type;
+            //self.out_params_.element_type_raw = self.parameters.items[0].as_type_ctor();
+
+            let r#type = ast::VectorType::new(self.layout.resolved().unwrap().name(), typ);
+            let constrained_type = r#type
+                .apply_constraints(
+                    self.resolver,
+                    self.typespace.diagnostics.clone(),
+                    self.constraints,
+                    self.layout,
+                )
+                .unwrap();
+
+            self.typespace.intern(constrained_type)
+        } else {
+            return None;
+        }
     }
 
     fn create_string_type(&self) -> Option<ast::Type> {
@@ -283,7 +317,7 @@ impl Typespace {
 
     pub fn create(
         &self,
-        resolver: &TypeResolver,
+        resolver: &TypeResolver<'_, '_>,
         layout: &ast::Reference,
         parameters: &ast::LayoutParameterList,
         constraints: &ast::LayoutConstraints,

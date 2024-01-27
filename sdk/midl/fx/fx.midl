@@ -40,3 +40,9 @@ type Result = union {
     3: reserved
     4: error Error
 }
+
+type Profile = table {
+    1: locales vector<string>
+    2: calendars vector<string>
+    3: time_zones vector<string>
+}

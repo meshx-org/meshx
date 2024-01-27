@@ -3,14 +3,18 @@ use anyhow::Result;
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use crate::{
-    ast::{self, ConstantTrait, ConstantValue, PrimitiveSubtype, WithSpan},
+    ast::{self, ConstantTrait, ConstantValue, Decl, PrimitiveSubtype, WithSpan},
     diagnotics::{DiagnosticsError, Error},
 };
 
 use super::{type_resolver::TypeResolver, typespace::Typespace, Context};
 
 pub(crate) struct CompileStep<'ctx, 'd> {
-    ctx: &'ctx mut Context<'d>,
+    pub(super) ctx: &'ctx mut Context<'d>,
+
+    /// Stack of decls being compiled. Used to trace back and print the cycle if a
+    /// cycle is detected.
+    decl_stack: RefCell<Vec<ast::Declaration>>,
 }
 
 struct ScopeInsertResult {
@@ -71,8 +75,6 @@ type Ordinal64Scope = Scope<u64>;
 fn find_first_non_dense_ordinal(scope: &Ordinal64Scope) -> Option<(u64, ast::Span)> {
     let mut last_ordinal_seen = 0;
 
-    println!("find_first_non_dense_ordinal {:?}", scope);
-
     for (ordinal, loc) in scope.scope.iter() {
         let next_expected_ordinal = last_ordinal_seen + 1;
 
@@ -86,9 +88,15 @@ fn find_first_non_dense_ordinal(scope: &Ordinal64Scope) -> Option<(u64, ast::Spa
     None
 }
 
-impl<'ctx, 'd> CompileStep<'ctx, 'd> {
+impl<'ctx, 'd> CompileStep<'ctx, 'd>
+where
+    'ctx: 'd,
+{
     pub fn new(ctx: &'ctx mut Context<'d>) -> Self {
-        Self { ctx }
+        Self {
+            ctx,
+            decl_stack: RefCell::new(Vec::new()),
+        }
     }
 
     fn typespace(&self) -> Rc<Typespace> {
@@ -102,25 +110,42 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
     }
 
     fn run_impl(&self) {
-        log::debug!("running compile step");
-
         // CompileAttributeList(library()->attributes.get());
-        for (_, decl) in self.ctx.library.declarations.borrow().all.flat_iter() {
+        for (_, decl) in self.ctx.library.declarations.borrow_mut().all.flat_iter_mut() {
             self.compile_decl(decl);
         }
     }
 
-    fn compile_decl(&self, decl: &ast::Declaration) {
+    pub(crate) fn compile_decl(&self, decl: &mut ast::Declaration) {
+        println!("compile_decl start");
+
+        {
+            let mut decl_stack = self.decl_stack.borrow_mut();
+
+            decl.set_compiling(true);
+            decl_stack.push(decl.clone());
+        }
+
         match decl {
             ast::Declaration::Const { decl } => self.compile_const(decl.clone()),
             ast::Declaration::Enum { decl } => self.compile_enum(decl.clone()),
             ast::Declaration::Struct { decl } => self.compile_struct(decl.clone()),
             ast::Declaration::Union { decl } => self.compile_union(decl.clone()),
-            ast::Declaration::Resource { decl } => {}
-            ast::Declaration::Alias { decl } => {}
-            ast::Declaration::Protocol { decl } => {}
+            ast::Declaration::Resource { .. } => {}
+            ast::Declaration::Alias { .. } => {}
+            ast::Declaration::Protocol { .. } => {}
             _ => todo!(),
         }
+
+        {
+            let mut decl_stack = self.decl_stack.borrow_mut();
+
+            decl.set_compiling(false);
+            decl.set_compiled(true);
+            decl_stack.pop();
+        }
+
+        println!("compile_decl end");
     }
 
     fn compile_attribute_list(&self, attrs: &ast::AttributeList) {}
@@ -470,12 +495,12 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
             ast::Element::Struct { .. } => todo!(),
             ast::Element::Protocol { .. } => todo!(),
             ast::Element::NewType => todo!(),
-            ast::Element::Table{..} => todo!(),
+            ast::Element::Table { .. } => todo!(),
             ast::Element::Union { .. } => todo!(),
             ast::Element::Overlay => todo!(),
             ast::Element::StructMember { .. } => todo!(),
             ast::Element::ProtocolMethod { .. } => todo!(),
-            ast::Element::TableMember{..} => todo!(),
+            ast::Element::TableMember { .. } => todo!(),
             ast::Element::UnionMember { .. } => todo!(),
             ast::Element::EnumMember { .. } => todo!(),
             _ => todo!(),
@@ -658,7 +683,7 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
         }
     }
 
-    fn compile_type_constructor(&self, type_ctor: &mut ast::TypeConstructor) {
+    pub fn compile_type_constructor(&self, type_ctor: &mut ast::TypeConstructor) {
         if type_ctor.r#type.is_some() {
             return;
         }

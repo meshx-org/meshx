@@ -51,7 +51,7 @@ pub struct UnionMember {
     pub ir: ir::UnionMember,
     pub name: String,
     pub r#type: Type,
-    pub ordinal: i64,
+    pub ordinal: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

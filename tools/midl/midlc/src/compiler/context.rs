@@ -19,18 +19,18 @@ use super::libraries::Libraries;
 /// are not valid, multiple arguments with the same name are not valid, etc.
 ///
 /// See `visit_attributes()`.
-pub(crate) struct Context<'db> {
+pub(crate) struct Context<'d> {
     pub(crate) library: Rc<ast::Library>,
     pub(crate) all_libraries: Rc<RefCell<Libraries>>,
-    pub(crate) diagnostics: &'db mut Diagnostics,
+    pub(crate) diagnostics: &'d mut Diagnostics,
     pub(crate) version_selection: VersionSelection,
 }
 
-impl<'db> Context<'db> {
+impl<'d> Context<'d> {
     pub(super) fn new(
         library: Rc<ast::Library>,
         all_libraries: Rc<RefCell<Libraries>>,
-        diagnostics: &'db mut Diagnostics,
+        diagnostics: &'d mut Diagnostics,
     ) -> Self {
         Context {
             library,

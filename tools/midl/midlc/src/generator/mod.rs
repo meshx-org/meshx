@@ -159,9 +159,9 @@ impl JSONGenerator {
             ast::Type::Vector(r#type) => ir::Type::VectorType {
                 element_type: Box::from(self.generate_type(r#type.element_type.clone())),
                 element_count: Some(r#type.element_size()),
-                nullable: self.generate_nullable(&r#type.nullability),
+                nullable: self.generate_nullable(&r#type.constraints.nullabilty()),
             },
-            ast::Type::Identifier(ref r#type ) => ir::Type::IdentifierType {
+            ast::Type::Identifier(ref r#type) => ir::Type::IdentifierType {
                 identifier: self.generate_name(r#type.name.clone()),
                 nullable: self.generate_nullable(&r#type.constraints.nullabilty()),
                 type_shape_v2: self.generate_type_shape(),

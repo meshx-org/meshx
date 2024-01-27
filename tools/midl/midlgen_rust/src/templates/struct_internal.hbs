@@ -5,16 +5,16 @@
 // found in the LICENSE file.
 }}
 
-unsafe impl fidl::encoding::TypeMarker for {{ name }} {
+unsafe impl midl::encoding::TypeMarker for {{ name }} {
     type Owned = Self;
 
     #[inline(always)]
-    fn inline_align(_context: fidl::encoding::Context) -> usize {
+    fn inline_align(_context: midl::encoding::Context) -> usize {
         {{ alignment_v2 }}
     }
 
     #[inline(always)]
-    fn inline_size(_context: fidl::encoding::Context) -> usize {
+    fn inline_size(_context: midl::encoding::Context) -> usize {
         {{ size_v2 }}
     }
 

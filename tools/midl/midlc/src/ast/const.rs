@@ -2,8 +2,7 @@ use derivative::Derivative;
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    AttributeList, Comment, Declaration, Identifier, Literal, Name, Reference, Span, Type, TypeConstructor,
-    WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan,
+    AttributeList, Comment, Decl, Declaration, Identifier, Literal, Name, Reference, Span, Type, TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan
 };
 
 struct Numeric<T>(T);
@@ -299,6 +298,11 @@ pub struct Const {
 
     /// The location of this constant in the text representation.
     pub(crate) span: Span,
+
+    // Set during compilation
+    pub(crate) compiled: bool,
+    pub(crate) compiling: bool,
+    pub(crate) recursive: bool
 }
 
 impl Into<Declaration> for Const {
@@ -336,5 +340,23 @@ impl WithDocumentation for Const {
 impl WithName for Const {
     fn name(&self) -> &Name {
         &self.name
+    }
+}
+
+impl Decl for Const {
+    fn compiling(&self) -> bool {
+        self.compiling
+    }
+
+    fn compiled(&self) -> bool {
+        self.compiled
+    }
+
+    fn set_compiling(&mut self, val: bool) {
+        self.compiling = val;
+    }
+
+    fn set_compiled(&mut self, val: bool) {
+        self.compiled = val;
     }
 }

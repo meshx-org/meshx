@@ -98,5 +98,8 @@ pub(crate) fn consume_constant_declaration(
         attributes: attributes.unwrap(),
         documentation: None,
         span: ast::Span::from_pest(pair_span, ctx.source_id),
+        compiled: false,
+        compiling: false,
+        recursive: false
     })
 }

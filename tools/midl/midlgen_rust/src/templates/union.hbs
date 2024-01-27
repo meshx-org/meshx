@@ -11,7 +11,7 @@ pub enum {{ name }} {
     {{#each (doc_comments this.ir.maybe_attributes) }}
 	///{{this}}
 	{{/each}}
-    {{this.name}}({{ this.type.owned }}),
+    {{this.name}}({{{this.type.owned}}}),
     {{/each}}
     {{#if is_flexible }}
     #[doc(hidden)]
