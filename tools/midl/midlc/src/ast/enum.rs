@@ -1,8 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    Attribute, AttributeList, Comment, Constant, Declaration, Element, Identifier, Name, PrimitiveType, Span,
-    TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan,
+    traits::{Decl, TypeDecl}, Attribute, AttributeList, Comment, Constant, Declaration, Element, Identifier, Name, PrimitiveType, Span, TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan
 };
 
 /// An opaque identifier for a field in an AST model. Use the
@@ -133,6 +132,11 @@ pub struct Enum {
 
     pub(crate) unknown_value_signed: i64,
     pub(crate) unknown_value_unsigned: u64,
+
+    // Set during compilation
+    pub(crate) compiled: bool,
+    pub(crate) compiling: bool,
+    pub(crate) recursive: bool
 }
 
 impl Into<Declaration> for Enum {
@@ -179,5 +183,21 @@ impl WithDocumentation for Enum {
 impl WithName for Enum {
     fn name(&self) -> &Name {
         &self.name
+    }
+}
+
+impl Decl for Enum {
+    fn compiling(&self) -> bool {
+        self.compiling 
+    }
+
+    fn compiled(&self) -> bool {
+        self.compiled
+    }
+}
+
+impl TypeDecl for Enum {
+    fn set_recursive(&mut self, value: bool) {
+        self.recursive = value;
     }
 }

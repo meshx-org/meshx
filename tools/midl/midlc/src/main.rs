@@ -128,7 +128,7 @@ fn compile(
 
     let compilation = all_libraries.borrow_mut().filter(0);
 
-    println!("compilation {:#?}", compilation);
+    println!("compilation {:#?}", compilation.declarations.unions);
 
     // Verify that the produced library's name matches the expected name.
     /*std::string produced_name = fidlc::NameLibrary(compilation->library_name);

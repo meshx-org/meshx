@@ -1,15 +1,10 @@
 use anyhow::Result;
-use hcl::Identifier;
-use std::{
-    cell::{RefCell, RefMut},
-    collections::BTreeMap,
-    rc::Rc,
-    str::FromStr,
-};
+
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use crate::{
-    ast::{self, Constant, ConstantTrait, ConstantValue, PrimitiveSubtype, WithSpan},
-    diagnotics::DiagnosticsError,
+    ast::{self, ConstantTrait, ConstantValue, PrimitiveSubtype, WithSpan},
+    diagnotics::{DiagnosticsError, Error},
 };
 
 use super::{type_resolver::TypeResolver, typespace::Typespace, Context};
@@ -18,17 +13,12 @@ pub(crate) struct CompileStep<'ctx, 'd> {
     ctx: &'ctx mut Context<'d>,
 }
 
-enum ParseNumericResult {
-    kOutOfBounds,
-    kMalformed,
-    kSuccess,
-}
-
 struct ScopeInsertResult {
     previous_occurrence: Option<ast::Span>,
 }
+
 impl ScopeInsertResult {
-    fn new() -> Self {
+    fn ok() -> Self {
         Self {
             previous_occurrence: None,
         }
@@ -49,6 +39,9 @@ impl ScopeInsertResult {
     }
 }
 
+type MemberValidator<T> = dyn FnMut(T, Vec<ast::Attribute>, ast::Identifier) -> Result<(), DiagnosticsError>;
+
+#[derive(Debug)]
 struct Scope<T> {
     scope: BTreeMap<T, ast::Span>,
 }
@@ -58,12 +51,40 @@ impl<T> Scope<T> {
         Self { scope: BTreeMap::new() }
     }
 
-    fn insert(&self, value: T, name: ast::Identifier) -> ScopeInsertResult {
-        ScopeInsertResult::new()
+    fn insert(&mut self, t: T, span: ast::Span) -> ScopeInsertResult
+    where
+        T: Ord,
+    {
+        let last = self.scope.get_key_value(&t);
+
+        if let Some((last, span)) = last {
+            return ScopeInsertResult::new_failure_at(span.clone());
+        }
+
+        self.scope.insert(t, span);
+        ScopeInsertResult::ok()
     }
 }
 
-type MemberValidator<T> = dyn FnMut(T, Vec<ast::Attribute>, ast::Identifier) -> Result<(), DiagnosticsError>;
+type Ordinal64Scope = Scope<u64>;
+
+fn find_first_non_dense_ordinal(scope: &Ordinal64Scope) -> Option<(u64, ast::Span)> {
+    let mut last_ordinal_seen = 0;
+
+    println!("find_first_non_dense_ordinal {:?}", scope);
+
+    for (ordinal, loc) in scope.scope.iter() {
+        let next_expected_ordinal = last_ordinal_seen + 1;
+
+        if *ordinal != next_expected_ordinal {
+            return Some((next_expected_ordinal, loc.clone()));
+        }
+
+        last_ordinal_seen = *ordinal;
+    }
+
+    None
+}
 
 impl<'ctx, 'd> CompileStep<'ctx, 'd> {
     pub fn new(ctx: &'ctx mut Context<'d>) -> Self {
@@ -75,23 +96,28 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
     }
 
     pub(crate) fn run(&self) -> bool {
+        let checkpoint = self.ctx.diagnostics.checkpoint();
+        self.run_impl();
+        checkpoint.no_new_errors()
+    }
+
+    fn run_impl(&self) {
         log::debug!("running compile step");
 
         // CompileAttributeList(library()->attributes.get());
         for (_, decl) in self.ctx.library.declarations.borrow().all.flat_iter() {
             self.compile_decl(decl);
         }
-
-        true
     }
 
     fn compile_decl(&self, decl: &ast::Declaration) {
         match decl {
             ast::Declaration::Const { decl } => self.compile_const(decl.clone()),
             ast::Declaration::Enum { decl } => self.compile_enum(decl.clone()),
+            ast::Declaration::Struct { decl } => self.compile_struct(decl.clone()),
+            ast::Declaration::Union { decl } => self.compile_union(decl.clone()),
             ast::Declaration::Resource { decl } => {}
             ast::Declaration::Alias { decl } => {}
-            ast::Declaration::Struct { decl } => {}
             ast::Declaration::Protocol { decl } => {}
             _ => todo!(),
         }
@@ -101,12 +127,12 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
 
     fn validate_members<MemberType>(&self, decl: ast::Declaration, validator: &mut MemberValidator<MemberType>) -> bool
     where
-        MemberType: From<ConstantValue> + Copy,
+        MemberType: From<ConstantValue> + Copy + Ord,
     {
         //assert!(decl != nullptr);
         // let checkpoint = reporter()->Checkpoint();
 
-        let value_scope: Scope<MemberType> = Scope::new();
+        let mut value_scope: Scope<MemberType> = Scope::new();
 
         if let ast::Declaration::Enum { decl } = decl {
             for (_, member) in decl.borrow().iter_members() {
@@ -119,7 +145,7 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
                 }
 
                 let value: MemberType = member.value.value().into();
-                let value_result = value_scope.insert(value, member.name.clone());
+                let value_result = value_scope.insert(value, member.name.span.clone());
                 if !value_result.is_ok() {
                     let previous_span = value_result.previous_occurrence();
                     // We can log the error and then continue validating other members for other bugs
@@ -144,7 +170,7 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
         out_unknown_value: &mut MemberType,
     ) -> bool
     where
-        MemberType: num::Bounded + From<ConstantValue> + Copy,
+        MemberType: num::Bounded + From<ConstantValue> + Copy + Ord,
     {
         let enum_decl = decl.borrow();
         let default_unknown_value = <MemberType as num::Bounded>::max_value();
@@ -196,8 +222,6 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
 
             match enum_declaration.subtype_ctor.r#type.as_ref().unwrap().clone() {
                 ast::Type::Primitive(primitive_type) => {
-                    
-
                     enum_declaration.r#type = Some(primitive_type.clone());
                     primitive_type.subtype
                 }
@@ -280,8 +304,98 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
         }
     }
 
-    fn compile_const(&self, const_declaration: Rc<RefCell<ast::Const>>) {
-        let mut const_declaration = const_declaration.borrow_mut();
+    fn compile_union(&self, decl: Rc<RefCell<ast::Union>>) {
+        let union_declaration: std::cell::Ref<'_, ast::Union> = decl.borrow();
+        let mut ordinal_scope = Ordinal64Scope::new();
+        // DeriveResourceness derive_resourceness(&union_declaration.resourceness);
+
+        self.compile_attribute_list(&union_declaration.attributes);
+        let mut contains_non_reserved_member = false;
+
+        for member in union_declaration.members.iter() {
+            let mut member = member.borrow_mut();
+
+            self.compile_attribute_list(&member.attributes);
+
+            let ordinal_result = ordinal_scope.insert(member.ordinal.value, member.ordinal.span.clone());
+            if !ordinal_result.is_ok() {
+                self.ctx.diagnostics.push_error(
+                    Error::DuplicateUnionMemberOrdinal {
+                        span: member.ordinal.span.clone(),
+                        prev: ordinal_result.previous_occurrence(),
+                    }
+                    .into(),
+                );
+            }
+
+            if member.maybe_used.as_ref().is_none() {
+                continue;
+            }
+
+            contains_non_reserved_member = true;
+            let member_used = member.maybe_used.as_mut().unwrap();
+
+            self.compile_type_constructor(&mut member_used.type_ctor);
+
+            if member_used.type_ctor.r#type.is_none() {
+                continue;
+            }
+
+            if member_used.type_ctor.r#type.as_ref().unwrap().is_nullable() {
+                // reporter()->Fail(ErrOptionalUnionMember, member_used.name);
+            }
+
+            // derive_resourceness.AddType(member_used.type_ctor->type);
+        }
+
+        if union_declaration.strictness == ast::Strictness::Strict && !contains_non_reserved_member {
+            self.ctx.diagnostics.push_error(
+                Error::StrictUnionMustHaveNonReservedMember {
+                    span: union_declaration.name.span().unwrap(),
+                }
+                .into(),
+            )
+        }
+
+        if let Some((ordinal, span)) = find_first_non_dense_ordinal(&ordinal_scope) {
+            self.ctx
+                .diagnostics
+                .push_error(Error::NonDenseOrdinal { span, ordinal }.into());
+        }
+    }
+
+    fn compile_struct(&self, decl: Rc<RefCell<ast::Struct>>) {
+        let struct_declaration = decl.borrow();
+        // DeriveResourceness derive_resourceness(&struct_declaration->resourceness);
+
+        self.compile_attribute_list(&struct_declaration.attributes);
+
+        for member in struct_declaration.members.iter() {
+            let mut member = member.borrow_mut();
+            let r#type = member.type_ctor.r#type.clone();
+
+            self.compile_attribute_list(&member.attributes);
+            self.compile_type_constructor(&mut member.type_ctor);
+
+            if r#type.is_none() {
+                continue;
+            }
+
+            if member.maybe_default_value.is_some() {
+                if !self.type_can_be_const(member.type_ctor.r#type.as_ref().unwrap()) {
+                    //reporter().Fail(ErrInvalidStructMemberType, struct_declaration.name.span().value(),
+                    //                NameIdentifier(member.name), default_value_type);
+                } else if !self.resolve_constant(&mut member.maybe_default_value.as_mut().unwrap(), r#type) {
+                    //reporter().Fail(ErrCouldNotResolveMemberDefault, member.name, NameIdentifier(member.name));
+                }
+            }
+
+            // TODO: derive_resourceness.add_type(member.type_ctor.r#type);
+        }
+    }
+
+    fn compile_const(&self, decl: Rc<RefCell<ast::Const>>) {
+        let mut const_declaration = decl.borrow_mut();
         self.compile_attribute_list(&const_declaration.attributes);
         self.compile_type_constructor(&mut const_declaration.type_ctor);
 
@@ -291,7 +405,7 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
             return;
         }
 
-        if !self.type_can_be_const(const_type.clone().unwrap()) {
+        if !self.type_can_be_const(const_type.as_ref().unwrap()) {
             //    self.ctx.diagnostics.fail(ErrInvalidConstantType, const_declaration.name.span().value(), const_type);
         } else if !self.resolve_constant(&mut const_declaration.value, const_type) {
             //    self.ctx.diagnostics.fail(ErrCannotResolveConstantValue, const_declaration.name.span().value());
@@ -317,7 +431,7 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
     ) -> bool {
         if opt_type.is_some() {
             assert!(
-                self.type_can_be_const(opt_type.unwrap()),
+                self.type_can_be_const(&opt_type.unwrap()),
                 "resolving identifier constant to non-const-able type"
             );
         }
@@ -333,7 +447,7 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
         let mut const_val: Option<ast::ConstantValue> = None;
 
         match target {
-            ast::Element::Builtin { inner } => {
+            ast::Element::Builtin { .. } => {
                 // TODO(https://fxbug.dev/99665): In some cases we want to return a more specific
                 // error message from here, but right now we can't due to the way
                 // TypeResolver::ResolveConstraintAs tries multiple interpretations.
@@ -352,18 +466,19 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
             ast::Element::Bits => todo!(),
             ast::Element::Enum { .. } => todo!(),
             ast::Element::Resource => todo!(),
-            ast::Element::Alias { inner } => todo!(),
-            ast::Element::Struct { inner } => todo!(),
-            ast::Element::Protocol { inner } => todo!(),
+            ast::Element::Alias { .. } => todo!(),
+            ast::Element::Struct { .. } => todo!(),
+            ast::Element::Protocol { .. } => todo!(),
             ast::Element::NewType => todo!(),
-            ast::Element::Table => todo!(),
-            ast::Element::Union => todo!(),
+            ast::Element::Table{..} => todo!(),
+            ast::Element::Union { .. } => todo!(),
             ast::Element::Overlay => todo!(),
-            ast::Element::StructMember { inner } => todo!(),
-            ast::Element::ProtocolMethod { inner } => todo!(),
-            ast::Element::TableMember => todo!(),
-            ast::Element::UnionMember => todo!(),
+            ast::Element::StructMember { .. } => todo!(),
+            ast::Element::ProtocolMethod { .. } => todo!(),
+            ast::Element::TableMember{..} => todo!(),
+            ast::Element::UnionMember { .. } => todo!(),
             ast::Element::EnumMember { .. } => todo!(),
+            _ => todo!(),
         }
 
         false
@@ -531,11 +646,11 @@ impl<'ctx, 'd> CompileStep<'ctx, 'd> {
         true
     }
 
-    fn type_can_be_const(&self, typ: ast::Type) -> bool {
+    fn type_can_be_const(&self, typ: &ast::Type) -> bool {
         match typ {
             ast::Type::String(_) => return !typ.is_nullable(),
             ast::Type::Primitive(_) => true,
-            ast::Type::Identifier(identifier_type) => match identifier_type.type_decl {
+            ast::Type::Identifier(identifier_type) => match identifier_type.decl {
                 ast::Declaration::Enum { .. } | ast::Declaration::Bits => true,
                 _ => false,
             },

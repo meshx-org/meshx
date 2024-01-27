@@ -2,12 +2,13 @@ mod consume_alias;
 mod consume_attribute;
 mod consume_comments;
 mod consume_const;
+mod consume_enum;
 mod consume_import;
 mod consume_library;
 mod consume_protocol;
 mod consume_struct;
-mod consume_enum;
 mod consume_type;
+mod consume_union;
 mod consume_value;
 mod helpers;
 mod parser;
@@ -15,19 +16,17 @@ mod parser;
 use consume_alias::consume_alias_declaration;
 use consume_attribute::consume_attribute_list;
 use consume_const::consume_constant_declaration;
+use consume_enum::consume_enum_layout;
 use consume_import::consume_import;
 use consume_library::consume_library_declaration;
 use consume_protocol::consume_protocol_declaration;
-use consume_type::consume_type_constructor;
 use consume_struct::consume_struct_layout;
-use consume_enum::consume_enum_layout;
+use consume_type::consume_type_constructor;
+use consume_union::consume_union_layout;
 
 use self::helpers::consume_catch_all;
 use super::ast;
-use crate::{
-    ast::Name, compiler::ParsingContext,
-    diagnotics::DiagnosticsError,
-};
+use crate::{ast::Name, compiler::ParsingContext, diagnotics::DiagnosticsError};
 pub use parser::{MIDLParser, Rule};
 use pest::iterators::{Pair, Pairs};
 
@@ -183,10 +182,13 @@ pub(crate) fn consume_layout_declaration(
                 return consume_struct_layout(current, identifier.unwrap().clone(), name.unwrap(), ctx);
             }
             Rule::inline_enum_layout => {
-                println!("consume enum");
                 return consume_enum_layout(current, identifier.unwrap().clone(), name.unwrap(), ctx);
-            } 
-            _ => consume_catch_all(&current, "struct"),
+            }
+            Rule::inline_union_layout => {
+                return consume_union_layout(current, identifier.unwrap().clone(), name.unwrap(), ctx);
+            }
+            Rule::CATCH_ALL => consume_catch_all(&current, "layout_declaration"),
+            _ => todo!(),
         }
     }
 

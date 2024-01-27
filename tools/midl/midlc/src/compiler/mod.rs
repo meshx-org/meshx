@@ -38,7 +38,7 @@ pub struct Declarations {
     // services: Vec<Rc<RefCell<ast::Service>>>,
     pub structs: Vec<ast::Declaration>,
     // tables: Vec<Rc<RefCell<ast::Table>>>,
-    // unions: Vec<Rc<RefCell<ast::Union>>>,
+    pub unions: Vec<ast::Declaration>,
     // overlays: Vec<Rc<RefCell<Overlay>>>,
 }
 

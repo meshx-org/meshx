@@ -57,3 +57,12 @@ impl VectorConstraints {
         &self.1 .0
     }
 }
+
+#[derive(Debug, Clone, Default)]
+pub struct IdentifierConstraints(NullabilityConstraint);
+
+impl IdentifierConstraints {
+    pub fn nullabilty(&self) -> Nullability {
+        self.0 .0
+    }
+}

@@ -11,6 +11,46 @@ pub(crate) struct DiagnosticsError {
     message: Cow<'static, str>,
 }
 
+pub(crate) enum Error {
+    StrictUnionMustHaveNonReservedMember { span: Span },
+    DuplicateUnionMemberOrdinal { span: Span, prev: Span },
+    NonDenseOrdinal { span: Span, ordinal: u64 },
+    OrdinalOutOfBound { span: Span },
+    OrdinalsMustStartAtOne { span: Span }
+}
+
+impl From<Error> for DiagnosticsError {
+    fn from(item: Error) -> Self {
+        match item {
+            Error::StrictUnionMustHaveNonReservedMember { span } => DiagnosticsError {
+                message: "strict unions must have at least one non-reserved member".into(),
+                span,
+            },
+            Error::NonDenseOrdinal { span, ordinal } => DiagnosticsError {
+                message: format!("missing ordinal {ordinal} (ordinals must be dense); consider marking it reserved")
+                    .into(),
+                span,
+            },
+            Error::DuplicateUnionMemberOrdinal { span, prev } => DiagnosticsError {
+                message: format!(
+                    "multiple union fields with the same ordinal; previous was at {}",
+                    prev.data
+                )
+                .into(),
+                span,
+            },
+            Error::OrdinalOutOfBound { span } => DiagnosticsError {
+                message: format!("ordinal out-of-bound").into(),
+                span,
+            },
+            Error::OrdinalsMustStartAtOne { span } => DiagnosticsError {
+                message: format!("ordinals must start at 1").into(),
+                span,
+            },
+        }
+    }
+}
+
 impl DiagnosticsError {
     pub fn new(message: impl Into<Cow<'static, str>>, span: Span) -> Self {
         let message = message.into();
@@ -26,7 +66,10 @@ impl DiagnosticsError {
     }
 
     pub fn new_name_not_found(span: Span, name: &String, library_name: &Vec<String>) -> Self {
-        Self::new(format!("Cannot find '{}' in library '{}'", name, library_name.join(".")), span)
+        Self::new(
+            format!("Cannot find '{}' in library '{}'", name, library_name.join(".")),
+            span,
+        )
     }
 
     pub fn new_unknown_dependent_library(

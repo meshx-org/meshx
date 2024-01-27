@@ -29,3 +29,12 @@ pub trait WithDocumentation {
     /// The documentation string, if defined.
     fn documentation(&self) -> Option<&str>;
 }
+
+pub trait Decl {
+    fn compiling(&self) -> bool;
+    fn compiled(&self) -> bool;
+}
+
+pub trait TypeDecl: Decl {
+    fn set_recursive(&mut self, value: bool);
+}

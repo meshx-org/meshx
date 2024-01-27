@@ -283,11 +283,12 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             }
             ast::Element::Struct { .. } => {}
             ast::Element::StructMember { inner } => {
-                self.visit_type_constructor(&inner.member_type_ctor, context);
+                let struct_member = inner.borrow();
+                self.visit_type_constructor(&struct_member.type_ctor, context);
 
-                //if (let constant = struct_member.maybe_default_value) {
-                //    self.visit_constant(constant.get(), context);
-                //}
+                if let Some(constant) = struct_member.maybe_default_value.as_ref() {
+                    self.visit_constant(&constant, context);
+                }
             }
             ast::Element::Protocol { .. } => {}
             ast::Element::ProtocolMethod { inner } => {
@@ -311,15 +312,21 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 let enum_member = inner.borrow();
                 self.visit_constant(&enum_member.value, context);
             }
+            ast::Element::Union { .. } => {}
+            ast::Element::UnionMember { inner } => {
+                let union_member = inner.borrow();
+                if let Some(ref used) = union_member.maybe_used {
+                    self.visit_type_constructor(&used.type_ctor, context);
+                }
+            }
+            ast::Element::Table { .. } => todo!(),
+            ast::Element::TableMember { .. } => todo!(),
             ast::Element::Builtin { .. } => {}
-            ast::Element::Bits => {}
+            ast::Element::Bits => todo!(),
             ast::Element::Resource => {}
             ast::Element::NewType => todo!(),
-            ast::Element::Table => todo!(),
-            ast::Element::Union => todo!(),
             ast::Element::Overlay => todo!(),
-            ast::Element::TableMember => todo!(),
-            ast::Element::UnionMember => todo!(),
+            _ => todo!(),
         }
     }
 

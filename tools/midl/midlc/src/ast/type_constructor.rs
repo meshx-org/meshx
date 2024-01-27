@@ -3,7 +3,8 @@ use derivative::Derivative;
 use crate::diagnotics::Diagnostics;
 
 use super::{
-    Const, Declaration, Element, Identifier, LiteralConstant, Name, Nullability, Reference, Span, VectorConstraints,
+    constraints::IdentifierConstraints, Const, Declaration, Element, Identifier, LiteralConstant, Name, Nullability,
+    Reference, Span, VectorConstraints,
 };
 use std::{borrow::Borrow, cell::RefCell, rc::Rc, str::FromStr};
 
@@ -258,9 +259,36 @@ pub struct InternalType {
     pub subtype: InternalSubtype,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
 pub struct IdentifierType {
-    pub type_decl: Declaration,
+    pub name: Name,
+    pub decl: Declaration,
+    #[derivative(PartialEq = "ignore", Ord = "ignore", PartialOrd = "ignore")]
+    pub constraints: IdentifierConstraints,
+}
+
+impl IdentifierType {
+    pub fn new(decl: Declaration) -> Self {
+        Self {
+            decl: decl.clone(),
+            name: decl.name(),
+            constraints: IdentifierConstraints::default(),
+        }
+    }
+    pub fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        //if (!self.resolve_and_merge_constraints(resolver, reporter, constraints.span, layout.resolved().name(), nullptr, constraints.items, &c, out_params)) {
+        //  return false;
+        //}
+
+        Ok(Type::Identifier(Rc::new(self.clone())))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

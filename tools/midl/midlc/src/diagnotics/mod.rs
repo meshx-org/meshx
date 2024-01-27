@@ -4,7 +4,7 @@ mod warning;
 
 use std::cell::{Ref, RefCell};
 
-pub(crate) use error::DiagnosticsError;
+pub(crate) use error::{DiagnosticsError, Error};
 pub(crate) use pretty_print::{pretty_print_error_text, DiagnosticColorer};
 pub(crate) use warning::DiagnosticsWarning;
 

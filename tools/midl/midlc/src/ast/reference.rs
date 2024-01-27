@@ -40,9 +40,9 @@ impl Target {
             Element::Resource|
             // Element::Service|
             Element::Struct{..}|
-            Element::Table|
+            Element::Table{..}|
             Element::Alias{..}|
-            Element::Union|
+            Element::Union{..}|
             Element::Overlay => {
                 self.target.as_decl().unwrap().name()
             }
@@ -53,15 +53,15 @@ impl Target {
                 let member = inner.borrow();
                 return self.maybe_parent.unwrap().name().with_member_name(member.name.value.clone());  
             }
-            //Element::Library|
+            Element::Library|
             //Element::ProtocolCompose|
             Element::ProtocolMethod{..} |
-            //Element::ResourceProperty|
+            Element::ResourceProperty|
             //Element::ServiceMember|
             Element::StructMember{..} |
-            Element::TableMember|
+            Element::TableMember {..}|
             // Element::OverlayMember
-            Element::UnionMember => panic!("invalid element kind")
+            Element::UnionMember{..} => panic!("invalid element kind")
         }
     }
 }

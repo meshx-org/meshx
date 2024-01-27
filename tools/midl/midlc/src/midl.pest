@@ -15,7 +15,7 @@
 library              =  { SOI ~ (library_declaration | import_declaration | resource_declaration | layout_declaration | alias_declaration | const_declaration | protocol_declaration | comment_block | empty_lines | CATCH_ALL)* ~ EOI }
 
 declaration_list     = _{ (declaration ~ NEWLINE+) * ~ declaration? }
-declaration          = _{ alias_declaration | library_declaration | import_declaration  | const_declaration  | struct_declaration | protocol_declaration }
+declaration          = _{ alias_declaration | library_declaration | import_declaration  | const_declaration  | protocol_declaration }
 library_declaration  =  { LIBRARY_KEYWORD ~ compound_identifier }
 import_declaration   =  { IMPORT_KEYWORD ~ compound_identifier ~ import_alias? }
 import_alias         =  { AS_KEYWORD ~ identifier }
@@ -35,16 +35,6 @@ alias_declaration = {
     ~ identifier
     ~  "="
     ~ type_constructor
-}
-
-struct_declaration =  { 
-    block_attribute_list
-    ~ declaration_modifiers* 
-    ~ (STRUCT_KEYWORD | TABLE_KEYWORD) 
-    ~ identifier?
-    ~ BLOCK_OPEN
-    ~ (struct_layout_member | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)* 
-    ~ BLOCK_CLOSE
 }
 
 layout_declaration =  { 
@@ -92,10 +82,10 @@ protocol_result       =  { "->" ~ parameter_list ~ ( "error" ~ type_constructor 
 protocol_event        =  { block_attribute_list ~ "->" ~ identifier ~ parameter_list }
 protocol_compose      =  { block_attribute_list ~ COMPOSE_KEYWORD ~ compound_identifier }
 
-parameter_list        =  { "(" ~ (struct_declaration | identifier ) ~ ")" }
+parameter_list        =  { "(" ~ (layout_declaration | identifier ) ~ ")" }
 
 layout                = _{ compound_identifier | inline_layout }
-layout_subtype        = _{ ":" ~ type_constructor }
+layout_subtype        =  { ":" ~ type_constructor }
 layout_body           =  { 
 							BLOCK_OPEN 
                             ~ (value_layout | struct_layout | ordinal_layout) 
@@ -130,7 +120,7 @@ inline_table_layout  =  {
                             ~ BLOCK_CLOSE
                         }
                         
-inline_union_layout  =  { 
+inline_union_layout  =  {
 							block_attribute_list
                             ~ declaration_modifiers* 
                             ~ UNION_KEYWORD
@@ -197,12 +187,12 @@ string_escape           = _{ "\\" ~ ANY }
 string_content          = @{ (string_escape | !("\"" | ASCII_CONTROL_CHARACTER) ~ ANY)* }
 string_literal          = ${ "\"" ~ string_content ~ "\"" }
 
-ordinal                 =  { ASCII_NONZERO_DIGIT }
+ordinal                 =  { numeric_literal }
 
 // ######################################
 // shared building blocks
 // ######################################
-identifier               = @{ !KEYWORDS ~ ("_" | ASCII_ALPHANUMERIC)+ }
+identifier               = @{ ("_" | ASCII_ALPHANUMERIC)+ }
 compound_identifier      =  { identifier ~ ( "." ~ identifier )* }
 
 // the any part is to not crash on comments next to an open block, see test `parse_comments_without_crasing_or_loosing_info`
@@ -222,7 +212,6 @@ CONST_KEYWORD    = _{ "const" }
 COMPOSE_KEYWORD  = _{ "compose" }
 PROTOCOL_KEYWORD = _{ "protocol" }
 STRICT_KEYWORD   = _{ "strict" }
-RESERVED_KEYWORD = _{ "reserved" }
 FLEXIBLE_KEYWORD = _{ "flexible" }
 ERROR_KEYWORD    = _{ "error" }
 STRUCT_KEYWORD   = _{ "struct" }
@@ -230,6 +219,7 @@ ENUM_KEYWORD     = _{ "enum" }
 TABLE_KEYWORD    = _{ "table" }
 UNION_KEYWORD    = _{ "union" }
 BITS_KEYWORD     = _{ "bits" }
+RESERVED_KEYWORD =  { "reserved" }
 
 KEYWORDS         = _{ "true" | "false" | declaration_modifiers | TYPE_KEYWORD | LIBRARY_KEYWORD | CONST_KEYWORD | COMPOSE_KEYWORD | PROTOCOL_KEYWORD | ERROR_KEYWORD | RESERVED_KEYWORD }
 

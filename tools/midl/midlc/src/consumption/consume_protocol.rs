@@ -24,8 +24,8 @@ fn consume_parameter_list(
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::identifier => {}
-            Rule::struct_declaration => {
-                let struct_layout = consume_struct_layout(
+            Rule::layout_declaration => {
+                /*let struct_layout = consume_struct_layout(
                     current,
                     ast::Identifier {
                         value: String::from(parameter_name),
@@ -36,6 +36,7 @@ fn consume_parameter_list(
                 )
                 .unwrap();
                 declarations.push(struct_layout.into());
+                */
             }
             _ => consume_catch_all(&current, "parameter list"),
         }

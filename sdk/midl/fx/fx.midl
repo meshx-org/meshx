@@ -27,3 +27,16 @@ type Vessel = strict enum {
     TUREEN = 2
     JUG = 3
 }
+
+type Error = struct {
+    id uint64
+}
+
+/// The result of an operation. A result is either a single number or an
+/// [Error] value.
+type Result = union {
+    1: number float64
+    2: reserved
+    3: reserved
+    4: error Error
+}

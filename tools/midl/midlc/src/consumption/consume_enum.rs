@@ -107,6 +107,9 @@ pub(crate) fn consume_enum_layout(
         span: ast::Span::from_pest(token_span, ctx.source_id),
         subtype_ctor: subtype_ctor.unwrap_or(identifier_type_for_decl(ctx.default_underlying_type.clone())),
         r#type: None,
+        compiled: false,
+        compiling: false,
+        recursive: false,
     }
     .into())
 }

@@ -1,6 +1,6 @@
 use super::Span;
 use crate::ast::Library;
-use std::{borrow::Borrow, cell::OnceCell, rc::Rc};
+use std::{cell::OnceCell, rc::Rc};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct SourcedNameContext {
@@ -13,9 +13,15 @@ struct IntrinsicNameContext {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct AnonymousNameContext {
+    span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum NameContext {
     Sourced(SourcedNameContext),
     Intrinsic(IntrinsicNameContext),
+    Anonymous(AnonymousNameContext),
 }
 
 /// Name represents a named entry in a particular scope.
@@ -37,8 +43,8 @@ impl std::fmt::Debug for Name {
 impl Name {
     pub fn is_intrinsic(&self) -> bool {
         match self.name_context {
-            NameContext::Sourced(_) => false,
             NameContext::Intrinsic(_) => true,
+            _ => false,
         }
     }
 
@@ -62,6 +68,7 @@ impl Name {
         match &self.name_context {
             NameContext::Sourced(ctx) => ctx.span.data.to_owned(),
             NameContext::Intrinsic(ctx) => ctx.name.clone(),
+            NameContext::Anonymous(ctx) => "TODO".to_owned(),
         }
     }
 
@@ -86,6 +93,14 @@ impl Name {
         }
 
         name
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match self.name_context {
+            NameContext::Sourced(ref name_context) => return Some(name_context.span.clone()),
+            NameContext::Intrinsic(_) => None,
+            NameContext::Anonymous(ref name_context) => return Some(name_context.span.clone()),
+        }
     }
 }
 

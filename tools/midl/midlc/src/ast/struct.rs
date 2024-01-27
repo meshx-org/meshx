@@ -1,8 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    Attribute, Comment, Declaration, Element, Identifier, Name, Span, TypeConstructor, WithAttributes,
-    WithDocumentation, WithIdentifier, WithName, WithSpan, AttributeList,
+    traits::{Decl, TypeDecl},
+    AttributeList, Comment, Constant, Declaration, Identifier, Name, Span, TypeConstructor, WithAttributes,
+    WithDocumentation, WithIdentifier, WithName, WithSpan,
 };
 
 /// An opaque identifier for a field in an AST model. Use the
@@ -18,7 +19,7 @@ impl StructMemberId {
 }
 
 impl std::ops::Index<StructMemberId> for Struct {
-    type Output = Element;
+    type Output = Rc<RefCell<StructMember>>;
 
     fn index(&self, index: StructMemberId) -> &Self::Output {
         &self.members[index.0 as usize]
@@ -30,7 +31,7 @@ impl std::ops::Index<StructMemberId> for Struct {
 pub struct StructMember {
     pub(crate) name: Identifier,
 
-    pub(crate) member_type_ctor: TypeConstructor,
+    pub(crate) type_ctor: TypeConstructor,
 
     /// The attributes of this struct member.
     ///     
@@ -40,7 +41,7 @@ pub struct StructMember {
     ///         ^^^
     /// }
     /// ```
-    pub(crate) attributes: Vec<Attribute>,
+    pub(crate) attributes: AttributeList,
 
     /// The documentation for this struct member.
     ///
@@ -52,6 +53,8 @@ pub struct StructMember {
     /// }
     /// ```
     pub(crate) documentation: Option<Comment>,
+
+    pub(crate) maybe_default_value: Option<Constant>,
 
     /// The location of this struct in the text representation.
     pub(crate) span: Span,
@@ -82,7 +85,7 @@ pub struct Struct {
     ///   ^^^^^^^^^^^^^^
     /// }
     /// ```
-    pub(crate) members: Vec<Element>,
+    pub(crate) members: Vec<Rc<RefCell<StructMember>>>,
 
     /// The attributes of this struct.
     ///
@@ -110,16 +113,23 @@ pub struct Struct {
 
     /// The location of this struct in the text representation.
     pub(crate) span: Span,
+
+    // Set during compilation
+    pub(crate) compiled: bool,
+    pub(crate) compiling: bool,
+    pub(crate) recursive: bool
 }
 
 impl Into<Declaration> for Struct {
     fn into(self) -> Declaration {
-        Declaration::Struct { decl: Rc::new(RefCell::new(self)) }
+        Declaration::Struct {
+            decl: Rc::new(RefCell::new(self)),
+        }
     }
 }
 
 impl Struct {
-    pub fn iter_members(&self) -> impl ExactSizeIterator<Item = (StructMemberId, &Element)> + Clone {
+    pub fn iter_members(&self) -> impl ExactSizeIterator<Item = (StructMemberId, &Rc<RefCell<StructMember>>)> + Clone {
         self.members
             .iter()
             .enumerate()
@@ -154,5 +164,21 @@ impl WithDocumentation for Struct {
 impl WithName for Struct {
     fn name(&self) -> &Name {
         &self.name
+    }
+}
+
+impl Decl for Struct {
+    fn compiling(&self) -> bool {
+        self.compiling
+    }
+
+    fn compiled(&self) -> bool {
+        self.compiled
+    }
+}
+
+impl TypeDecl for Struct {
+    fn set_recursive(&mut self, value: bool) {
+        self.recursive = value;
     }
 }

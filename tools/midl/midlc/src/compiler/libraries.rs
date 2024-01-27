@@ -48,7 +48,7 @@ impl Libraries {
 
         Self {
             typespace: Rc::new(Typespace::new(root_library.clone(), Rc::from(Diagnostics::new()))),
-            libraries: vec![],
+            libraries: Vec::new(),
             libraries_by_name: HashMap::new(),
             root_library,
         }
@@ -111,8 +111,6 @@ impl Libraries {
                     dst.push(decl.clone());
                 }
             }
-
-            println!("filter: {} {}", dst.len(), src.len());
         }
 
         /// Filters a ast::Declarations into a compiler::Declarations.
@@ -130,7 +128,7 @@ impl Libraries {
             filter_internal(&mut dst.structs, src.structs);
             //filter_internal(&dst.tables, src.tables);
             //filter_internal(&dst.aliases, src.aliases);
-            //filter_internal(&dst.unions, src.unions);
+            filter_internal(&mut dst.unions, src.unions);
             //filter_internal(&dst.overlays, src.overlays);
         }
 

@@ -1,9 +1,6 @@
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
-use crate::{
-    ast::{self, StringType},
-    diagnotics::Diagnostics,
-};
+use crate::{ast, diagnotics::Diagnostics};
 
 use super::type_resolver::TypeResolver;
 
@@ -50,15 +47,44 @@ impl<'a> TypeCreator<'a> {
     }
 
     fn create_alias_type(&self, decl: ast::Declaration) -> Option<ast::Type> {
-        None
+        todo!()
     }
 
     fn create_identifier_type(&self, decl: ast::Declaration) -> Option<ast::Type> {
-        None
+        {
+            let type_decl = decl.as_type_decl();
+            let mut type_decl = type_decl.borrow_mut();
+
+            if !type_decl.compiled() && !matches!(decl, ast::Declaration::Protocol { .. }) {
+                if type_decl.compiling() {
+                    type_decl.set_recursive(true);
+                } else {
+                    self.resolver.compile_decl(decl.clone());
+                }
+            }
+        }
+
+        if !self.ensure_number_of_layout_params(0) {
+            return None;
+        }
+
+        let r#type = ast::IdentifierType::new(decl);
+
+        let constrained_type = r#type
+            .apply_constraints(
+                self.resolver,
+                self.typespace.diagnostics.clone(),
+                self.constraints,
+                self.layout,
+                // out_params_,
+            )
+            .unwrap();
+
+        self.typespace.intern(constrained_type)
     }
 
     fn create_handle_type(&self, decl: ast::Declaration) -> Option<ast::Type> {
-        None
+        todo!()
     }
 
     fn create_primitive_type(&self, subtype: ast::PrimitiveSubtype) -> Option<ast::Type> {
@@ -82,15 +108,15 @@ impl<'a> TypeCreator<'a> {
     }
 
     fn create_box_type(&self) -> Option<ast::Type> {
-        None
+        todo!()
     }
 
     fn create_array_type(&self) -> Option<ast::Type> {
-        None
+        todo!()
     }
 
     fn create_vector_type(&self) -> Option<ast::Type> {
-        None
+        todo!()
     }
 
     fn create_string_type(&self) -> Option<ast::Type> {
@@ -98,7 +124,7 @@ impl<'a> TypeCreator<'a> {
             return None;
         }
 
-        let r#type = StringType::new(self.layout.resolved().unwrap().name());
+        let r#type = ast::StringType::new(self.layout.resolved().unwrap().name());
         let constrained_type = r#type
             .apply_constraints(
                 self.resolver,
@@ -112,15 +138,14 @@ impl<'a> TypeCreator<'a> {
     }
 
     fn create_transport_side_type(&self, side: TransportSide) -> Option<ast::Type> {
-        None
+        todo!()
     }
 
     fn create_internal_type(&self, subtype: ast::InternalSubtype) -> Option<ast::Type> {
-        None
+        todo!()
     }
 
     fn create(&self) -> Option<ast::Type> {
-        println!("l: {:?}", self.layout);
         let target = self.layout.resolved().unwrap().element().as_decl().unwrap();
 
         match target {
@@ -128,8 +153,8 @@ impl<'a> TypeCreator<'a> {
             ast::Declaration::Enum{..}|
             ast::Declaration::NewType|
             ast::Declaration::Struct {..}|
-            ast::Declaration::Table|
-            ast::Declaration::Union |
+            ast::Declaration::Table{..}|
+            ast::Declaration::Union{..} |
             ast::Declaration::Overlay => return self.create_identifier_type(target),
             ast::Declaration::Resource{..} => return self.create_handle_type(target),
             ast::Declaration::Alias {..} => return self.create_alias_type(target),

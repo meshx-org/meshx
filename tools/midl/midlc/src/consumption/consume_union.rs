@@ -6,29 +6,38 @@ use super::consume_type::consume_type_constructor;
 use super::helpers::consume_catch_all;
 use super::{helpers::Pair, Rule};
 
-use crate::ast::{self, Element, Name};
+use crate::ast::{self, Strictness};
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
+use crate::consumption::helpers::consume_ordinal64;
 use crate::diagnotics::DiagnosticsError;
 
-fn consume_struct_member(
+fn consume_union_member(
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
     ctx: &mut ParsingContext<'_>,
-) -> Result<ast::StructMember, DiagnosticsError> {
-    debug_assert!(pair.as_rule() == Rule::struct_layout_member);
+) -> Result<ast::UnionMember, DiagnosticsError> {
+    debug_assert!(pair.as_rule() == Rule::ordinal_layout_member);
 
     let pair_span = pair.as_span();
     let mut name = None;
     let attributes = Vec::new();
     let mut comment = block_comment.and_then(consume_comment_block);
+    let mut ordinal = None;
     let mut type_ctor = None;
+    let mut reserved = false;
 
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::identifier => name = Some(consume_identifier(&current, ctx)),
+            Rule::ordinal => {
+                ordinal = Some(consume_ordinal64(current, ctx)?);
+            }
             Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, ctx)),
             Rule::inline_attribute_list => {}
+            Rule::RESERVED_KEYWORD => {
+                reserved = true;
+            }
             Rule::trailing_comment => {
                 comment = match (comment, consume_trailing_comment(current)) {
                     (c, None) | (None, c) => c,
@@ -37,30 +46,39 @@ fn consume_struct_member(
                     }),
                 };
             }
-            _ => consume_catch_all(&current, "struct member"),
+            _ => consume_catch_all(&current, "union member"),
         }
     }
 
-    match (name, type_ctor) {
-        (Some(name), Some(type_ctor)) => Ok(ast::StructMember {
-            name,
+    if !reserved {
+        Ok(ast::UnionMember {
             documentation: None,
             attributes: ast::AttributeList(attributes),
-            type_ctor,
+            ordinal: ordinal.unwrap(),
+            maybe_used: Some(ast::UnionMemberUsed {
+                name: name.unwrap(),
+                type_ctor: type_ctor.unwrap(),
+            }),
             span: ast::Span::from_pest(pair_span, ctx.source_id),
-            maybe_default_value: None,
-        }),
-        _ => panic!("Encountered impossible struct member declaration during parsing"),
+        })
+    } else {
+        Ok(ast::UnionMember {
+            documentation: None,
+            ordinal: ordinal.unwrap(),
+            attributes: ast::AttributeList(attributes),
+            span: ast::Span::from_pest(pair_span, ctx.source_id),
+            maybe_used: None,
+        })
     }
 }
 
-pub(crate) fn consume_struct_layout(
+pub(crate) fn consume_union_layout(
     token: Pair<'_>,
     identifier: ast::Identifier,
     name: ast::Name,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
-    debug_assert!(token.as_rule() == Rule::inline_struct_layout);
+    debug_assert!(token.as_rule() == Rule::inline_union_layout);
 
     let token_span = token.as_span();
 
@@ -71,38 +89,36 @@ pub(crate) fn consume_struct_layout(
     for current in token.into_inner() {
         match current.as_rule() {
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
+            Rule::declaration_modifiers => todo!(),
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
-            Rule::struct_layout_member => match consume_struct_member(current, pending_field_comment.take(), ctx) {
+            Rule::ordinal_layout_member => match consume_union_member(current, pending_field_comment.take(), ctx) {
                 Ok(member) => {
                     members.push(Rc::new(RefCell::new(member)));
                 }
                 Err(err) => ctx.diagnostics.push_error(err),
             },
-            Rule::declaration_modifiers => {}
             Rule::comment_block => pending_field_comment = Some(current),
             Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(
                 "This line is not a valid field or attribute definition.",
                 ast::Span::from_pest(current.as_span(), ctx.source_id),
             )),
-            _ => consume_catch_all(&current, "struct"),
+            _ => consume_catch_all(&current, "union"),
         }
     }
 
-    Ok(ast::Struct {
+    Ok(ast::Union {
         identifier,
         name,
         members,
         attributes,
         documentation: None,
+        strictness: Strictness::Flexible,
         span: ast::Span::from_pest(token_span, ctx.source_id),
-        compiled: false,
-        compiling: false,
-        recursive: false,
     }
     .into())
 }
 
-/*pub(crate) fn parse_struct(token: Pair<'_>, doc_comment: Option<Pair<'_>>, diagnostics: &mut Diagnostics) -> Model {
+/*pub(crate) fn parse_union(token: Pair<'_>, doc_comment: Option<Pair<'_>>, diagnostics: &mut Diagnostics) -> Model {
     assert!(token.as_rule() == Rule::constant);
 
     let pair_span = pair.as_span();
@@ -131,7 +147,7 @@ pub(crate) fn consume_struct_layout(
                 "This line is not a valid field or attribute definition.",
                 current.as_span().into(),
             )),
-            _ => parsing_catch_all(&current, "struct"),
+            _ => parsing_catch_all(&current, "union"),
         }
     }
 

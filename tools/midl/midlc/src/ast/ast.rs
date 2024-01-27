@@ -1,5 +1,11 @@
 use super::{CompoundIdentifier, Span, WithSpan};
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct RawOrdinal64 {
+    pub value: u64,
+    pub span: Span
+}
+
 /// Represents arbitrary values.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Literal {

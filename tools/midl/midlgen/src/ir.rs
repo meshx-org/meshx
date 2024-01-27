@@ -596,7 +596,7 @@ impl Decl for Bits {
 pub struct UnionMember {
     pub name: Option<Identifier>,
     pub reserved: bool,
-    pub ordinal: i64,
+    pub ordinal: u64,
     #[serde(default)]
     pub max_out_of_line: i64,
     #[serde(rename = "type")]
