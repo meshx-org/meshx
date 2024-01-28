@@ -127,9 +127,15 @@ where
         }
 
         match decl {
-            ast::Declaration::Const { decl } => self.compile_const(decl.clone()),
+            ast::Declaration::Const { decl } => {
+                println!("compile_decl const");
+                self.compile_const(decl.clone())
+            }
             ast::Declaration::Enum { decl } => self.compile_enum(decl.clone()),
-            ast::Declaration::Struct { decl } => self.compile_struct(decl.clone()),
+            ast::Declaration::Struct { decl } => {
+                println!("compile_decl struct {:#?}", decl);
+                self.compile_struct(decl.clone())
+            }
             ast::Declaration::Union { decl } => self.compile_union(decl.clone()),
             ast::Declaration::Resource { .. } => {}
             ast::Declaration::Alias { .. } => {}

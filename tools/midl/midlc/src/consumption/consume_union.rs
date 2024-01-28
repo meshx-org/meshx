@@ -15,6 +15,7 @@ use crate::diagnotics::DiagnosticsError;
 fn consume_union_member(
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
+    name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::UnionMember, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::ordinal_layout_member);
@@ -33,7 +34,7 @@ fn consume_union_member(
             Rule::ordinal => {
                 ordinal = Some(consume_ordinal64(current, ctx)?);
             }
-            Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, ctx)),
+            Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, &name_context, ctx)),
             Rule::inline_attribute_list => {}
             Rule::RESERVED_KEYWORD => {
                 reserved = true;
@@ -76,6 +77,7 @@ pub(crate) fn consume_union_layout(
     token: Pair<'_>,
     identifier: ast::Identifier,
     name: ast::Name,
+    name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
     debug_assert!(token.as_rule() == Rule::inline_union_layout);
@@ -91,7 +93,7 @@ pub(crate) fn consume_union_layout(
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
             Rule::declaration_modifiers => todo!(),
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
-            Rule::ordinal_layout_member => match consume_union_member(current, pending_field_comment.take(), ctx) {
+            Rule::ordinal_layout_member => match consume_union_member(current, pending_field_comment.take(), name_context.clone(), ctx) {
                 Ok(member) => {
                     members.push(Rc::new(RefCell::new(member)));
                 }

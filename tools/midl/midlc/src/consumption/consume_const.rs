@@ -61,7 +61,6 @@ pub(crate) fn consume_constant_declaration(
     let pair_span = pair.as_span();
     let parts = pair.into_inner();
 
-    let mut identifier: Option<ast::Identifier> = None;
     let mut name: Option<ast::Name> = None;
     let mut value: Option<ast::Constant> = None;
     let mut type_ctor: Option<ast::TypeConstructor> = None;
@@ -73,8 +72,6 @@ pub(crate) fn consume_constant_declaration(
             Rule::identifier => {
                 let name_span = current.as_span();
                 let name_span = ast::Span::from_pest(name_span, ctx.source_id);
-
-                identifier = Some(consume_identifier(&current, ctx));
                 name = Some(Name::create_sourced(ctx.library.clone(), name_span));
             }
             Rule::block_attribute_list => {
@@ -84,7 +81,8 @@ pub(crate) fn consume_constant_declaration(
                 value = Some(consume_constant(current, ctx));
             }
             Rule::type_constructor => {
-                type_ctor = Some(consume_type_constructor(current, ctx));
+                let mut naming_context = ast::NamingContext::create(&name.clone().unwrap());
+                type_ctor = Some(consume_type_constructor(current, &naming_context, ctx));
             }
             _ => consume_catch_all(&current, "const"),
         }
@@ -92,7 +90,7 @@ pub(crate) fn consume_constant_declaration(
 
     Ok(ast::Const {
         name: name.unwrap(),
-        identifier: identifier.unwrap(),
+        // identifier: identifier.unwrap(),
         type_ctor: type_ctor.unwrap(),
         value: value.unwrap(),
         attributes: attributes.unwrap(),
@@ -100,6 +98,6 @@ pub(crate) fn consume_constant_declaration(
         span: ast::Span::from_pest(pair_span, ctx.source_id),
         compiled: false,
         compiling: false,
-        recursive: false
+        recursive: false,
     })
 }

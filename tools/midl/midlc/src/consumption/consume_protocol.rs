@@ -5,69 +5,103 @@ use super::helpers::consume_catch_all;
 use super::consume_identifier;
 use super::{helpers::Pair, Rule};
 
-use crate::ast::{self, Name, Span};
+use crate::ast::{self, Name, Span, TypeConstructor};
 use crate::ast::{CompoundIdentifier, Declaration};
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_attribute_list;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
-use crate::consumption::consume_struct::consume_struct_layout;
+use crate::consumption::consume_type::consume_type_constructor;
 use crate::diagnotics::DiagnosticsError;
 
 fn consume_parameter_list(
     pair: Pair<'_>,
-    parameter_name: &str,
-    declarations: &mut Vec<Declaration>,
+    name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
-) -> Result<(), DiagnosticsError> {
+) -> Option<TypeConstructor> {
     assert!(pair.as_rule() == Rule::parameter_list);
+
+    let mut maybe_type_ctor = None;
 
     for current in pair.into_inner() {
         match current.as_rule() {
-            Rule::identifier => {}
-            Rule::layout_declaration => {
-                /*let struct_layout = consume_struct_layout(
-                    current,
-                    ast::Identifier {
-                        value: String::from(parameter_name),
-                        span: ast::Span::empty(),
-                    },
-                    ast::Name::create_intrinsic(ctx.library.clone(), ""),
-                    ctx,
-                )
-                .unwrap();
-                declarations.push(struct_layout.into());
-                */
+            Rule::PARENT_OPEN | Rule::PARENT_CLOSE => {}
+            Rule::type_constructor => {
+                maybe_type_ctor = Some(consume_type_constructor(current, &name_context, ctx));
+                // declarations.push(struct_layout.into());
             }
             _ => consume_catch_all(&current, "parameter list"),
         }
     }
 
-    Ok(())
+    maybe_type_ctor
+}
+
+fn consume_protocol_request() -> Option<TypeConstructor> {
+    None
+}
+
+fn consume_protocol_response() -> Option<TypeConstructor> {
+    None
 }
 
 fn consume_protocol_method(
-    protocol_name: &str,
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
-    declarations: &mut Vec<Declaration>,
+    protocol_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
-) -> Result<(ast::ProtocolMethod, Vec<ast::Declaration>), DiagnosticsError> {
+) -> Result<ast::ProtocolMethod, DiagnosticsError> {
     let pair_span = pair.as_span();
-    let mut name: Option<ast::Identifier> = None;
-    let attributes: Vec<ast::Attribute> = Vec::new();
+    let mut method_name: Option<ast::Identifier> = None;
+
+    let mut attributes: Vec<ast::Attribute> = Vec::new();
     let mut documentation: Option<ast::Comment> = block_comment.and_then(consume_comment_block);
+
+    let mut maybe_request = None;
+    let mut maybe_response = None;
+    let mut maybe_error: Option<TypeConstructor> = None;
+
+    let mut has_request = false;
+    let mut has_response = false;
+    let mut has_error = false;
 
     for current in pair.into_inner() {
         match current.as_rule() {
-            Rule::identifier => name = Some(consume_identifier(&current, ctx)),
+            Rule::identifier => method_name = Some(consume_identifier(&current, ctx)),
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics))*/ }
-            Rule::parameter_list => {
-                consume_parameter_list(
-                    current,
-                    format!("{}{}", protocol_name, "Request").as_str(),
-                    declarations,
+            Rule::protocol_request => {
+                let protocol_context = protocol_context.clone();
+
+                has_request = true;
+                maybe_request = consume_parameter_list(
+                    current.into_inner().next().unwrap(),
+                    protocol_context.enter_request(method_name.clone().unwrap().span),
                     ctx,
-                )?;
+                );
+            }
+            Rule::protocol_response => {
+                todo!()
+                /*
+
+                let response_context = if has_request {
+                    protocol_context.enter_response(method_name)
+                } else {
+                    protocol_context.enter_event(method_name)
+                };
+
+                for current in current.into_inner() {
+                    match current.as_rule() {
+                        Rule::parameter_list => {
+                            has_response = true;
+                            maybe_request = consume_parameter_list(current, name_context, ctx);
+                        }
+                        Rule::type_constructor => {
+                            has_error = true;
+                            maybe_error = Some(consume_type_constructor(current, name_context, ctx));
+                        }
+                        _ => panic!(""),
+                    }
+                }
+                */
             }
             Rule::trailing_comment => {
                 documentation = match (documentation, consume_trailing_comment(current)) {
@@ -81,25 +115,19 @@ fn consume_protocol_method(
         }
     }
 
-    match name {
-        Some(name) => Ok((
-            ast::ProtocolMethod {
-                name,
-                documentation,
-                attributes,
-                request_payload: None,
-                response_payload: None,
-                maybe_request: None,
-                maybe_response: None,
-                has_error: false,
-                has_request: false,
-                has_response: false,
-                span: ast::Span::from_pest(pair_span, ctx.source_id),
-            },
-            Vec::new(),
-        )),
-        _ => panic!("Encountered impossible protocol method declaration during parsing"),
-    }
+    Ok(ast::ProtocolMethod {
+        name: method_name.unwrap(),
+        documentation,
+        attributes,
+        request_payload: None,
+        response_payload: None,
+        has_request,
+        has_response,
+        has_error,
+        maybe_request,
+        maybe_response,
+        span: ast::Span::from_pest(pair_span, ctx.source_id),
+    })
 }
 
 fn consume_compose(ctx: &mut ParsingContext<'_>) {}
@@ -107,16 +135,17 @@ fn consume_compose(ctx: &mut ParsingContext<'_>) {}
 pub(crate) fn consume_protocol_declaration(
     pair: Pair<'_>,
     ctx: &mut ParsingContext<'_>,
-) -> Result<(ast::Protocol, Vec<ast::Declaration>), DiagnosticsError> {
+) -> Result<ast::Protocol, DiagnosticsError> {
     let pair_span = pair.as_span();
 
     let mut identifier: Option<ast::Identifier> = None;
     let mut name: Option<ast::Name> = None;
+    let mut name_context = None;
+
     let mut pending_field_comment: Option<Pair<'_>> = None;
     let mut methods: Vec<Rc<ast::ProtocolMethod>> = Vec::new();
     let mut attributes: Option<ast::AttributeList> = None;
     let mut composes: Vec<CompoundIdentifier> = Vec::new();
-    let mut declarations: Vec<Declaration> = Vec::new();
 
     for current in pair.into_inner() {
         match current.as_rule() {
@@ -124,26 +153,26 @@ pub(crate) fn consume_protocol_declaration(
             Rule::identifier => {
                 let name_span = current.as_span();
                 let name_span = ast::Span::from_pest(name_span, ctx.source_id);
+                let sourced = Name::create_sourced(ctx.library.clone(), name_span);
 
                 identifier = Some(consume_identifier(&current, ctx));
-                name = Some(Name::create_sourced(ctx.library.clone(), name_span));
+
+                name_context = Some(ast::NamingContext::create(&sourced));
+                name = Some(sourced);
             }
             Rule::block_attribute_list => {
                 attributes = Some(consume_attribute_list(current, ctx));
             }
-            Rule::protocol_method => match consume_protocol_method(
-                &identifier.as_ref().unwrap().value,
-                current,
-                pending_field_comment.take(),
-                &mut declarations,
-                ctx,
-            ) {
-                Ok((method, mut decls)) => {
-                    methods.push(Rc::from(method));
-                    declarations.append(&mut decls);
+            Rule::protocol_method => {
+                let name_context = name_context.as_ref().unwrap().clone();
+
+                match consume_protocol_method(current, pending_field_comment.take(), name_context, ctx) {
+                    Ok(method) => {
+                        methods.push(Rc::from(method));
+                    }
+                    Err(err) => ctx.diagnostics.push_error(err),
                 }
-                Err(err) => ctx.diagnostics.push_error(err),
-            },
+            }
             Rule::protocol_event => {}
             Rule::protocol_compose => consume_compose(ctx),
             Rule::comment_block => pending_field_comment = Some(current),
@@ -155,19 +184,16 @@ pub(crate) fn consume_protocol_declaration(
         }
     }
 
-    match name {
-        Some(name) => Ok((
-            ast::Protocol {
-                identifier: identifier.unwrap(),
-                name,
-                methods,
-                composes,
-                attributes: attributes.unwrap(),
-                documentation: None,
-                span: ast::Span::from_pest(pair_span, ctx.source_id),
-            },
-            declarations,
-        )),
-        _ => panic!("Encountered impossible protocol declaration during parsing",),
-    }
+    Ok(ast::Protocol {
+        identifier: identifier.unwrap(),
+        name: name.unwrap(),
+        methods,
+        composes,
+        attributes: attributes.unwrap(),
+        documentation: None,
+        span: ast::Span::from_pest(pair_span, ctx.source_id),
+        compiled: false,
+        compiling: false,
+        recursive: false,
+    })
 }

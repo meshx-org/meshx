@@ -77,14 +77,16 @@ arbitrary_block = { identifier ~ BLOCK_OPEN ~ ((!BLOCK_CLOSE ~ ANY) | NEWLINE)* 
 declaration_modifiers =  { STRICT_KEYWORD | FLEXIBLE_KEYWORD | RESOURCE_KEYWORD }
 
 protocol_member       = _{ protocol_method | protocol_event | protocol_compose }
-protocol_method       =  { block_attribute_list ~ identifier ~ parameter_list ~ protocol_result? }
-protocol_result       =  { "->" ~ parameter_list ~ ( "error" ~ type_constructor )? }
-protocol_event        =  { block_attribute_list ~ "->" ~ identifier ~ parameter_list }
-protocol_compose      =  { block_attribute_list ~ COMPOSE_KEYWORD ~ compound_identifier }
+protocol_method       =  { block_attribute_list? ~ identifier ~ protocol_request ~ protocol_response? }
+protocol_request      =  { parameter_list }
+protocol_response     =  { "->" ~ parameter_list ~ ( "error" ~ type_constructor )? }
 
-parameter_list        =  { "(" ~ (layout_declaration | identifier ) ~ ")" }
+protocol_event        =  { block_attribute_list? ~ "->" ~ identifier ~ parameter_list }
+protocol_compose      =  { block_attribute_list? ~ COMPOSE_KEYWORD ~ compound_identifier }
 
-layout                = _{ compound_identifier | inline_layout }
+parameter_list        =  { PARENT_OPEN ~ (type_constructor | identifier)? ~ PARENT_CLOSE }
+
+layout                = _{ inline_layout | compound_identifier }
 layout_subtype        =  { ":" ~ type_constructor }
 layout_body           =  { 
 							BLOCK_OPEN 
@@ -148,8 +150,6 @@ type_constraint_list = _{ type_constraint | type_constraint ~ "," ~ type_constra
 
 type_constraint      =  { constant }
 constant             =  { literal | compound_identifier }
-
-layout_type          =  { inline_layout }
  
 // ######################################
 // Comments and Documentation Comments
@@ -198,6 +198,9 @@ compound_identifier      =  { identifier ~ ( "." ~ identifier )* }
 // the any part is to not crash on comments next to an open block, see test `parse_comments_without_crasing_or_loosing_info`
 BLOCK_OPEN              = { "{" ~ (!NEWLINE ~ ANY)* ~ NEWLINE }
 BLOCK_CLOSE             = { "}" }
+
+PARENT_OPEN             = { "(" }
+PARENT_CLOSE            = { ")" }
 
 CATCH_ALL               = { (!NEWLINE ~ ANY)+ ~ NEWLINE? }
 BLOCK_LEVEL_CATCH_ALL   = { !BLOCK_CLOSE ~ CATCH_ALL }

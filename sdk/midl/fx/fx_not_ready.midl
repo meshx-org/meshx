@@ -48,3 +48,26 @@ resource_definition handle : u32 {
     }
 }
 */
+
+protocol Calculator {
+    add(struct {
+        a int32
+        b int32
+    }) -> (struct {
+        sum int32
+    })
+
+    divide(struct {
+        dividend int32
+        divisor int32
+    }) -> (struct {
+        quotient int32
+        remainder int32
+    }) error DivisionError
+
+    clear()
+    
+    -> on_error(struct {
+        status_code uint32
+    })
+}

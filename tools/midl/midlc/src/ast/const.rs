@@ -265,7 +265,7 @@ pub struct Const {
     /// const FOO u32 = 10
     ///       ^^^
     /// ```
-    pub identifier: Identifier,
+    // identifier: Identifier,
 
     /// The type of the constant.
     ///
@@ -310,12 +310,6 @@ impl Into<Declaration> for Const {
         Declaration::Const {
             decl: Rc::new(RefCell::new(self)),
         }
-    }
-}
-
-impl WithIdentifier for Const {
-    fn identifier(&self) -> &Identifier {
-        &self.identifier
     }
 }
 

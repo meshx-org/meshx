@@ -161,7 +161,7 @@ pub struct TypeConstructor {
     pub parameters: LayoutParameterList,
     pub constraints: LayoutConstraints,
 
-    // Set during compilation.
+    /// Set during compilation.
     pub(crate) r#type: Option<Type>,
     // TODO: resolved_params: Option<LayoutInvocation>,
 }

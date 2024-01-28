@@ -17,9 +17,9 @@ pub(crate) fn consume_alias_declaration(
     let pair_span = pair.as_span();
     let parts = pair.into_inner();
 
-    let mut name: Option<ast::Name> = None;
-    let mut type_ctor: Option<ast::TypeConstructor> = None;
-    let mut attributes: Option<ast::AttributeList> = None;
+    let mut alias_name = None;
+    let mut type_ctor = None;
+    let mut attributes = None;
 
     for current in parts {
         match current.as_rule() {
@@ -31,17 +31,18 @@ pub(crate) fn consume_alias_declaration(
                 let name_span = current.as_span();
                 let name_span = ast::Span::from_pest(name_span, ctx.source_id);
 
-                name = Some(Name::create_sourced(ctx.library.clone(), name_span));
+                alias_name = Some(Name::create_sourced(ctx.library.clone(), name_span));
             }
             Rule::type_constructor => {
-                type_ctor = Some(consume_type_constructor(current, ctx));
+                let mut name_context = ast::NamingContext::create(&alias_name.clone().unwrap());
+                type_ctor = Some(consume_type_constructor(current, &name_context, ctx));
             }
             _ => consume_catch_all(&current, "const"),
         }
     }
 
     Ok(ast::Alias {
-        name: name.unwrap(),
+        name: alias_name.unwrap(),
         partial_type_ctor: type_ctor.unwrap(),
         attributes: attributes.unwrap(),
         documentation: None,

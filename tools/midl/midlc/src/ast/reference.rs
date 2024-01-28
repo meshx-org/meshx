@@ -109,7 +109,7 @@ pub struct Contextual {
     name: Identifier,
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ReferenceState {
     /// Initial state of a sourced reference.
     RawSourced(RawSourced),
@@ -125,7 +125,7 @@ pub enum ReferenceState {
     Failed,
 }
 
-/*impl std::fmt::Debug for ReferenceState {
+impl std::fmt::Debug for ReferenceState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ReferenceState::RawSourced(_) => write!(f, "RawSourced"),
@@ -142,7 +142,7 @@ pub enum ReferenceState {
             ReferenceState::Failed => write!(f, "Failed"),
         }
     }
-} */
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Reference {

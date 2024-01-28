@@ -33,7 +33,7 @@ pub use attributes::{Attribute, AttributeArg, AttributeList};
 pub use comment::Comment;
 pub use constraints::VectorConstraints;
 pub use identifier::{CompoundIdentifier, Identifier};
-pub use name::{name_flat_name, Name};
+pub use name::{name_flat_name, Name, NamingContext};
 pub use properties::{Nullability, Resourceness, Strictness};
 pub use protocol::{Protocol, ProtocolMethod};
 pub use r#const::{Const, Constant, ConstantTrait, ConstantValue, IdentifierConstant, LiteralConstant};
@@ -260,10 +260,10 @@ impl Declaration {
             Declaration::Enum { decl } => decl.borrow_mut().compiling = val,
             Declaration::Const { decl } => decl.borrow_mut().compiling = val,
             Declaration::Struct { decl } => decl.borrow_mut().compiling = val,
-            Declaration::Table { .. } => todo!(),
             Declaration::Resource { decl } => decl.borrow_mut().compiling = val,
+            Declaration::Protocol { decl } => decl.borrow_mut().compiling = val,
+            Declaration::Table { .. } => todo!(),
             Declaration::Alias { .. } => todo!(),
-            Declaration::Protocol { .. } => todo!(),
             Declaration::Builtin { .. } => todo!(),
             Declaration::Bits => todo!(),
             Declaration::NewType => todo!(),
@@ -278,9 +278,9 @@ impl Declaration {
             Declaration::Const { decl } => decl.borrow_mut().compiled = val,
             Declaration::Struct { decl } => decl.borrow_mut().compiled = val,
             Declaration::Resource { decl } => decl.borrow_mut().compiled = val,
+            Declaration::Protocol { decl } => decl.borrow_mut().compiled = val,
             Declaration::Table { .. } => todo!(),
             Declaration::Alias { .. } => todo!(),
-            Declaration::Protocol { .. } => todo!(),
             Declaration::Builtin { .. } => todo!(),
             Declaration::Bits => todo!(),
             Declaration::NewType => todo!(),

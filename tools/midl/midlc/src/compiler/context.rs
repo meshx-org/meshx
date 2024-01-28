@@ -54,6 +54,7 @@ pub(crate) struct ParsingContext<'db> {
     pub(crate) diagnostics: &'db mut Diagnostics,
     pub(crate) source_id: SourceId,
     pub(crate) default_underlying_type: ast::Declaration,
+    pub(crate) inline_declataions: Vec<ast::Declaration>
 }
 
 impl<'db> ParsingContext<'db> {
@@ -76,6 +77,7 @@ impl<'db> ParsingContext<'db> {
             diagnostics,
             all_libraries,
             default_underlying_type,
+            inline_declataions: Vec::new()
         }
     }
 

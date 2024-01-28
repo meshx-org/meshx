@@ -154,10 +154,16 @@ pub struct Protocol {
 
     /// The location of this protocol in the text representation.
     pub(crate) span: Span,
+
+    // Set during compilation
+    pub(crate) compiled: bool,
+    pub(crate) compiling: bool,
+    pub(crate) recursive: bool
 }
 
 impl Protocol {
     pub fn iter_methods(&self) -> impl ExactSizeIterator<Item = (ProtocolMethodId, &Rc<ProtocolMethod>)> + Clone {
+        println!("proto iter_methods {}", self.methods.len());
         self.methods
             .iter()
             .enumerate()

@@ -6,7 +6,7 @@ use super::consume_type::consume_type_constructor;
 use super::helpers::consume_catch_all;
 use super::{helpers::Pair, Rule};
 
-use crate::ast::{self, Strictness};
+use crate::ast::{self, NamingContext, Strictness};
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
 use crate::consumption::helpers::consume_ordinal64;
@@ -15,6 +15,7 @@ use crate::diagnotics::DiagnosticsError;
 fn consume_table_member(
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
+    name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::UnionMember, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::ordinal_layout_member);
@@ -33,7 +34,7 @@ fn consume_table_member(
             Rule::ordinal => {
                 ordinal = Some(consume_ordinal64(current, ctx)?);
             }
-            Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, ctx)),
+            Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, &name_context, ctx)),
             Rule::inline_attribute_list => {}
             Rule::RESERVED_KEYWORD => {
                 reserved = true;
@@ -76,6 +77,7 @@ pub(crate) fn consume_table_layout(
     token: Pair<'_>,
     identifier: ast::Identifier,
     name: ast::Name,
+    name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
     debug_assert!(token.as_rule() == Rule::inline_table_layout);
@@ -91,12 +93,14 @@ pub(crate) fn consume_table_layout(
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
             Rule::declaration_modifiers => todo!(),
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
-            Rule::ordinal_layout_member => match consume_table_member(current, pending_field_comment.take(), ctx) {
-                Ok(member) => {
-                    members.push(Rc::new(RefCell::new(member)));
+            Rule::ordinal_layout_member => {
+                match consume_table_member(current, pending_field_comment.take(), name_context.clone(), ctx) {
+                    Ok(member) => {
+                        members.push(Rc::new(RefCell::new(member)));
+                    }
+                    Err(err) => ctx.diagnostics.push_error(err),
                 }
-                Err(err) => ctx.diagnostics.push_error(err),
-            },
+            }
             Rule::comment_block => pending_field_comment = Some(current),
             Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(
                 "This line is not a valid field or attribute definition.",

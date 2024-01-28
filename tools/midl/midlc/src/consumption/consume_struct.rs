@@ -6,7 +6,7 @@ use super::consume_type::consume_type_constructor;
 use super::helpers::consume_catch_all;
 use super::{helpers::Pair, Rule};
 
-use crate::ast::{self, Element, Name};
+use crate::ast;
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
 use crate::diagnotics::DiagnosticsError;
@@ -14,6 +14,7 @@ use crate::diagnotics::DiagnosticsError;
 fn consume_struct_member(
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
+    name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::StructMember, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::struct_layout_member);
@@ -27,7 +28,7 @@ fn consume_struct_member(
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::identifier => name = Some(consume_identifier(&current, ctx)),
-            Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, ctx)),
+            Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, &name_context, ctx)),
             Rule::inline_attribute_list => {}
             Rule::trailing_comment => {
                 comment = match (comment, consume_trailing_comment(current)) {
@@ -58,6 +59,7 @@ pub(crate) fn consume_struct_layout(
     token: Pair<'_>,
     identifier: ast::Identifier,
     name: ast::Name,
+    name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
     debug_assert!(token.as_rule() == Rule::inline_struct_layout);
@@ -72,12 +74,14 @@ pub(crate) fn consume_struct_layout(
         match current.as_rule() {
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
-            Rule::struct_layout_member => match consume_struct_member(current, pending_field_comment.take(), ctx) {
-                Ok(member) => {
-                    members.push(Rc::new(RefCell::new(member)));
+            Rule::struct_layout_member => {
+                match consume_struct_member(current, pending_field_comment.take(), name_context.clone(), ctx) {
+                    Ok(member) => {
+                        members.push(Rc::new(RefCell::new(member)));
+                    }
+                    Err(err) => ctx.diagnostics.push_error(err),
                 }
-                Err(err) => ctx.diagnostics.push_error(err),
-            },
+            }
             Rule::declaration_modifiers => {}
             Rule::comment_block => pending_field_comment = Some(current),
             Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(

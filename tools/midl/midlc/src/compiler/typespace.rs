@@ -180,6 +180,7 @@ impl<'a, 'r, 'd> TypeCreator<'a, 'r, 'd> {
     }
 
     fn create(&self) -> Option<ast::Type> {
+        println!("ref: {:#?}", self.layout);
         let target = self.layout.resolved().unwrap().element().as_decl().unwrap();
 
         match target {

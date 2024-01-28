@@ -292,6 +292,8 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             }
             ast::Element::Protocol { .. } => {}
             ast::Element::ProtocolMethod { inner } => {
+                println!("{:?}", inner);
+
                 if let Some(type_ctor) = &inner.maybe_request {
                     self.visit_type_constructor(&type_ctor, context);
                 }
@@ -585,12 +587,14 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
         }
 
         if reference.state == initial_state {
-            // assert!(checkpoint.num_new_errors() > 0, "should have reported an error");
-            // reference.mark_failed();
+            assert!(checkpoint.num_new_errors() > 0, "should have reported an error");
+            reference.mark_failed();
         }
     }
 
-    fn resolve_contextual_reference(&self, reference: &ast::Reference, context: &ResolveContext) {}
+    fn resolve_contextual_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
+        todo!()
+    }
 
     fn resolve_key_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
         let decl = self.lookup_decl_by_key(reference, context);

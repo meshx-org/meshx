@@ -10,11 +10,7 @@ struct Compiler {
 }
 
 fn format_library_name(library: ir::LibraryIdentifier) -> String {
-    library
-        .into_iter()
-        .map(|v| v.to_string())
-        .collect::<Vec<String>>()
-        .join("_")
+    library.encode().0
 }
 
 // Compile the language independent type definition into the Dart-specific representation.

@@ -46,3 +46,15 @@ type Profile = table {
     2: calendars vector<string>
     3: time_zones vector<string>
 }
+
+protocol Test {
+    a(struct {
+        a int32
+        b int32
+    })
+
+    b(struct {
+        a int32
+        b int32
+    })
+}

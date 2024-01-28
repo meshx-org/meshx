@@ -6,7 +6,7 @@ use super::consume_type::consume_type_constructor;
 use super::helpers::consume_catch_all;
 use super::{helpers::Pair, Rule};
 
-use crate::ast::{self, Element, Name};
+use crate::ast;
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
 use crate::consumption::consume_const::consume_constant;
@@ -16,6 +16,7 @@ use crate::diagnotics::DiagnosticsError;
 fn consume_enum_member(
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
+    name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::EnumMember, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::value_layout_member);
@@ -62,6 +63,7 @@ pub(crate) fn consume_enum_layout(
     token: Pair<'_>,
     identifier: ast::Identifier,
     name: ast::Name,
+    name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
     debug_assert!(token.as_rule() == Rule::inline_enum_layout);
@@ -76,16 +78,19 @@ pub(crate) fn consume_enum_layout(
         match current.as_rule() {
             Rule::ENUM_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
             Rule::type_constructor => {
-                // optional subtype
-                subtype_ctor = Some(consume_type_constructor(current, ctx));
+                subtype_ctor = Some(consume_type_constructor(current, &name_context, ctx));
             }
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
-            Rule::value_layout_member => match consume_enum_member(current, pending_field_comment.take(), ctx) {
-                Ok(member) => {
-                    members.push(Rc::new(RefCell::new(member)));
+            Rule::value_layout_member => {
+                let name_context = name_context.clone();
+
+                match consume_enum_member(current, pending_field_comment.take(), name_context, ctx) {
+                    Ok(member) => {
+                        members.push(Rc::new(RefCell::new(member)));
+                    }
+                    Err(err) => ctx.diagnostics.push_error(err),
                 }
-                Err(err) => ctx.diagnostics.push_error(err),
-            },
+            }
             Rule::declaration_modifiers => {}
             Rule::comment_block => pending_field_comment = Some(current),
             Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(
