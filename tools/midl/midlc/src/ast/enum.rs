@@ -1,7 +1,9 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    traits::{Decl, TypeDecl}, Attribute, AttributeList, Comment, Constant, Declaration, Element, Identifier, Name, PrimitiveType, Span, TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan
+    traits::{Decl, TypeDecl},
+    Attribute, AttributeList, Comment, Constant, Declaration, Element, Identifier, Name, PrimitiveType, Span,
+    TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan,
 };
 
 /// An opaque identifier for a field in an AST model. Use the
@@ -68,16 +70,13 @@ pub struct EnumMember {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Enum {
     /// The name of the enum.
-    pub(crate) name: Name,
-
-    /// The identifier of the enum.
     /// NOTE: inline enums get their name automatically from the complier
     ///
     /// ```ignore
     /// type Foo = flexible enum { .. }
     ///      ^^^
     /// ```
-    pub(crate) identifier: Identifier,
+    pub(crate) name: Name,
 
     /// Subtype of the enum.
     /// NOTE: when it is missing in the definition it is defaulted to uint32
@@ -136,7 +135,7 @@ pub struct Enum {
     // Set during compilation
     pub(crate) compiled: bool,
     pub(crate) compiling: bool,
-    pub(crate) recursive: bool
+    pub(crate) recursive: bool,
 }
 
 impl Into<Declaration> for Enum {
@@ -153,12 +152,6 @@ impl Enum {
             .iter()
             .enumerate()
             .map(|(idx, field)| (EnumMemberId(idx as u32), field))
-    }
-}
-
-impl WithIdentifier for Enum {
-    fn identifier(&self) -> &Identifier {
-        &self.identifier
     }
 }
 
@@ -188,7 +181,7 @@ impl WithName for Enum {
 
 impl Decl for Enum {
     fn compiling(&self) -> bool {
-        self.compiling 
+        self.compiling
     }
 
     fn compiled(&self) -> bool {

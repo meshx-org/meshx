@@ -103,40 +103,16 @@ pub(crate) fn consume_layout_declaration(
             }
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::inline_struct_layout => {
-                return consume_struct_layout(
-                    current,
-                    identifier.unwrap().clone(),
-                    name.unwrap(),
-                    name_context.unwrap(),
-                    ctx,
-                );
+                return consume_struct_layout(current, name.unwrap(), name_context.unwrap(), ctx);
             }
             Rule::inline_enum_layout => {
-                return consume_enum_layout(
-                    current,
-                    identifier.unwrap().clone(),
-                    name.unwrap(),
-                    name_context.unwrap(),
-                    ctx,
-                );
+                return consume_enum_layout(current, name.unwrap(), name_context.unwrap(), ctx);
             }
             Rule::inline_union_layout => {
-                return consume_union_layout(
-                    current,
-                    identifier.unwrap().clone(),
-                    name.unwrap(),
-                    name_context.unwrap(),
-                    ctx,
-                );
+                return consume_union_layout(current, name.unwrap(), name_context.unwrap(), ctx);
             }
             Rule::inline_table_layout => {
-                return consume_table_layout(
-                    current,
-                    identifier.unwrap().clone(),
-                    name.unwrap(),
-                    name_context.unwrap(),
-                    ctx,
-                );
+                return consume_table_layout(current, name.unwrap(), name_context.unwrap(), ctx);
             }
             Rule::CATCH_ALL => consume_catch_all(&current, "layout_declaration"),
             _ => todo!(),

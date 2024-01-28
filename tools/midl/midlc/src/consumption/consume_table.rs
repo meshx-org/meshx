@@ -75,7 +75,6 @@ fn consume_table_member(
 
 pub(crate) fn consume_table_layout(
     token: Pair<'_>,
-    identifier: ast::Identifier,
     name: ast::Name,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
@@ -111,7 +110,6 @@ pub(crate) fn consume_table_layout(
     }
 
     Ok(ast::Union {
-        identifier,
         name,
         members,
         attributes,

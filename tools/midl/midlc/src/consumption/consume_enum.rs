@@ -61,7 +61,6 @@ fn consume_enum_member(
 
 pub(crate) fn consume_enum_layout(
     token: Pair<'_>,
-    identifier: ast::Identifier,
     name: ast::Name,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
@@ -102,7 +101,6 @@ pub(crate) fn consume_enum_layout(
     }
 
     Ok(ast::Enum {
-        identifier,
         name,
         members,
         attributes,

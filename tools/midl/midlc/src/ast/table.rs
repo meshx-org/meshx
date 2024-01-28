@@ -74,16 +74,13 @@ pub struct TableMember {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Table {
     /// The name of the table.
-    pub(crate) name: Name,
-
-    /// The identifier of the table.
     /// NOTE: inline tables get their name automatically from the complier
     ///
     /// ```ignore
-    /// table Foo { .. }
-    ///        ^^^
+    /// type Foo = table { .. }
+    ///      ^^^
     /// ```
-    pub(crate) identifier: Identifier,
+    pub(crate) name: Name,
 
     /// The members of the table.
     ///
@@ -141,12 +138,6 @@ impl Table {
             .iter()
             .enumerate()
             .map(|(idx, field)| (TableMemberId(idx as u32), field))
-    }
-}
-
-impl WithIdentifier for Table {
-    fn identifier(&self) -> &Identifier {
-        &self.identifier
     }
 }
 

@@ -7,7 +7,7 @@ enum NamingContextKind {
     Decl,
     LayoutMember,
     MethodRequest,
-    MethodResponse
+    MethodResponse,
 }
 
 /// A NamingContext is a list of names, from least specific to most specific, which
@@ -69,8 +69,6 @@ impl NamingContext {
     pub(crate) fn to_name(&self, library: Rc<Library>, span: Span) -> Name {
         Name::create_sourced(library, span.clone())
     }
-
-    fn from_request() {}
 
     fn push(self: Rc<Self>, name: Span, kind: NamingContextKind) -> Rc<Self> {
         NamingContext::new(name, kind, self.clone())

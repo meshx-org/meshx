@@ -64,16 +64,13 @@ pub struct StructMember {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Struct {
     /// The name of the struct.
-    pub(crate) name: Name,
-
-    /// The identifier of the struct.
     /// NOTE: inline structs get their name automatically from the complier
     ///
     /// ```ignore
-    /// struct Foo { .. }
-    ///        ^^^
+    /// type Foo = struct { .. }
+    ///      ^^^
     /// ```
-    pub(crate) identifier: Identifier,
+    pub(crate) name: Name,
 
     /// The members of the struct.
     ///
@@ -117,7 +114,7 @@ pub struct Struct {
     // Set during compilation
     pub(crate) compiled: bool,
     pub(crate) compiling: bool,
-    pub(crate) recursive: bool
+    pub(crate) recursive: bool,
 }
 
 impl Into<Declaration> for Struct {
@@ -134,12 +131,6 @@ impl Struct {
             .iter()
             .enumerate()
             .map(|(idx, field)| (StructMemberId(idx as u32), field))
-    }
-}
-
-impl WithIdentifier for Struct {
-    fn identifier(&self) -> &Identifier {
-        &self.identifier
     }
 }
 

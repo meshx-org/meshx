@@ -57,7 +57,6 @@ fn consume_struct_member(
 
 pub(crate) fn consume_struct_layout(
     token: Pair<'_>,
-    identifier: ast::Identifier,
     name: ast::Name,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
@@ -93,7 +92,6 @@ pub(crate) fn consume_struct_layout(
     }
 
     Ok(ast::Struct {
-        identifier,
         name,
         members,
         attributes,

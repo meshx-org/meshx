@@ -3,7 +3,7 @@
 
 mod context;
 mod libraries;
-mod names;
+// mod names;
 mod typespace;
 mod type_resolver;
 mod compile_step;
@@ -169,7 +169,7 @@ impl Compiler {
     pub fn compile<'d>(&self, diagnostics: &'d mut Diagnostics) -> bool {
         let mut ctx = Context::new(self.library.clone(), self.all_libraries.clone(), diagnostics);
 
-        names::verify_names(&mut ctx);
+        // names::verify_names(&mut ctx);
 
         //if !AvailabilityStep::new(&mut ctx).run() {
         //    return false;

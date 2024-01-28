@@ -75,16 +75,13 @@ pub struct UnionMember {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Union {
     /// The name of the union.
-    pub(crate) name: Name,
-
-    /// The identifier of the union.
     /// NOTE: inline unions get their name automatically from the complier
     ///
     /// ```ignore
-    /// union Foo { .. }
-    ///        ^^^
+    /// type Foo = union { .. }
+    ///      ^^^
     /// ```
-    pub(crate) identifier: Identifier,
+    pub(crate) name: Name,
 
     /// The members of the union.
     ///
@@ -147,12 +144,6 @@ impl Union {
             .iter()
             .enumerate()
             .map(|(idx, field)| (UnionMemberId(idx as u32), field))
-    }
-}
-
-impl WithIdentifier for Union {
-    fn identifier(&self) -> &Identifier {
-        &self.identifier
     }
 }
 

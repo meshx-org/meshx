@@ -78,10 +78,6 @@ pub(crate) fn consume_type_constructor(
             Rule::inline_struct_layout => {
                 let decl = consume_struct_layout(
                     current,
-                    ast::Identifier {
-                        value: "TODO".to_owned(),
-                        span: ast::Span::empty(),
-                    },
                     ast::Name::create_intrinsic(ctx.library.clone(), ""),
                     name_context.clone(),
                     ctx,
@@ -94,10 +90,6 @@ pub(crate) fn consume_type_constructor(
             Rule::inline_enum_layout => {
                 let decl = consume_enum_layout(
                     current,
-                    ast::Identifier {
-                        value: "TODO".to_owned(),
-                        span: ast::Span::empty(),
-                    },
                     ast::Name::create_intrinsic(ctx.library.clone(), ""),
                     name_context.clone(),
                     ctx,

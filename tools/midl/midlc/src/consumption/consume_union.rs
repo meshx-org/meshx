@@ -75,7 +75,6 @@ fn consume_union_member(
 
 pub(crate) fn consume_union_layout(
     token: Pair<'_>,
-    identifier: ast::Identifier,
     name: ast::Name,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
@@ -93,12 +92,14 @@ pub(crate) fn consume_union_layout(
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
             Rule::declaration_modifiers => todo!(),
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
-            Rule::ordinal_layout_member => match consume_union_member(current, pending_field_comment.take(), name_context.clone(), ctx) {
-                Ok(member) => {
-                    members.push(Rc::new(RefCell::new(member)));
+            Rule::ordinal_layout_member => {
+                match consume_union_member(current, pending_field_comment.take(), name_context.clone(), ctx) {
+                    Ok(member) => {
+                        members.push(Rc::new(RefCell::new(member)));
+                    }
+                    Err(err) => ctx.diagnostics.push_error(err),
                 }
-                Err(err) => ctx.diagnostics.push_error(err),
-            },
+            }
             Rule::comment_block => pending_field_comment = Some(current),
             Rule::BLOCK_LEVEL_CATCH_ALL => ctx.diagnostics.push_error(DiagnosticsError::new_validation_error(
                 "This line is not a valid field or attribute definition.",
@@ -109,7 +110,6 @@ pub(crate) fn consume_union_layout(
     }
 
     Ok(ast::Union {
-        identifier,
         name,
         members,
         attributes,
