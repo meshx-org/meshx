@@ -1,0 +1,2703 @@
+{
+  "graph": {
+    "nodes": {
+      "sdk/midl/meshx.component.resolver": {
+        "name": "sdk/midl/meshx.component.resolver",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.component.resolver",
+          "sourceRoot": "sdk/midl/meshx.component.resolver",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.component.resolver/package.midl",
+                "{workspaceRoot}/sdk/midl/meshx.component.resolver/resolver.midl"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.component.resolver/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.component.resolver",
+                "midlJson": "./msx.json",
+                "srcs": [
+                  "sdk/midl/meshx.component.resolver/package.midl",
+                  "sdk/midl/meshx.component.resolver/resolver.midl"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.component.resolver"
+        }
+      },
+      "src/typescript/component-manager": {
+        "name": "src/typescript/component-manager",
+        "type": "lib",
+        "data": {
+          "root": "src/typescript/component-manager",
+          "sourceRoot": "src/typescript/component-manager/src",
+          "name": "src/typescript/component-manager",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "src/typescript/component-manager/dist",
+                "main": "src/typescript/component-manager/src/index.ts",
+                "tsConfig": "src/typescript/component-manager/tsconfig.lib.json",
+                "assets": [
+                  "src/typescript/component-manager/*.md"
+                ]
+              },
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "src/typescript/component-manager/**/*.ts",
+                  "src/typescript/component-manager/package.json"
+                ]
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nx/vite:test",
+              "outputs": [
+                "{options.reportsDirectory}"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../../coverage/src/typescript/component-manager"
+              },
+              "configurations": {}
+            }
+          },
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "tags": [
+            "lang:ts"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "sdk/midl/meshx.component.runner": {
+        "name": "sdk/midl/meshx.component.runner",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.component.runner",
+          "sourceRoot": "sdk/midl/meshx.component.runner",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.component.runner/component_runner.midl"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.component.runner/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.component.runner",
+                "midlJson": "./msx.json",
+                "srcs": [
+                  "sdk/midl/meshx.component.runner/component_runner.midl"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.component.runner"
+        }
+      },
+      "dist/sdk/midl/meshx.pkg/rust": {
+        "name": "dist/sdk/midl/meshx.pkg/rust",
+        "type": "lib",
+        "data": {
+          "root": "dist/sdk/midl/meshx.pkg/rust",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl",
+            "sdk/midl/meshx.pkg"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "inputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.pkg/ir.json"
+              ],
+              "outputs": [],
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo generate rust"
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "dist/sdk/midl/meshx.pkg/rust"
+        }
+      },
+      "src/typescript/fiber-kernel": {
+        "name": "src/typescript/fiber-kernel",
+        "type": "lib",
+        "data": {
+          "root": "src/typescript/fiber-kernel",
+          "sourceRoot": "src/typescript/fiber-kernel/src",
+          "name": "src/typescript/fiber-kernel",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "src/typescript/fiber-kernel/dist",
+                "main": "src/typescript/fiber-kernel/src/index.ts",
+                "tsConfig": "src/typescript/fiber-kernel/tsconfig.lib.json",
+                "assets": [
+                  "src/typescript/fiber-kernel/*.md"
+                ],
+                "updateBuildableProjectDepsInPackageJson": true
+              },
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "src/typescript/fiber-kernel/src/**/*.ts",
+                  "src/typescript/fiber-kernel/project.json",
+                  "src/typescript/fiber-kernel/package.json"
+                ]
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nx/vite:test",
+              "outputs": [
+                "{workspaceRoot}/coverage/src/typescript/fiber-kernel"
+              ],
+              "options": {
+                "config": "src/typescript/fiber-kernel/vite.config.ts",
+                "passWithNoTests": false,
+                "reportsDirectory": "../../../coverage/src/typescript/fiber-kernel"
+              },
+              "configurations": {}
+            }
+          },
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "tags": [
+            "lang:ts"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "src/typescript/fiber-types": {
+        "name": "src/typescript/fiber-types",
+        "type": "lib",
+        "data": {
+          "root": "src/typescript/fiber-types",
+          "sourceRoot": "src/typescript/fiber-types/src",
+          "name": "src/typescript/fiber-types",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "src/typescript/fiber-types/dist",
+                "main": "src/typescript/fiber-types/src/index.ts",
+                "tsConfig": "src/typescript/fiber-types/tsconfig.lib.json",
+                "assets": [
+                  "src/typescript/fiber-types/*.md"
+                ],
+                "updateBuildableProjectDepsInPackageJson": true
+              },
+              "configurations": {}
+            },
+            "publish": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "node tools/scripts/publish.mjs src-typescript-fiber-types {args.ver} {args.tag}"
+              },
+              "dependsOn": [
+                "build"
+              ],
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "src/typescript/fiber-types/src/**/*.ts",
+                  "src/typescript/fiber-types/project.json",
+                  "src/typescript/fiber-types/package.json"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "tags": [
+            "lang:ts"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "component_dummy": {
+        "name": "component_dummy",
+        "type": "lib",
+        "data": {
+          "name": "component_dummy",
+          "root": "src/crates/component_dummy",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "meshx_runtime": {
+        "name": "meshx_runtime",
+        "type": "lib",
+        "data": {
+          "name": "meshx_runtime",
+          "root": "./src/crates/meshx_runtime",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "sdk/midl/meshx.component": {
+        "name": "sdk/midl/meshx.component",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.component",
+          "sourceRoot": "sdk/midl/meshx.component",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.component/constants.midl"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.component/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.component",
+                "midlJson": "./msx.json",
+                "srcs": [
+                  "sdk/midl/meshx.component/constants.midl"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.component"
+        }
+      },
+      "src/typescript/fiber-sys": {
+        "name": "src/typescript/fiber-sys",
+        "type": "lib",
+        "data": {
+          "root": "src/typescript/fiber-sys",
+          "sourceRoot": "src/typescript/fiber-sys/src",
+          "name": "src/typescript/fiber-sys",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "src/typescript/fiber-sys/dist",
+                "main": "src/typescript/fiber-sys/src/index.ts",
+                "tsConfig": "src/typescript/fiber-sys/tsconfig.lib.json",
+                "assets": [
+                  "src/typescript/fiber-sys/*.md"
+                ],
+                "updateBuildableProjectDepsInPackageJson": true
+              },
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "src/typescript/fiber-sys/src/**/*.ts",
+                  "src/typescript/fiber-sys/project.json",
+                  "src/typescript/fiber-sys/package.json"
+                ]
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nx/vite:test",
+              "outputs": [
+                "{workspaceRoot}/coverage/src/typescript/fiber-sys"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../../coverage/src/typescript/fiber-sys"
+              },
+              "configurations": {}
+            }
+          },
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "tags": [
+            "lang:ts"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "fiber_async": {
+        "name": "fiber_async",
+        "type": "lib",
+        "data": {
+          "name": "fiber_async",
+          "root": "./src/crates/fiber_async",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "experiments/testmidlgen": {
+        "name": "experiments/testmidlgen",
+        "type": "app",
+        "data": {
+          "name": "experiments/testmidlgen",
+          "root": "experiments/testmidlgen",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "experiments/testmidlgen",
+          "projectType": "application",
+          "implicitDependencies": [
+            "tools/midl/midlgen_rust",
+            "tools/midl/midlgen"
+          ],
+          "targets": {
+            "build:table.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/table.json --out dist/testmidlgen/table.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:struct.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/struct.json --out dist/testmidlgen/struct.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:consts.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/consts.json --out dist/testmidlgen/consts.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:enum.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/enum.json --out dist/testmidlgen/enum.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:union.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/union.json --out dist/testmidlgen/union.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:nullable.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/nullable.json --out dist/testmidlgen/nullable.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:string_array.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/string_array.json --out dist/testmidlgen/string_array.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:vectors.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/vectors.json --out dist/testmidlgen/vectors.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:arrays.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/arrays.json --out dist/testmidlgen/arrays.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:doc_comments.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/doc_comments.json --out dist/testmidlgen/doc_comments.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:empty_struct.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/empty_struct.json --out dist/testmidlgen/empty_struct.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:encapsulated_structs.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/encapsulated_structs.json --out dist/testmidlgen/encapsulated_structs.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:error.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/error.json --out dist/testmidlgen/error.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:error_syntax.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/error_syntax.json --out dist/testmidlgen/error_syntax.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build:handles.json": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "dist/tools/midl/midlgen_rust/midlgen_rust --json experiments/testmidlgen/handles.json --out dist/testmidlgen/handles.rs "
+              },
+              "dependsOn": [
+                "^build"
+              ],
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "build:table.json",
+                "build:nullable.json",
+                "build:enum.json",
+                "build:struct.json",
+                "build:string_array.json",
+                "build:consts.json",
+                "build:vectors.json",
+                "build:arrays.json",
+                "build:doc_comments.json",
+                "build:empty_struct.json",
+                "build:encapsulated_structs.json",
+                "build:error.json",
+                "build:error_syntax.json",
+                "build:handles.json"
+              ],
+              "cache": true,
+              "executor": "nx:noop",
+              "options": {},
+              "configurations": {}
+            }
+          },
+          "tags": []
+        }
+      },
+      "fiber_status": {
+        "name": "fiber_status",
+        "type": "lib",
+        "data": {
+          "name": "fiber_status",
+          "root": "src/crates/fiber_status",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "meshx_flow": {
+        "name": "meshx_flow",
+        "type": "lib",
+        "data": {
+          "name": "meshx_flow",
+          "root": "./src/crates/meshx_flow",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "run": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "RUST_LOG=debug cargo run --bin meshx_flow"
+              },
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:build",
+              "options": {
+                "toolchain": "nightly",
+                "release": false
+              },
+              "configurations": {
+                "production": {
+                  "release": true
+                }
+              }
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "src/typescript/fiber-ts": {
+        "name": "src/typescript/fiber-ts",
+        "type": "lib",
+        "data": {
+          "root": "src/typescript/fiber-ts",
+          "sourceRoot": "src/typescript/fiber-ts/src",
+          "name": "src/typescript/fiber-ts",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "src/typescript/fiber-ts/dist",
+                "main": "src/typescript/fiber-ts/src/index.ts",
+                "tsConfig": "src/typescript/fiber-ts/tsconfig.lib.json",
+                "assets": [
+                  "src/typescript/fiber-ts/*.md"
+                ],
+                "updateBuildableProjectDepsInPackageJson": true
+              },
+              "configurations": {}
+            },
+            "publish": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "node tools/scripts/publish.mjs src-typescript-fiber-ts {args.ver} {args.tag}"
+              },
+              "dependsOn": [
+                "build"
+              ],
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "src/typescript/fiber-ts/**/*.ts"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "tags": [
+            "lang:ts"
+          ],
+          "implicitDependencies": []
+        }
+      },
+      "fiber_kernel": {
+        "name": "fiber_kernel",
+        "type": "lib",
+        "data": {
+          "name": "fiber_kernel",
+          "root": "src/crates/fiber_kernel",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "sdk/midl/meshx.ui.views": {
+        "name": "sdk/midl/meshx.ui.views",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.ui.views",
+          "sourceRoot": "sdk/midl/meshx.ui.views",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.ui.views/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.ui.views",
+                "midlJson": "./msx.json",
+                "srcs": []
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.ui.views"
+        }
+      },
+      "tools/midl/midlgen_rust": {
+        "name": "tools/midl/midlgen_rust",
+        "type": "app",
+        "data": {
+          "name": "tools/midl/midlgen_rust",
+          "root": "tools/midl/midlgen_rust",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "implicitDependencies": [
+            "tools/nx_rust"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx_rust:build",
+              "inputs": [
+                "{projectRoot}/**/*.rs"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/tools/midl/midlgen_rust"
+              ],
+              "options": {
+                "outDir": "./dist/tools/midl/midlgen_rust"
+              },
+              "configurations": {}
+            }
+          },
+          "tags": []
+        }
+      },
+      "fiber_types": {
+        "name": "fiber_types",
+        "type": "lib",
+        "data": {
+          "name": "fiber_types",
+          "root": "src/crates/fiber_types",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "datasources": {
+        "name": "datasources",
+        "type": "lib",
+        "data": {
+          "name": "datasources",
+          "root": "src/crates/datasources",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "fiber_rust": {
+        "name": "fiber_rust",
+        "type": "lib",
+        "data": {
+          "name": "fiber_rust",
+          "root": "src/crates/fiber_rust",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "tools/midl/midlgen_ts": {
+        "name": "tools/midl/midlgen_ts",
+        "type": "app",
+        "data": {
+          "name": "tools/midl/midlgen_ts",
+          "root": "tools/midl/midlgen_ts",
+          "$schema": "node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "implicitDependencies": [
+            "tools/nx_rust"
+          ],
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx_rust:build",
+              "outputs": [
+                "{workspaceRoot}/dist/tools/midl/midlgen_ts"
+              ],
+              "options": {
+                "outDir": "./dist/tools/midl/midlgen_ts"
+              },
+              "configurations": {}
+            }
+          },
+          "tags": []
+        }
+      },
+      "sdk/midl/meshx.ui.app": {
+        "name": "sdk/midl/meshx.ui.app",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.ui.app",
+          "sourceRoot": "sdk/midl/meshx.ui.app",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.ui.app/view_provider.midl",
+                "{workspaceRoot}/sdk/midl/meshx.ui.app/view.midl"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.ui.app/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.ui.app",
+                "midlJson": "./msx.json",
+                "srcs": [
+                  "sdk/midl/meshx.ui.app/view_provider.midl",
+                  "sdk/midl/meshx.ui.app/view.midl"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.ui.app"
+        }
+      },
+      "fiber_sys": {
+        "name": "fiber_sys",
+        "type": "lib",
+        "data": {
+          "name": "fiber_sys",
+          "root": "src/crates/fiber_sys",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "sdk/typescript/meshx": {
+        "name": "sdk/typescript/meshx",
+        "type": "lib",
+        "data": {
+          "root": "sdk/typescript/meshx",
+          "sourceRoot": "sdk/typescript/meshx/src",
+          "name": "sdk/typescript/meshx",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "dist/./sdk/typescript/meshx",
+                "main": "sdk/typescript/meshx/src/index.ts",
+                "tsConfig": "sdk/typescript/meshx/tsconfig.lib.json",
+                "assets": [
+                  "sdk/typescript/meshx/*.md"
+                ],
+                "updateBuildableProjectDepsInPackageJson": true
+              },
+              "configurations": {}
+            },
+            "run": {
+              "executor": "@nxrs/cargo:build",
+              "options": {
+                "toolchain": "nightly",
+                "release": false,
+                "run": true
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nx/vite:test",
+              "outputs": [
+                "{workspaceRoot}/coverage/sdk/typescript/meshx"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../../coverage/sdk/typescript/meshx"
+              },
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "sdk/typescript/meshx/**/*.ts"
+                ]
+              },
+              "configurations": {}
+            },
+            "publish": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "node tools/scripts/publish.mjs sdk-typescript-meshx {args.ver} {args.tag}"
+              },
+              "dependsOn": [
+                "build"
+              ],
+              "configurations": {}
+            }
+          },
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "implicitDependencies": [
+            "fiber_kernel"
+          ],
+          "tags": []
+        }
+      },
+      "sdk/typescript/fiber": {
+        "name": "sdk/typescript/fiber",
+        "type": "lib",
+        "data": {
+          "root": "sdk/typescript/fiber",
+          "sourceRoot": "sdk/typescript/fiber/src",
+          "name": "sdk/typescript/fiber",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "dist/./sdk/typescript/fiber",
+                "main": "sdk/typescript/fiber/src/index.ts",
+                "tsConfig": "sdk/typescript/fiber/tsconfig.lib.json",
+                "assets": [
+                  "sdk/typescript/fiber/*.md"
+                ],
+                "updateBuildableProjectDepsInPackageJson": true
+              },
+              "configurations": {}
+            },
+            "publish": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "node tools/scripts/publish.mjs sdk-typescript-fiber {args.ver} {args.tag}"
+              },
+              "dependsOn": [
+                "build"
+              ],
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "sdk/typescript/fiber/**/*.ts"
+                ]
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nx/vite:test",
+              "outputs": [
+                "{workspaceRoot}/coverage/sdk/typescript/fiber"
+              ],
+              "options": {
+                "passWithNoTests": true,
+                "reportsDirectory": "../../../coverage/sdk/typescript/fiber"
+              },
+              "configurations": {}
+            }
+          },
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "sdk/midl/meshx.data": {
+        "name": "sdk/midl/meshx.data",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.data",
+          "sourceRoot": "sdk/midl/meshx.data",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.data/data.midl"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.data/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.data",
+                "midlJson": "./msx.json",
+                "srcs": [
+                  "sdk/midl/meshx.data/data.midl"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.data"
+        }
+      },
+      "sdk/typescript/midl": {
+        "name": "sdk/typescript/midl",
+        "type": "lib",
+        "data": {
+          "root": "sdk/typescript/midl",
+          "sourceRoot": "sdk/typescript/midl/src",
+          "name": "sdk/typescript/midl",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "dist/./sdk/typescript/midl",
+                "tsConfig": "sdk/typescript/midl/tsconfig.lib.json",
+                "packageJson": "sdk/typescript/midl/package.json",
+                "main": "sdk/typescript/midl/src/index.ts",
+                "assets": [
+                  "sdk/typescript/midl/*.md"
+                ],
+                "updateBuildableProjectDepsInPackageJson": true
+              },
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "sdk/typescript/midl/**/*.ts"
+                ]
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "jestConfig": "sdk/typescript/midl/jest.config.ts",
+                "passWithNoTests": true
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              }
+            }
+          },
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "sdk/midl/meshx.sys": {
+        "name": "sdk/midl/meshx.sys",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.sys",
+          "sourceRoot": "sdk/midl/meshx.sys",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.sys/overview.midl"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.sys/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.sys",
+                "midlJson": "./msx.json",
+                "srcs": [
+                  "sdk/midl/meshx.sys/overview.midl"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.sys"
+        }
+      },
+      "sdk/midl/meshx.mem": {
+        "name": "sdk/midl/meshx.mem",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.mem",
+          "sourceRoot": "sdk/midl/meshx.mem",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.mem/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.mem",
+                "midlJson": "./msx.json",
+                "srcs": []
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.mem"
+        }
+      },
+      "moniker": {
+        "name": "moniker",
+        "type": "lib",
+        "data": {
+          "name": "moniker",
+          "root": "src/crates/moniker",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "sdk/midl/meshx.pkg": {
+        "name": "sdk/midl/meshx.pkg",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.pkg",
+          "sourceRoot": "sdk/midl/meshx.pkg",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.pkg/resolver.midl"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.pkg/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.pkg",
+                "midlJson": "./msx.json",
+                "srcs": [
+                  "sdk/midl/meshx.pkg/resolver.midl"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.pkg"
+        }
+      },
+      "tools/midl/midlgen": {
+        "name": "tools/midl/midlgen",
+        "type": "app",
+        "data": {
+          "name": "tools/midl/midlgen",
+          "root": "tools/midl/midlgen",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "implicitDependencies": [
+            "tools/nx_rust"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx_rust:build",
+              "outputs": [
+                "{workspaceRoot}/dist/tools/midl/midlgen"
+              ],
+              "options": {
+                "outDir": "dist/tools/midl/midlgen"
+              },
+              "configurations": {}
+            }
+          },
+          "tags": []
+        }
+      },
+      "sdk/midl/meshx.io": {
+        "name": "sdk/midl/meshx.io",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/meshx.io",
+          "sourceRoot": "sdk/midl/meshx.io",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [
+                "{workspaceRoot}/sdk/midl/meshx.io/directory.midl",
+                "{workspaceRoot}/sdk/midl/meshx.io/io.midl",
+                "{workspaceRoot}/sdk/midl/meshx.io/node.midl"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/meshx.io/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/meshx.io",
+                "midlJson": "./msx.json",
+                "srcs": [
+                  "sdk/midl/meshx.io/directory.midl",
+                  "sdk/midl/meshx.io/io.midl",
+                  "sdk/midl/meshx.io/node.midl"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/meshx.io"
+        }
+      },
+      "src/crates/vfs": {
+        "name": "src/crates/vfs",
+        "type": "lib",
+        "data": {
+          "name": "src/crates/vfs",
+          "root": "./src/crates/vfs",
+          "projectType": "library",
+          "targets": {
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "tools/midl/midlc": {
+        "name": "tools/midl/midlc",
+        "type": "app",
+        "data": {
+          "name": "tools/midl/midlc",
+          "root": "tools/midl/midlc",
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "tools/midl/midlc/src",
+          "projectType": "application",
+          "implicitDependencies": [
+            "tools/nx_rust",
+            "tools/midl/midlgen"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx_rust:build",
+              "outputs": [
+                "{workspaceRoot}/dist/tools/midl/midlc"
+              ],
+              "options": {
+                "outDir": "./dist/tools/midl/midlc"
+              },
+              "configurations": {}
+            },
+            "build/component": {
+              "executor": "nx:run-commands",
+              "options": {
+                "command": "echo 'test'",
+                "cwd": "tools/midl/midlc"
+              },
+              "dependsOn": [
+                "build"
+              ],
+              "configurations": {}
+            },
+            "echo": {
+              "executor": "./dist/tools/nx_rust:echo",
+              "dependsOn": [
+                "^build-executor"
+              ],
+              "options": {
+                "textToEcho": "Hello World"
+              },
+              "configurations": {}
+            }
+          },
+          "tags": []
+        }
+      },
+      "midl": {
+        "name": "midl",
+        "type": "app",
+        "data": {
+          "name": "midl",
+          "root": "src/crates/midl",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "implicitDependencies": [
+            "fiber_kernel"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:build",
+              "options": {
+                "release": false
+              },
+              "configurations": {
+                "production": {
+                  "release": true
+                }
+              }
+            },
+            "run": {
+              "executor": "@nxrs/cargo:build",
+              "options": {
+                "release": false,
+                "run": true
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": []
+        }
+      },
+      "tools/nx-midl": {
+        "name": "tools/nx-midl",
+        "type": "lib",
+        "data": {
+          "root": "tools/nx-midl",
+          "sourceRoot": "tools/nx-midl/src",
+          "name": "tools/nx-midl",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "inputs": [
+                "{workspaceRoot}/dist/tools/midl/midlgen_rust",
+                "{workspaceRoot}/dist/tools/midl/midlgen_ts",
+                "{workspaceRoot}/dist/tools/midl/midlc"
+              ],
+              "options": {
+                "outputPath": "dist/./tools/nx-midl",
+                "tsConfig": "tools/nx-midl/tsconfig.lib.json",
+                "packageJson": "tools/nx-midl/package.json",
+                "main": "tools/nx-midl/src/index.ts",
+                "assets": [
+                  {
+                    "input": "./tools/nx-midl/src",
+                    "glob": "**/!(*.ts)",
+                    "output": "./src"
+                  },
+                  {
+                    "input": "./tools/nx-midl/src",
+                    "glob": "**/*.d.ts",
+                    "output": "./src"
+                  },
+                  {
+                    "input": "./tools/nx-midl",
+                    "glob": "executors.json",
+                    "output": "."
+                  }
+                ],
+                "updateBuildableProjectDepsInPackageJson": true
+              },
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "tools/nx-midl/**/*.ts"
+                ]
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "jestConfig": "tools/nx-midl/jest.config.ts",
+                "passWithNoTests": true
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              }
+            }
+          },
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "implicitDependencies": [
+            "tools/midl/midlc",
+            "tools/midl/midlgen_ts",
+            "tools/midl/midlgen_rust"
+          ],
+          "tags": []
+        }
+      },
+      "midl-discover": {
+        "name": "midl-discover",
+        "type": "lib",
+        "data": {
+          "name": "midl-discover",
+          "root": "midl-discover",
+          "$schema": "../node_modules/nx/schemas/project-schema.json",
+          "sourceRoot": "midl-discover/src",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "dist/midl-discover",
+                "main": "midl-discover/src/index.ts",
+                "tsConfig": "midl-discover/tsconfig.lib.json",
+                "assets": [
+                  "midl-discover/*.md",
+                  {
+                    "input": "./midl-discover/src",
+                    "glob": "**/!(*.ts)",
+                    "output": "./src"
+                  },
+                  {
+                    "input": "./midl-discover/src",
+                    "glob": "**/*.d.ts",
+                    "output": "./src"
+                  },
+                  {
+                    "input": "./midl-discover",
+                    "glob": "generators.json",
+                    "output": "."
+                  },
+                  {
+                    "input": "./midl-discover",
+                    "glob": "executors.json",
+                    "output": "."
+                  }
+                ]
+              },
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "outputs": [
+                "{options.outputFile}"
+              ],
+              "options": {
+                "lintFilePatterns": [
+                  "midl-discover/**/*.ts",
+                  "midl-discover/package.json"
+                ]
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nx/jest:jest",
+              "outputs": [
+                "{workspaceRoot}/coverage/{projectRoot}"
+              ],
+              "options": {
+                "jestConfig": "midl-discover/jest.config.ts",
+                "passWithNoTests": true
+              },
+              "configurations": {
+                "ci": {
+                  "ci": true,
+                  "codeCoverage": true
+                }
+              }
+            }
+          },
+          "tags": [],
+          "implicitDependencies": []
+        }
+      },
+      "meshx": {
+        "name": "meshx",
+        "type": "app",
+        "data": {
+          "name": "meshx",
+          "root": "src/bin/meshx",
+          "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+          "projectType": "application",
+          "implicitDependencies": [
+            "fiber_kernel"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:build",
+              "options": {
+                "toolchain": "nightly",
+                "release": false
+              },
+              "configurations": {
+                "production": {
+                  "release": true
+                }
+              }
+            },
+            "run": {
+              "executor": "@nxrs/cargo:build",
+              "options": {
+                "toolchain": "nightly",
+                "release": false,
+                "run": true
+              },
+              "configurations": {}
+            },
+            "test": {
+              "inputs": [
+                "default",
+                "^default",
+                "{workspaceRoot}/jest.preset.js"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:test",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nxrs/cargo:clippy",
+              "options": {
+                "fix": false,
+                "failOnWarnings": true,
+                "noDeps": true
+              },
+              "configurations": {}
+            }
+          },
+          "tags": []
+        }
+      },
+      "tools/nx_rust": {
+        "name": "tools/nx_rust",
+        "type": "lib",
+        "data": {
+          "root": "tools/nx_rust",
+          "sourceRoot": "tools/nx_rust/src",
+          "name": "tools/nx_rust",
+          "projectType": "library",
+          "targets": {
+            "nx-release-publish": {
+              "dependsOn": [
+                "^nx-release-publish"
+              ],
+              "executor": "@nx/js:release-publish",
+              "options": {},
+              "configurations": {}
+            },
+            "lint": {
+              "inputs": [
+                "default",
+                "{workspaceRoot}/.eslintrc.json"
+              ],
+              "cache": true,
+              "executor": "@nx/eslint:lint",
+              "options": {
+                "lintFilePatterns": [
+                  "tools/nx_rust/**/*.ts"
+                ]
+              },
+              "configurations": {}
+            },
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "@nx/js:tsc",
+              "outputs": [
+                "{options.outputPath}"
+              ],
+              "options": {
+                "outputPath": "dist/./tools/nx_rust",
+                "tsConfig": "tools/nx_rust/tsconfig.lib.json",
+                "packageJson": "tools/nx_rust/package.json",
+                "main": "tools/nx_rust/src/index.ts",
+                "assets": [
+                  {
+                    "input": "./tools/nx_rust/src",
+                    "glob": "**/!(*.ts)",
+                    "output": "./src"
+                  },
+                  {
+                    "input": "./tools/nx_rust/src",
+                    "glob": "**/*.d.ts",
+                    "output": "./src"
+                  },
+                  {
+                    "input": "./tools/nx_rust",
+                    "glob": "package.json",
+                    "output": "."
+                  },
+                  {
+                    "input": "./tools/nx_rust",
+                    "glob": "executors.json",
+                    "output": "."
+                  }
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "$schema": "../../node_modules/nx/schemas/project-schema.json",
+          "implicitDependencies": [],
+          "tags": []
+        }
+      },
+      "sdk/midl/fx": {
+        "name": "sdk/midl/fx",
+        "type": "lib",
+        "data": {
+          "root": "sdk/midl/fx",
+          "sourceRoot": "sdk/midl/fx",
+          "projectType": "library",
+          "implicitDependencies": [
+            "tools/nx-midl"
+          ],
+          "targets": {
+            "build": {
+              "dependsOn": [
+                "^build"
+              ],
+              "cache": true,
+              "executor": "./dist/tools/nx-midl:midlc",
+              "inputs": [
+                "{workspaceRoot}/sdk/midl/fx/fx_common.midl",
+                "{workspaceRoot}/sdk/midl/fx/fx.midl"
+              ],
+              "outputs": [
+                "{workspaceRoot}/dist/sdk/midl/fx/ir.json"
+              ],
+              "options": {
+                "outDir": "dist/sdk/midl/fx",
+                "midlJson": "./msx.json",
+                "srcs": [
+                  "sdk/midl/fx/fx_common.midl",
+                  "sdk/midl/fx/fx.midl"
+                ]
+              },
+              "configurations": {}
+            }
+          },
+          "tags": [
+            "midl"
+          ],
+          "name": "sdk/midl/fx"
+        }
+      }
+    },
+    "dependencies": {
+      "sdk/midl/meshx.component.resolver": [
+        {
+          "source": "sdk/midl/meshx.component.resolver",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.component.resolver",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        }
+      ],
+      "src/typescript/component-manager": [],
+      "sdk/midl/meshx.component.runner": [
+        {
+          "source": "sdk/midl/meshx.component.runner",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.component.runner",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        },
+        {
+          "source": "sdk/midl/meshx.component.runner",
+          "target": "sdk/midl/meshx.mem",
+          "type": "static"
+        },
+        {
+          "source": "sdk/midl/meshx.component.runner",
+          "target": "sdk/midl/meshx.data",
+          "type": "static"
+        },
+        {
+          "source": "sdk/midl/meshx.component.runner",
+          "target": "sdk/midl/meshx.component",
+          "type": "static"
+        }
+      ],
+      "dist/sdk/midl/meshx.pkg/rust": [
+        {
+          "source": "dist/sdk/midl/meshx.pkg/rust",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "dist/sdk/midl/meshx.pkg/rust",
+          "target": "sdk/midl/meshx.pkg",
+          "type": "implicit"
+        }
+      ],
+      "src/typescript/fiber-kernel": [
+        {
+          "source": "src/typescript/fiber-kernel",
+          "target": "src/typescript/fiber-sys",
+          "type": "static"
+        },
+        {
+          "source": "src/typescript/fiber-kernel",
+          "target": "src/typescript/fiber-types",
+          "type": "static"
+        },
+        {
+          "source": "src/typescript/fiber-kernel",
+          "target": "src/typescript/fiber-ts",
+          "type": "static"
+        }
+      ],
+      "src/typescript/fiber-types": [],
+      "component_dummy": [],
+      "meshx_runtime": [],
+      "sdk/midl/meshx.component": [
+        {
+          "source": "sdk/midl/meshx.component",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.component",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        }
+      ],
+      "src/typescript/fiber-sys": [
+        {
+          "source": "src/typescript/fiber-sys",
+          "target": "src/typescript/fiber-types",
+          "type": "static"
+        }
+      ],
+      "fiber_async": [],
+      "experiments/testmidlgen": [
+        {
+          "source": "experiments/testmidlgen",
+          "target": "tools/midl/midlgen_rust",
+          "type": "implicit"
+        },
+        {
+          "source": "experiments/testmidlgen",
+          "target": "tools/midl/midlgen",
+          "type": "implicit"
+        }
+      ],
+      "fiber_status": [],
+      "meshx_flow": [],
+      "src/typescript/fiber-ts": [
+        {
+          "source": "src/typescript/fiber-ts",
+          "target": "src/typescript/fiber-types",
+          "type": "static"
+        },
+        {
+          "source": "src/typescript/fiber-ts",
+          "target": "src/typescript/fiber-sys",
+          "type": "static"
+        }
+      ],
+      "fiber_kernel": [],
+      "sdk/midl/meshx.ui.views": [
+        {
+          "source": "sdk/midl/meshx.ui.views",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.ui.views",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        }
+      ],
+      "tools/midl/midlgen_rust": [
+        {
+          "source": "tools/midl/midlgen_rust",
+          "target": "tools/nx_rust",
+          "type": "implicit"
+        }
+      ],
+      "fiber_types": [],
+      "datasources": [],
+      "fiber_rust": [],
+      "tools/midl/midlgen_ts": [
+        {
+          "source": "tools/midl/midlgen_ts",
+          "target": "tools/nx_rust",
+          "type": "implicit"
+        }
+      ],
+      "sdk/midl/meshx.ui.app": [
+        {
+          "source": "sdk/midl/meshx.ui.app",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.ui.app",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        },
+        {
+          "source": "sdk/midl/meshx.ui.app",
+          "target": "sdk/midl/meshx.ui.views",
+          "type": "static"
+        },
+        {
+          "source": "sdk/midl/meshx.ui.app",
+          "target": "sdk/midl/meshx.sys",
+          "type": "static"
+        }
+      ],
+      "fiber_sys": [],
+      "sdk/typescript/meshx": [
+        {
+          "source": "sdk/typescript/meshx",
+          "target": "fiber_kernel",
+          "type": "implicit"
+        }
+      ],
+      "sdk/typescript/fiber": [
+        {
+          "source": "sdk/typescript/fiber",
+          "target": "src/typescript/fiber-kernel",
+          "type": "static"
+        },
+        {
+          "source": "sdk/typescript/fiber",
+          "target": "src/typescript/fiber-sys",
+          "type": "static"
+        },
+        {
+          "source": "sdk/typescript/fiber",
+          "target": "src/typescript/fiber-types",
+          "type": "static"
+        }
+      ],
+      "sdk/midl/meshx.data": [
+        {
+          "source": "sdk/midl/meshx.data",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.data",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        }
+      ],
+      "sdk/typescript/midl": [
+        {
+          "source": "sdk/typescript/midl",
+          "target": "sdk/typescript/fiber",
+          "type": "static"
+        },
+        {
+          "source": "sdk/typescript/midl",
+          "target": "src/typescript/fiber-types",
+          "type": "static"
+        }
+      ],
+      "sdk/midl/meshx.sys": [
+        {
+          "source": "sdk/midl/meshx.sys",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.sys",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        }
+      ],
+      "sdk/midl/meshx.mem": [
+        {
+          "source": "sdk/midl/meshx.mem",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.mem",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        }
+      ],
+      "moniker": [],
+      "sdk/midl/meshx.pkg": [
+        {
+          "source": "sdk/midl/meshx.pkg",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.pkg",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        }
+      ],
+      "tools/midl/midlgen": [
+        {
+          "source": "tools/midl/midlgen",
+          "target": "tools/nx_rust",
+          "type": "implicit"
+        }
+      ],
+      "sdk/midl/meshx.io": [
+        {
+          "source": "sdk/midl/meshx.io",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        },
+        {
+          "source": "sdk/midl/meshx.io",
+          "target": "sdk/midl/fx",
+          "type": "static"
+        }
+      ],
+      "src/crates/vfs": [],
+      "tools/midl/midlc": [
+        {
+          "source": "tools/midl/midlc",
+          "target": "tools/nx_rust",
+          "type": "implicit"
+        },
+        {
+          "source": "tools/midl/midlc",
+          "target": "tools/midl/midlgen",
+          "type": "implicit"
+        }
+      ],
+      "midl": [
+        {
+          "source": "midl",
+          "target": "fiber_kernel",
+          "type": "implicit"
+        }
+      ],
+      "tools/nx-midl": [
+        {
+          "source": "tools/nx-midl",
+          "target": "tools/midl/midlc",
+          "type": "implicit"
+        },
+        {
+          "source": "tools/nx-midl",
+          "target": "tools/midl/midlgen_ts",
+          "type": "implicit"
+        },
+        {
+          "source": "tools/nx-midl",
+          "target": "tools/midl/midlgen_rust",
+          "type": "implicit"
+        }
+      ],
+      "midl-discover": [],
+      "meshx": [
+        {
+          "source": "meshx",
+          "target": "fiber_kernel",
+          "type": "implicit"
+        }
+      ],
+      "tools/nx_rust": [],
+      "sdk/midl/fx": [
+        {
+          "source": "sdk/midl/fx",
+          "target": "tools/nx-midl",
+          "type": "implicit"
+        }
+      ]
+    }
+  },
+  "affectedProjects": [],
+  "criticalPath": []
+}

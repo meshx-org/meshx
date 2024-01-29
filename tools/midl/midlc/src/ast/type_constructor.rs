@@ -198,7 +198,11 @@ impl VectorType {
 
     pub fn element_size(&self) -> u32 {
         let size = self.constraints.size().clone();
-        let size = if size.is_some() { size.unwrap().into() } else { std::u32::MAX };
+        let size = if size.is_some() {
+            size.unwrap().into()
+        } else {
+            std::u32::MAX
+        };
 
         size
     }
@@ -294,6 +298,27 @@ impl StringType {
 pub struct InternalType {
     pub name: Name,
     pub subtype: InternalSubtype,
+}
+
+impl InternalType {
+    fn new(name: Name, subtype: InternalSubtype) -> Self {
+        Self { name, subtype }
+    }
+
+    pub fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        //if (!ResolveAndMergeConstraints(resolver, reporter, constraints.span, layout.resolved().name(),
+        //                          nullptr, constraints.items, nullptr)) {
+        //    return false;
+        //}
+
+        Ok(Type::Internal(Rc::new(InternalType::new(self.name.clone(), self.subtype))))
+    }
 }
 
 #[derive(Debug, Clone, Derivative)]

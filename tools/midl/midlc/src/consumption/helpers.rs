@@ -14,8 +14,6 @@ pub fn consume_ordinal64(pair: Pair<'_>, ctx: &mut ParsingContext<'_>) -> Result
     let span = ast::Span::from_pest(value_span, ctx.source_id);
     let value = consume_numeric_literal(value_token, ctx);
 
-    println!("ordinal {:#?}", value);
-
     let value = value.parse::<u64>().expect("unparsable number should not be lexed.");
 
     if value > std::u64::MAX {

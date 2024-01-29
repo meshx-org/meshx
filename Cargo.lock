@@ -1765,6 +1765,7 @@ dependencies = [
  "anyhow",
  "clap",
  "colored",
+ "convert_case",
  "derivative",
  "env_logger 0.10.1",
  "hcl-rs",

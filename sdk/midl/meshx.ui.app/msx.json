@@ -1,0 +1,7 @@
+{
+    "name": "meshx.ui.app",
+    "bindings": ["rust"],
+    "exclude": [],
+    "include": ["*.midl"],
+    "references": [{ "path": "../fx" }, { "path": "../meshx.ui.views" }, { "path": "../meshx.sys" }]
+}

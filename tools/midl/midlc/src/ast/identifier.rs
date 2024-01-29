@@ -45,7 +45,7 @@ impl WithSpan for Identifier {
 
 #[derive(Clone, Eq)]
 pub struct CompoundIdentifier {
-    pub components: Vec<Identifier>,
+    pub components: Vec<Span>,
     pub span: Span,
 }
 
@@ -56,7 +56,7 @@ impl CompoundIdentifier {
     }
 
     pub fn to_vec(&self) -> Vec<String> {
-        self.components.iter().map(|i| i.value.clone()).collect()
+        self.components.iter().map(|i| i.data.clone()).collect()
     }
 }
 
@@ -87,7 +87,7 @@ impl std::hash::Hash for CompoundIdentifier {
 impl std::fmt::Debug for CompoundIdentifier {
     // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let ids: Vec<String> = self.components.iter().map(|c| c.value.to_string()).collect();
+        let ids: Vec<String> = self.components.iter().map(|c| c.data.clone()).collect();
         write!(f, "CompoundIdentifier({:?})", ids.join("."))
     }
 }
@@ -95,7 +95,7 @@ impl std::fmt::Debug for CompoundIdentifier {
 impl std::fmt::Display for CompoundIdentifier {
     // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let ids: Vec<String> = self.components.iter().map(|c| c.value.to_string()).collect();
+        let ids: Vec<String> = self.components.iter().map(|c| c.data.clone()).collect();
         write!(f, "{}", ids.join("."))
     }
 }

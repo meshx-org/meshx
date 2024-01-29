@@ -1,4 +1,7 @@
 {
+    "useDaemonProcess": false,
+    "extends": "nx/presets/npm.json",
+    "plugins": ["midl-discover"],
     "pluginsConfig": {
         "@nx/js": {
             "analyzeSourceFiles": true
@@ -20,7 +23,5 @@
         "e2e": {
             "cache": true
         }
-    },
-    "extends": "nx/presets/npm.json",
-    "plugins": []
+    }
 }

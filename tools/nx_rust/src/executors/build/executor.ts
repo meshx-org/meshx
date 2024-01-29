@@ -29,13 +29,13 @@ async function doBuild(options: BuildOptions, context: ExecutorContext): Promise
     })
 
     const exitCode = await new Promise<number | null>((resolve, reject) => {
-        child.on("close", (code, signal) => {
-            console.log("close", code, signal)
+        child.on("close", (code) => {
+            logger.log("exited with code:", code)
             resolve(code)
         })
 
         child.on("error", (error) => {
-            console.error(error)
+            logger.error(error)
             reject(-1)
         })
     })
@@ -47,8 +47,6 @@ export default async function buildExecutor(
     options: BuildOptions,
     context: ExecutorContext
 ): Promise<{ success: boolean }> {
-    logger.info(`Executing "cargo build"...`)
-
     try {
         const ret = await doBuild(options, context)
 

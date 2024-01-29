@@ -1,7 +1,0 @@
-{
-    "name": "meshx.mem",
-    "files": ["buffer.midl"],
-    "dependencies": {
-        "fx": { "path": "../fx" }
-    }
-}

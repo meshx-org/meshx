@@ -1,0 +1,7 @@
+{
+    "name": "fx",
+    "bindings": [],
+    "include": ["**/*.midl"],
+    "exclude": ["fx_not_ready.midl", "rights.midl"],
+    "references": []
+}

@@ -30,7 +30,7 @@ impl JSONGenerator {
             enum_declarations: self.generate_enum_declarations(&self.compilation.declarations.enums),
             struct_declarations: self.generate_struct_declarations(&self.compilation.declarations.structs),
             union_declarations: self.generate_union_declarations(&self.compilation.declarations.unions),
-            protocol_declarations: vec![],
+            protocol_declarations: self.generate_protocol_declarations(&self.compilation.declarations.protocols),
             table_declarations: vec![],
             bits_declarations: vec![],
             experiments: vec![],
@@ -91,6 +91,19 @@ impl JSONGenerator {
             .collect()
     }
 
+    fn generate_protocol_declarations(&self, decls: &Vec<ast::Declaration>) -> Vec<ir::Protocol> {
+        decls
+            .into_iter()
+            .map(|decl| {
+                if let ast::Declaration::Protocol { decl } = decl {
+                    self.generate_protocol(decl.borrow().clone())
+                } else {
+                    panic!("")
+                }
+            })
+            .collect()
+    }
+
     fn generate_location(&self, value: ast::Span) -> ir::Location {
         ir::Location {
             filename: "TODO".to_string(),
@@ -100,7 +113,7 @@ impl JSONGenerator {
         }
     }
 
-    fn generate_name(&self, name: ast::Name) -> ir::EncodedCompoundIdentifier {
+    fn generate_name(&self, name: &ast::Name) -> ir::EncodedCompoundIdentifier {
         // TODO(https://fxbug.dev/92422): NameFlatName omits the library name for builtins,
         // since we want error messages to say "uint32" not "fidl/uint32". However,
         // builtins MAX and HEAD can end up in the JSON IR as identifier constants,
@@ -112,6 +125,14 @@ impl JSONGenerator {
             EncodedCompoundIdentifier("fidl/HEAD".to_string())
         } else {
             EncodedCompoundIdentifier(ast::name_flat_name(name))
+        }
+    }
+
+    fn generate_naming_context(&self, name: ast::Name) -> ir::NamingContext {
+        if let Some(n) = name.as_anonymous() {
+            n.context.context()
+        } else {
+            vec![name.decl_name()]
         }
     }
 
@@ -135,6 +156,12 @@ impl JSONGenerator {
             ast::PrimitiveSubtype::Uint64 => ir::PrimitiveSubtype::Uint64,
             ast::PrimitiveSubtype::Float32 => ir::PrimitiveSubtype::Float32,
             ast::PrimitiveSubtype::Float64 => ir::PrimitiveSubtype::Float64,
+        }
+    }
+
+    fn generate_internal_subtype(&self, value: &ast::InternalSubtype) -> ir::InternalSubtype {
+        match value {
+            ast::InternalSubtype::FrameworkErr => ir::InternalSubtype::FrameworkErr,
         }
     }
 
@@ -162,7 +189,7 @@ impl JSONGenerator {
                 nullable: self.generate_nullable(&r#type.constraints.nullabilty()),
             },
             ast::Type::Identifier(ref r#type) => ir::Type::IdentifierType {
-                identifier: self.generate_name(r#type.name.clone()),
+                identifier: self.generate_name(&r#type.name),
                 nullable: self.generate_nullable(&r#type.constraints.nullabilty()),
                 type_shape_v2: self.generate_type_shape(),
             },
@@ -179,6 +206,10 @@ impl JSONGenerator {
                     type_shape_v2: self.generate_type_shape(),
                 }
             }
+            ast::Type::Internal(r#type) => ir::Type::InternalType {
+                internal_subtype: self.generate_internal_subtype(&r#type.subtype),
+                type_shape_v2: self.generate_type_shape(),
+            },
             ast::Type::Primitive(r#type) => ir::Type::PrimitiveType {
                 primitive_subtype: self.generate_primitive_subtype(&r#type.subtype),
             },
@@ -221,7 +252,7 @@ impl JSONGenerator {
             ast::Constant::Identifier(identifier) => ir::Constant::Identifier {
                 value: identifier.value().to_string(),
                 expression: identifier.span().data.clone(),
-                identifier: self.generate_name(identifier.reference.resolved().unwrap().name()),
+                identifier: self.generate_name(&identifier.reference.resolved().unwrap().name()),
             },
             ast::Constant::Literal(literal) => ir::Constant::LiteralConstant {
                 value: literal.value().to_string(),
@@ -233,7 +264,7 @@ impl JSONGenerator {
 
     fn generate_const(&self, value: ast::Const) -> ir::Const {
         ir::Const {
-            name: self.generate_name(value.name),
+            name: self.generate_name(&value.name),
             location: self.generate_location(value.span),
             r#type: self.generate_type_and_from_alias(TypeKind::Concrete, value.type_ctor),
             value: self.generate_constant(value.value),
@@ -267,7 +298,7 @@ impl JSONGenerator {
 
         ir::Union {
             members,
-            name: self.generate_name(value.name),
+            name: self.generate_name(&value.name),
             location: self.generate_location(value.span),
             resourceness: Resourceness(false),
         }
@@ -289,7 +320,8 @@ impl JSONGenerator {
         }
 
         ir::Struct {
-            name: self.generate_name(value.name),
+            name: self.generate_name(&value.name),
+            naming_context: self.generate_naming_context(value.name),
             location: self.generate_location(value.span),
             resourceness: ir::Resourceness(false),
             maybe_attributes: None,
@@ -300,8 +332,8 @@ impl JSONGenerator {
         }
     }
 
-    fn generate_identifier(&self, value: ast::Identifier) -> ir::Identifier {
-        ir::Identifier(value.value)
+    fn generate_identifier(&self, value: ast::Span) -> ir::Identifier {
+        ir::Identifier(value.data)
     }
 
     fn generate_enum(&self, value: ast::Enum) -> ir::Enum {
@@ -317,13 +349,48 @@ impl JSONGenerator {
         }
 
         ir::Enum {
-            name: self.generate_name(value.name),
+            name: self.generate_name(&value.name),
             location: self.generate_location(value.span),
             maybe_attributes: vec![],
             r#type: ir::PrimitiveSubtype::Uint32,
             members,
             is_strict: false,
             raw_unknown_value: None,
+        }
+    }
+
+    fn generate_protocol(&self, value: ast::Protocol) -> ir::Protocol {
+        let mut methods = vec![];
+
+        for method in value.methods {
+            let method = method.borrow();
+
+            let mut maybe_request_payload = None;
+            let mut maybe_response_payload = None;
+
+            if let Some(typ) = &method.maybe_request {
+                maybe_request_payload = Some(self.generate_type(typ.r#type.as_ref().unwrap().clone()));
+            }
+
+            if let Some(typ) = &method.maybe_response {
+                maybe_response_payload = Some(self.generate_type(typ.r#type.as_ref().unwrap().clone()));
+            }
+
+            methods.push(ir::ProtocolMethod {
+                name: self.generate_identifier(method.name.clone()),
+                ordinal: 0,
+                has_response: false,
+                has_request: false,
+                has_error: false,
+                maybe_request_payload,
+                maybe_response_payload,
+            })
+        }
+
+        ir::Protocol {
+            location: self.generate_location(value.span),
+            name: self.generate_name(&value.name),
+            methods,
         }
     }
 }

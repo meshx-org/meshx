@@ -1,7 +1,0 @@
-{
-    "name": "meshx.data",
-    "files": ["data.midl"],
-    "dependencies": {
-        "fx": { "path": "../fx" }
-    }
-}

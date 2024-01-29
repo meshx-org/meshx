@@ -49,6 +49,8 @@ resource_definition handle : u32 {
 }
 */
 
+
+
 protocol Calculator {
     add(struct {
         a int32

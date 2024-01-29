@@ -1,7 +1,0 @@
-{
-    "name": "meshx.ui.views",
-    "files": ["overview.midl"],
-    "dependencies": {
-        "fx": { "path": "../fx" }
-    }
-}

@@ -29,7 +29,7 @@ type Vessel = strict enum {
 }
 
 type Error = struct {
-    id uint64
+    success bool
 }
 
 /// The result of an operation. A result is either a single number or an
@@ -48,12 +48,14 @@ type Profile = table {
 }
 
 protocol Test {
-    a(struct {
+    a_method(struct {
         a int32
         b int32
+    }) -> (struct {
+        sum int32
     })
 
-    b(struct {
+    b_method(struct {
         a int32
         b int32
     })

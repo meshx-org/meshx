@@ -1,5 +1,0 @@
-{
-    "name": "fx",
-    "files": ["fx_common.midl", "fx.midl"],
-    "dependencies": {}
-}

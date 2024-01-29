@@ -10,7 +10,9 @@
             "@meshx-org/fiber-ts": ["src/typescript/fiber-ts/src/index.ts"],
             "@meshx-org/fiber-types": ["src/typescript/fiber-types/src/index.ts"],
             "@meshx-org/meshx": ["sdk/typescript/meshx/src/index.ts"],
-            "@meshx-org/midl": ["sdk/typescript/midl/src/index.ts"]
+            "@meshx-org/midl": ["sdk/typescript/midl/src/index.ts"],
+            "nx-midl": ["tools/nx-midl/src/index.ts"],
+            "midl-discover": ["midl-discover/src/index.ts"]
         }
     }
 }

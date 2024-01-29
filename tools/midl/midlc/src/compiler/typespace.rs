@@ -19,7 +19,7 @@ struct TypeCreator<'a, 'r, 'd> {
 
 fn builtin_to_internal_subtype(id: ast::BuiltinIdentity) -> Option<ast::InternalSubtype> {
     match id {
-        ast::BuiltinIdentity::FrameworkErr => Some(ast::InternalSubtype::FrameworkErr),
+        ast::BuiltinIdentity::framework_err => Some(ast::InternalSubtype::FrameworkErr),
         _ => None,
     }
 }
@@ -176,11 +176,25 @@ impl<'a, 'r, 'd> TypeCreator<'a, 'r, 'd> {
     }
 
     fn create_internal_type(&self, subtype: ast::InternalSubtype) -> Option<ast::Type> {
-        todo!()
+        if !self.ensure_number_of_layout_params(0) {
+            return None;
+        }
+
+        let constrained_type = self
+            .typespace
+            .get_internal_type(subtype)
+            .apply_constraints(
+                self.resolver,
+                self.typespace.diagnostics.clone(),
+                self.constraints,
+                self.layout,
+            )
+            .unwrap();
+
+        self.typespace.intern(constrained_type)
     }
 
     fn create(&self) -> Option<ast::Type> {
-        println!("ref: {:#?}", self.layout);
         let target = self.layout.resolved().unwrap().element().as_decl().unwrap();
 
         match target {
@@ -228,7 +242,7 @@ impl<'a, 'r, 'd> TypeCreator<'a, 'r, 'd> {
                 ast::BuiltinIdentity::ClientEnd => self.create_transport_side_type(TransportSide::Client),
                 ast::BuiltinIdentity::ServerEnd => self.create_transport_side_type(TransportSide::Server),
                 ast::BuiltinIdentity::Byte => self.create_primitive_type(ast::PrimitiveSubtype::Uint8),
-                ast::BuiltinIdentity::FrameworkErr => {
+                ast::BuiltinIdentity::framework_err => {
                     let subtype = builtin_to_internal_subtype(builtin.id.clone()).unwrap();
                     self.create_internal_type(subtype)
                 }
@@ -310,6 +324,13 @@ impl Typespace {
             .get(&subtype)
             .cloned()
             .expect("all primitive subtypes should be inserted")
+    }
+
+    pub fn get_internal_type(&self, subtype: ast::InternalSubtype) -> Rc<ast::InternalType> {
+        self.internal_types
+            .get(&subtype)
+            .cloned()
+            .expect("all internal subtypes should be inserted")
     }
 
     pub fn get_unbounded_string_type(&self) -> Rc<ast::StringType> {

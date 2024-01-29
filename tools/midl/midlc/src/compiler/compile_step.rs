@@ -43,7 +43,7 @@ impl ScopeInsertResult {
     }
 }
 
-type MemberValidator<T> = dyn FnMut(T, Vec<ast::Attribute>, ast::Identifier) -> Result<(), DiagnosticsError>;
+type MemberValidator<T> = dyn FnMut(T, Vec<ast::Attribute>, ast::Span) -> Result<(), DiagnosticsError>;
 
 #[derive(Debug)]
 struct Scope<T> {
@@ -117,8 +117,6 @@ where
     }
 
     pub(crate) fn compile_decl(&self, decl: &mut ast::Declaration) {
-        println!("compile_decl start");
-
         {
             let mut decl_stack = self.decl_stack.borrow_mut();
 
@@ -127,19 +125,13 @@ where
         }
 
         match decl {
-            ast::Declaration::Const { decl } => {
-                println!("compile_decl const");
-                self.compile_const(decl.clone())
-            }
+            ast::Declaration::Const { decl } => self.compile_const(decl.clone()),
             ast::Declaration::Enum { decl } => self.compile_enum(decl.clone()),
-            ast::Declaration::Struct { decl } => {
-                println!("compile_decl struct {:#?}", decl);
-                self.compile_struct(decl.clone())
-            }
+            ast::Declaration::Struct { decl } => self.compile_struct(decl.clone()),
             ast::Declaration::Union { decl } => self.compile_union(decl.clone()),
+            ast::Declaration::Protocol { decl } => self.compile_protocol(decl.clone()),
             ast::Declaration::Resource { .. } => {}
             ast::Declaration::Alias { .. } => {}
-            ast::Declaration::Protocol { .. } => {}
             _ => todo!(),
         }
 
@@ -150,8 +142,6 @@ where
             decl.set_compiled(true);
             decl_stack.pop();
         }
-
-        println!("compile_decl end");
     }
 
     fn compile_attribute_list(&self, attrs: &ast::AttributeList) {}
@@ -176,7 +166,7 @@ where
                 }
 
                 let value: MemberType = member.value.value().into();
-                let value_result = value_scope.insert(value, member.name.span.clone());
+                let value_result = value_scope.insert(value, member.name.clone());
                 if !value_result.is_ok() {
                     let previous_span = value_result.previous_occurrence();
                     // We can log the error and then continue validating other members for other bugs
@@ -374,6 +364,7 @@ where
 
             if member_used.type_ctor.r#type.as_ref().unwrap().is_nullable() {
                 // reporter()->Fail(ErrOptionalUnionMember, member_used.name);
+                todo!()
             }
 
             // derive_resourceness.AddType(member_used.type_ctor->type);
@@ -440,6 +431,67 @@ where
             //    self.ctx.diagnostics.fail(ErrInvalidConstantType, const_declaration.name.span().value(), const_type);
         } else if !self.resolve_constant(&mut const_declaration.value, const_type) {
             //    self.ctx.diagnostics.fail(ErrCannotResolveConstantValue, const_declaration.name.span().value());
+        }
+    }
+
+    fn compile_protocol(&self, decl: Rc<RefCell<ast::Protocol>>) {
+        let mut protocol_declaration = decl.borrow_mut();
+        self.compile_attribute_list(&protocol_declaration.attributes);
+
+        for method in protocol_declaration.methods.iter() {
+            let mut method = method.borrow_mut();
+
+            if let Some(typ_ctor) = method.maybe_request.as_mut() {
+                self.compile_type_constructor(typ_ctor);
+
+                if let Some(ref r#type) = typ_ctor.r#type {
+                    if let ast::Type::Identifier(id_type) = r#type {
+                        let mut decl = id_type.decl.clone();
+                        self.compile_decl(&mut decl);
+                        //  self.check_no_default_members(decl);
+                        //  self.check_payload_decl_kind(method.name, decl);
+                    } else {
+                        // reporter()->Fail(ErrInvalidMethodPayloadType, method.name, type);
+                    }
+                }
+            }
+
+            if let Some(typ_ctor) = method.maybe_response.as_mut() {
+                self.compile_type_constructor(typ_ctor);
+
+                if let Some(ref r#type) = typ_ctor.r#type {
+                    if let ast::Type::Identifier(id_type) = r#type {
+                        let mut decl = id_type.decl.clone();
+                        self.compile_decl(&mut decl);
+                        /*
+
+                        if (method.HasResultUnion()) {
+                            ZX_ASSERT(decl.kind == Decl::Kind::kUnion);
+                            let result_union = static_cast<const Union*>(decl);
+                            ZX_ASSERT(!result_union.members.empty());
+                            ZX_ASSERT(result_union.members[0].maybe_used);
+                            let success_variant_type = result_union->members[0].maybe_used->type_ctor->type;
+
+                            if (success_variant_type) {
+                                if (success_variant_type->kind != Type::Kind::kIdentifier) {
+                                    reporter()->Fail(ErrInvalidMethodPayloadType, method.name, success_variant_type);
+                                } else {
+                                    let success_decl = static_cast<const IdentifierType*>(success_variant_type)->type_decl;
+                                    CheckNoDefaultMembers(success_decl);
+                                    CheckPayloadDeclKind(method.name, success_decl);
+                                }
+                            }
+
+                            ValidateDomainErrorType(result_union);
+                        } else {
+                            CheckNoDefaultMembers(decl);
+                            CheckPayloadDeclKind(method.name, decl);
+                        }*/
+                    } else {
+                        //  reporter()->Fail(ErrInvalidMethodPayloadType, method.name, type);
+                    }
+                }
+            }
         }
     }
 

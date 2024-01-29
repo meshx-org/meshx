@@ -352,7 +352,10 @@ impl PrimitiveSubtype {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum InternalSubtype {}
+pub enum InternalSubtype {
+    #[serde(rename = "framework_error")]
+    FrameworkErr,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash)]
 pub enum HandleSubtype {
@@ -549,6 +552,8 @@ pub struct Struct {
     pub maybe_attributes: Option<Vec<Attribute>>,
 
     pub name: EncodedCompoundIdentifier,
+    pub naming_context: NamingContext,
+
     pub location: Location,
 
     // pub naming_context: NamingContext,
@@ -655,6 +660,18 @@ pub struct PaddingConfig {
     pub flatten_arrays: bool,
 }
 
+/// NamingContext represents the content of the `naming_context` JSON IR field,
+/// which enumerates inr order the names of the parent declarations of some
+/// declaration. Top-level declarations have a list of size 1, with their own
+/// name as the only member. Nested (ie, anonymous) declarations are lists of a
+/// size greater than 1, starting with the outer most ancestor declaration.
+///
+/// While the `name` and the last string in a `naming_context` are usually
+/// identical, the `name` can be arbitrarily changed using the
+/// `@generated_name()` MIDL annotation, so this is not guaranteed to be the
+/// case.
+pub type NamingContext = Vec<String>;
+
 impl Struct {
     pub fn build_padding_markers(&self, conf: PaddingConfig) -> Vec<PaddingMarker> {
         vec![]
@@ -759,18 +776,22 @@ impl Decl for Enum {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Method {
+pub struct ProtocolMethod {
+    pub name: Identifier,
     pub ordinal: u64,
     pub has_response: bool,
     pub has_request: bool,
     pub has_error: bool,
+
+    pub maybe_request_payload: Option<Type>,
+    pub maybe_response_payload: Option<Type>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Protocol {
     pub location: Location,
     pub name: EncodedCompoundIdentifier,
-    pub methods: Vec<Method>,
+    pub methods: Vec<ProtocolMethod>,
 }
 
 impl Decl for Protocol {

@@ -1,8 +1,8 @@
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    Attribute, Comment, CompoundIdentifier, Declaration, Identifier, Span, TypeConstructor, WithAttributes,
-    WithDocumentation, WithIdentifier, WithSpan, WithName, Name, AttributeList,
+    Attribute, AttributeList, Comment, CompoundIdentifier, Declaration, Identifier, Name, Span, Strictness,
+    TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan,
 };
 
 #[derive(Debug)]
@@ -21,7 +21,7 @@ impl ProtocolMethodId {
 }
 
 impl std::ops::Index<ProtocolMethodId> for Protocol {
-    type Output = ProtocolMethod;
+    type Output = Rc<RefCell<ProtocolMethod>>;
 
     fn index(&self, index: ProtocolMethodId) -> &Self::Output {
         &self.methods[index.0 as usize]
@@ -34,12 +34,12 @@ pub struct ProtocolMethod {
     ///
     /// ```ignore
     /// protocol Foo {
-    ///     Bar()
+    ///     bar()
     ///     ^^^
     /// }
     ///
     /// ```
-    pub(crate) name: Identifier,
+    pub(crate) name: Span,
 
     /// The documentation for this protocol.
     ///
@@ -76,11 +76,14 @@ pub struct ProtocolMethod {
     pub(crate) response_payload: Option<Identifier>,
 
     pub(crate) has_request: bool,
+    pub(crate) maybe_request: Option<TypeConstructor>,
+
     pub(crate) has_response: bool,
+    pub(crate) maybe_response: Option<TypeConstructor>,
+
     pub(crate) has_error: bool,
 
-    pub(crate) maybe_request: Option<TypeConstructor>,
-    pub(crate) maybe_response: Option<TypeConstructor>,
+    pub(crate) strictness: Strictness,
 
     // Set during compilation
     // TODO: generated_ordinal64: raw::Ordinal64,
@@ -100,15 +103,13 @@ pub struct ProtocolMethod {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Protocol {
-    pub name: Name,
-    
     /// The name of the protocol.
     ///
     /// ```ignore
     /// protocol Foo { .. }
     ///          ^^^
     /// ```
-    pub(crate) identifier: Identifier,
+    pub name: Name,
 
     /// The names of the composed protocols.
     ///
@@ -150,7 +151,7 @@ pub struct Protocol {
     ///   ^^^^^
     /// }
     /// ```
-    pub(crate) methods: Vec<Rc<ProtocolMethod>>,
+    pub(crate) methods: Vec<Rc<RefCell<ProtocolMethod>>>,
 
     /// The location of this protocol in the text representation.
     pub(crate) span: Span,
@@ -158,12 +159,11 @@ pub struct Protocol {
     // Set during compilation
     pub(crate) compiled: bool,
     pub(crate) compiling: bool,
-    pub(crate) recursive: bool
+    pub(crate) recursive: bool,
 }
 
 impl Protocol {
-    pub fn iter_methods(&self) -> impl ExactSizeIterator<Item = (ProtocolMethodId, &Rc<ProtocolMethod>)> + Clone {
-        println!("proto iter_methods {}", self.methods.len());
+    pub fn iter_methods(&self) -> impl ExactSizeIterator<Item = (ProtocolMethodId, &Rc<RefCell<ProtocolMethod>>)> + Clone {
         self.methods
             .iter()
             .enumerate()
@@ -173,13 +173,9 @@ impl Protocol {
 
 impl Into<Declaration> for Protocol {
     fn into(self) -> Declaration {
-        Declaration::Protocol { decl: Rc::new(RefCell::new(self)) }
-    }
-}
-
-impl WithIdentifier for Protocol {
-    fn identifier(&self) -> &Identifier {
-        &self.identifier
+        Declaration::Protocol {
+            decl: Rc::new(RefCell::new(self)),
+        }
     }
 }
 

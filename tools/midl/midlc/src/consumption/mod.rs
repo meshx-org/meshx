@@ -34,15 +34,12 @@ use crate::{ast::Name, compiler::ParsingContext, diagnotics::DiagnosticsError};
 pub use parser::{MIDLParser, Rule};
 use pest::iterators::{Pair, Pairs};
 
-pub(crate) fn consume_identifier(pair: &Pair<'_, Rule>, ctx: &mut ParsingContext<'_>) -> ast::Identifier {
+pub(crate) fn consume_identifier(pair: &Pair<'_, Rule>, ctx: &mut ParsingContext<'_>) -> ast::Span {
     debug_assert!(pair.as_rule() == Rule::identifier);
 
     let pair_span = pair.as_span();
 
-    ast::Identifier {
-        value: pair.as_str().to_string(),
-        span: ast::Span::from_pest(pair_span, ctx.source_id),
-    }
+    ast::Span::from_pest(pair_span, ctx.source_id)
 }
 
 pub(crate) fn consume_compound_identifier(
@@ -82,12 +79,10 @@ pub(crate) fn consume_layout_declaration(
 ) -> Result<ast::Declaration, DiagnosticsError> {
     debug_assert!(token.as_rule() == Rule::layout_declaration);
 
-    let mut identifier = None;
+    let span = token.as_span();
+
     let mut name = None;
     let mut name_context = None;
-
-    let mut declaration: ast::Declaration;
-    let span = token.as_span();
 
     for current in token.into_inner() {
         match current.as_rule() {
@@ -97,16 +92,15 @@ pub(crate) fn consume_layout_declaration(
                 let name_span = ast::Span::from_pest(name_span, ctx.source_id);
                 let sourced = Name::create_sourced(ctx.library.clone(), name_span);
 
-                identifier = Some(consume_identifier(&current, ctx));
                 name_context = Some(ast::NamingContext::create(&sourced));
                 name = Some(sourced);
             }
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::inline_struct_layout => {
-                return consume_struct_layout(current, name.unwrap(), name_context.unwrap(), ctx);
+                return consume_struct_layout(current, name_context.unwrap(), ctx);
             }
             Rule::inline_enum_layout => {
-                return consume_enum_layout(current, name.unwrap(), name_context.unwrap(), ctx);
+                return consume_enum_layout(current, name_context.unwrap(), ctx);
             }
             Rule::inline_union_layout => {
                 return consume_union_layout(current, name.unwrap(), name_context.unwrap(), ctx);

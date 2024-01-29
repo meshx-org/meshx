@@ -57,13 +57,13 @@ fn consume_struct_member(
 
 pub(crate) fn consume_struct_layout(
     token: Pair<'_>,
-    name: ast::Name,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
     debug_assert!(token.as_rule() == Rule::inline_struct_layout);
 
-    let token_span = token.as_span();
+    let span = token.as_span();
+    let struct_span = ast::Span::from_pest(span, ctx.source_id);
 
     let attributes = ast::AttributeList(vec![]);
     let mut members = Vec::new();
@@ -92,11 +92,11 @@ pub(crate) fn consume_struct_layout(
     }
 
     Ok(ast::Struct {
-        name,
+        name: name_context.to_name(ctx.library.clone(), struct_span.clone()),
+        span: struct_span,
         members,
         attributes,
         documentation: None,
-        span: ast::Span::from_pest(token_span, ctx.source_id),
         compiled: false,
         compiling: false,
         recursive: false,

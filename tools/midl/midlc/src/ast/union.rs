@@ -27,7 +27,7 @@ impl std::ops::Index<UnionMemberId> for Union {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UnionMemberUsed {
-    pub(crate) name: Identifier,
+    pub(crate) name: Span,
     pub(crate) type_ctor: TypeConstructor,
 }
 

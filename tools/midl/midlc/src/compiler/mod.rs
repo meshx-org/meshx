@@ -108,7 +108,6 @@ pub(crate) struct Compiler {
 impl Compiler {
     /// See the docs on [Compiler](/struct.Compiler.html).
     pub(crate) fn new(all_libraries: Rc<RefCell<Libraries>>) -> Option<Self> {
-        // println!("ir: {:?}", ir);
 
         /*
         // Second pass: resolve top-level items and field types.

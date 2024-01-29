@@ -191,8 +191,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
         });
 
         {
-            let mut graph = self.graph.borrow_mut();
-            println!("d {:?}", graph);
+            let graph = self.graph.borrow_mut();
 
             // Add all elements of this library to the graph, with membership edges.
             /*for (_, decl) in self.ctx.library.declarations.borrow().all.flat_iter() {
@@ -292,13 +291,13 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             }
             ast::Element::Protocol { .. } => {}
             ast::Element::ProtocolMethod { inner } => {
-                println!("{:?}", inner);
+                let method = inner.borrow();
 
-                if let Some(type_ctor) = &inner.maybe_request {
+                if let Some(type_ctor) = &method.maybe_request {
                     self.visit_type_constructor(&type_ctor, context);
                 }
 
-                if let Some(type_ctor) = &inner.maybe_response {
+                if let Some(type_ctor) = &method.maybe_response {
                     self.visit_type_constructor(&type_ctor, context);
                 }
             }
@@ -612,6 +611,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
         }
 
         let lookup = Lookup::new(self, reference);
+
         let member = lookup.must_member(decl.clone(), &ref_key.member_name.unwrap());
         if member.is_none() {
             return;
@@ -635,6 +635,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
 
                 if let Some(overlap) = ast::VersionRange::intersect(Some(us), Some(them)) {
                     assert!(overlap == us, "referencee must outlive referencer");
+
                     return Some(decl.clone());
                 } else {
                     println!("no overlap");

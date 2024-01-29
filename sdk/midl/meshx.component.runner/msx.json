@@ -1,0 +1,14 @@
+{
+    "name": "meshx.component.runner",
+    "bindings": [],
+    "include": ["component_runner.midl"],
+    "exclude": [],
+    "references": [
+        { "path": "../fx" },
+        { "path": "../meshx.mem" },
+        { "path": "../meshx.url" },
+        { "path": "../meshx.data" },
+        { "path": "../meshx.process" },
+        { "path": "../meshx.component" }
+    ]
+}

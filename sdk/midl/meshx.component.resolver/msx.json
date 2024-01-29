@@ -1,0 +1,7 @@
+{
+    "name": "meshx.component.resolver",
+    "bindings": [],
+    "exclude": [],
+    "include": ["package.midl", "resolver.midl"],
+    "references": [{ "path": "../fx" }]
+}

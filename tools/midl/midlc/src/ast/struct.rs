@@ -29,7 +29,7 @@ impl std::ops::Index<StructMemberId> for Struct {
 /// A struct member declaration.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct StructMember {
-    pub(crate) name: Identifier,
+    pub(crate) name: Span,
 
     pub(crate) type_ctor: TypeConstructor,
 

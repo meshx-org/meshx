@@ -1,0 +1,7 @@
+{
+    "name": "meshx.component",
+    "bindings": [],
+    "include": ["*.midl"],
+    "exclude": [],
+    "references": [{ "path": "../fx" }]
+}

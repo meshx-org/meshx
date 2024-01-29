@@ -33,7 +33,7 @@ pub use attributes::{Attribute, AttributeArg, AttributeList};
 pub use comment::Comment;
 pub use constraints::VectorConstraints;
 pub use identifier::{CompoundIdentifier, Identifier};
-pub use name::{name_flat_name, Name, NamingContext};
+pub use name::{name_flat_name, Name, NameProvenance, NamingContext};
 pub use properties::{Nullability, Resourceness, Strictness};
 pub use protocol::{Protocol, ProtocolMethod};
 pub use r#const::{Const, Constant, ConstantTrait, ConstantValue, IdentifierConstant, LiteralConstant};
@@ -73,7 +73,7 @@ pub enum Element {
     EnumMember { inner: Rc<RefCell<EnumMember>> },
     UnionMember { inner: Rc<RefCell<UnionMember>> },
     TableMember { inner: Rc<RefCell<TableMember>> },
-    ProtocolMethod { inner: Rc<ProtocolMethod> },
+    ProtocolMethod { inner: Rc<RefCell<ProtocolMethod>> },
 
     ResourceProperty,
     Library,
@@ -98,6 +98,19 @@ impl Element {
             Element::Bits => Some(Declaration::Bits),
             Element::Protocol { inner } => Some(Declaration::Protocol { decl: inner.clone() }),
             _ => None,
+        }
+    }
+
+    pub fn name(&self) -> Name {
+        match self {
+            Element::Const { inner } => inner.borrow().name.clone(),
+            Element::Builtin { inner } => inner.borrow().name.clone(),
+            Element::Struct { inner } => inner.borrow().name.clone(),
+            Element::Enum { inner } => inner.borrow().name.clone(),
+            Element::Union { inner } => inner.borrow().name.clone(),
+            Element::Table { inner } => inner.borrow().name.clone(),
+            Element::Protocol { inner } => inner.borrow().name.clone(),
+            _ => todo!(),
         }
     }
 
@@ -335,10 +348,11 @@ impl Declaration {
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum BuiltinIdentity {
+#[repr(usize)]
+pub enum BuiltinIdentity {
     // Layouts (primitive)
     #[default]
-    bool,
+    bool = 0,
     int8,
     int16,
     int32,
@@ -361,7 +375,7 @@ pub(crate) enum BuiltinIdentity {
     // Layouts (aliases)
     Byte,
     // Layouts (internal)
-    FrameworkErr,
+    framework_err,
     // Constraints
     Optional,
     MAX,
@@ -387,7 +401,7 @@ impl Builtin {
 
     pub fn is_internal(&self) -> bool {
         match self.id {
-            BuiltinIdentity::FrameworkErr => true,
+            BuiltinIdentity::framework_err => true,
             _ => false,
         }
     }
@@ -452,9 +466,9 @@ impl Declarations {
     }
 
     pub(crate) fn lookup_builtin(&self, id: BuiltinIdentity) -> Declaration {
-        let index: usize = id.index();
+        let index = id.index() - 1;
         assert!(index < self.builtins.len(), "builtin id out of range");
-        let builtin = self.builtins.get(index).unwrap().clone();
+        let builtin = self.builtins[index].clone();
         // assert!(builtin.id == id, "builtin's id does not match index");
         return builtin;
     }
@@ -615,10 +629,7 @@ impl Library {
         let library = Rc::new(library);
 
         let insert = |name: &str, id: BuiltinIdentity| {
-            let decl = Builtin::new(
-                id,
-                Name::create_intrinsic(library.clone(), name), /*Name::new_intrinsic(&library, name)*/
-            );
+            let decl = Builtin::new(id, Name::create_intrinsic(library.clone(), name));
 
             library.declarations.borrow_mut().insert(Declaration::Builtin {
                 decl: Rc::new(RefCell::new(decl)),
@@ -645,7 +656,7 @@ impl Library {
         insert("client_end", BuiltinIdentity::ClientEnd);
         insert("server_end", BuiltinIdentity::ServerEnd);
         insert("byte", BuiltinIdentity::Byte);
-        insert("FrameworkErr", BuiltinIdentity::FrameworkErr);
+        insert("framework_err", BuiltinIdentity::framework_err);
         insert("optional", BuiltinIdentity::Optional);
         insert("MAX", BuiltinIdentity::MAX);
         insert("HEAD", BuiltinIdentity::HEAD);

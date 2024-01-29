@@ -1,8 +1,13 @@
 use super::Span;
-use crate::ast::Library;
-use std::{cell::OnceCell, rc::Rc};
+use crate::ast;
+use convert_case::{Case, Casing};
+use std::{
+    borrow::BorrowMut,
+    cell::{OnceCell, RefCell},
+    rc::Rc,
+};
 
-#[derive(PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 enum NamingContextKind {
     Decl,
     LayoutMember,
@@ -27,16 +32,37 @@ enum NamingContextKind {
 ///
 /// `ctx` will produce a `FlattenedName` of "data", and a `Context` of
 /// ["Peripheral", "StartAdvertising", "data"].
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NamingContext {
-    name: Span,
+    pub(crate) name: ast::Span,
+    pub(crate) parent: Option<Rc<NamingContext>>,
     kind: NamingContextKind,
-    parent: Option<Rc<NamingContext>>,
     flattened_name: String,
-    flattened_name_override: Option<String>,
+    flattened_name_override: RefCell<Option<String>>,
 }
 
-fn build_flattened_name(name: Span) -> String {
-    String::new()
+fn to_upper_camel_case(str: String) -> String {
+    str.to_case(Case::Pascal)
+}
+
+fn build_flattened_name(name: ast::Span, kind: NamingContextKind, parent: &Option<Rc<NamingContext>>) -> String {
+    match kind {
+        NamingContextKind::Decl => name.data,
+        NamingContextKind::LayoutMember => to_upper_camel_case(name.data),
+        NamingContextKind::MethodRequest => {
+            let mut result = to_upper_camel_case(parent.as_ref().unwrap().name.data.clone());
+            result.push_str(to_upper_camel_case(name.data).as_str());
+            result.push_str("Request");
+
+            result
+        }
+        NamingContextKind::MethodResponse => {
+            let mut result = to_upper_camel_case(parent.as_ref().unwrap().name.data.clone());
+            result.push_str(to_upper_camel_case(name.data).as_str());
+            result.push_str("Response");
+            result
+        }
+    }
 }
 
 impl NamingContext {
@@ -47,31 +73,74 @@ impl NamingContext {
     /// be a place to own all the root nodes, which are not owned by an anonymous name), and
     /// doing it manually is even worse.
     pub(crate) fn create(name: &Name) -> Rc<Self> {
-        Rc::new(Self {
-            name: name.span().unwrap(),
-            parent: None,
-            kind: NamingContextKind::Decl,
-            flattened_name: build_flattened_name(name.span().unwrap()),
-            flattened_name_override: None,
-        })
+        NamingContext::new(name.span().unwrap(), NamingContextKind::Decl, None)
     }
 
-    fn new(name: Span, kind: NamingContextKind, parent: Rc<NamingContext>) -> Rc<Self> {
+    fn new(name: Span, kind: NamingContextKind, parent: Option<Rc<NamingContext>>) -> Rc<Self> {
         Rc::new(NamingContext {
             name: name.clone(),
-            flattened_name_override: None,
-            flattened_name: build_flattened_name(name),
+            flattened_name_override: RefCell::new(None),
+            flattened_name: build_flattened_name(name, kind, &parent),
             kind,
-            parent: Some(parent),
+            parent,
         })
     }
 
-    pub(crate) fn to_name(&self, library: Rc<Library>, span: Span) -> Name {
-        Name::create_sourced(library, span.clone())
+    /// to_name() exists to handle the case where the caller does not necessarily know what
+    /// kind of name (sourced or anonymous) this NamingContext corresponds to.
+    /// For example, this happens for layouts where the consume_* functions all take a
+    /// NamingContext and so the given layout may be at the top level of the library
+    /// (with a user-specified name) or may be nested/anonymous.
+    pub(crate) fn to_name(self: Rc<Self>, library: Rc<ast::Library>, declataion_span: Span) -> Name {
+        if self.parent.is_none() {
+            return Name::create_sourced(library, self.name.clone());
+        }
+
+        Name::create_anonymous(library, declataion_span, self, NameProvenance::AnonymousLayout)
+    }
+
+    pub(crate) fn set_name_override(&self, value: String) {
+        *self.flattened_name_override.borrow_mut() = Some(value);
+    }
+
+    pub(crate) fn context(self: Rc<Self>) -> Vec<String> {
+        let mut names = vec![];
+        let mut current = Some(self);
+
+        while let Some(local) = current {
+            // Internally, we don't store a separate context item to represent whether a
+            // layout is the request or response, since this bit of information is
+            // embedded in the Kind. When collapsing the stack of contexts into a list
+            // of strings, we need to flatten this case out to avoid losing this data.
+            match local.kind {
+                NamingContextKind::MethodRequest => {
+                    names.push("Request".to_owned());
+                }
+                NamingContextKind::MethodResponse => {
+                    names.push("Response".to_owned());
+                }
+                NamingContextKind::Decl | NamingContextKind::LayoutMember => {}
+            }
+
+            names.push(local.name.data.clone());
+            current = local.parent.clone();
+        }
+
+        names.reverse();
+        names
+    }
+
+    pub(crate) fn parent(&self) -> Rc<NamingContext> {
+        assert!(self.parent.is_some(), "traversing above root");
+        self.parent.as_ref().unwrap().clone()
+    }
+
+    pub(crate) fn name(&self) -> Span {
+        self.name.clone()
     }
 
     fn push(self: Rc<Self>, name: Span, kind: NamingContextKind) -> Rc<Self> {
-        NamingContext::new(name, kind, self.clone())
+        NamingContext::new(name, kind, Some(self.clone()))
     }
 
     pub(crate) fn enter_member(self: Rc<Self>, member_name: Span) -> Rc<Self> {
@@ -97,22 +166,36 @@ impl NamingContext {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct SourcedNameContext {
+pub enum NameProvenance {
+    /// The name refers to an anonymous layout, like `struct {}`.
+    AnonymousLayout,
+    /// The name refers to a result union generated by the compiler, e.g. the
+    /// response of `strict Foo(A) -> (B) error uint32` or `flexible Foo(A) -> (B)`.
+    GeneratedResultUnion,
+    /// The name refers to an empty success struct generated by the compiler, e.g. the
+    /// success variant for `strict Foo() -> () error uint32` or `flexible Foo() -> ()`.
+    GeneratedEmptySuccessStruct,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct SourcedNameContext {
     span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct IntrinsicNameContext {
+pub(crate) struct IntrinsicNameContext {
     name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct AnonymousNameContext {
+pub(crate) struct AnonymousNameContext {
     span: Span,
+    provenance: NameProvenance,
+    pub context: Rc<NamingContext>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum NameContext {
+pub(crate) enum NameContext {
     Sourced(SourcedNameContext),
     Intrinsic(IntrinsicNameContext),
     Anonymous(AnonymousNameContext),
@@ -123,7 +206,7 @@ enum NameContext {
 /// `Name::Kind`. See the documentation for `Name::Kind` for details.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Name {
-    pub library: Rc<Library>,
+    pub library: Rc<ast::Library>,
     member_name: Option<String>,
     name_context: NameContext,
 }
@@ -135,14 +218,14 @@ impl std::fmt::Debug for Name {
 }
 
 impl Name {
-    pub fn is_intrinsic(&self) -> bool {
+    pub(crate) fn is_intrinsic(&self) -> bool {
         match self.name_context {
             NameContext::Intrinsic(_) => true,
             _ => false,
         }
     }
 
-    pub fn create_sourced(library: Rc<Library>, span: Span) -> Self {
+    pub(crate) fn create_sourced(library: Rc<ast::Library>, span: Span) -> Self {
         Self {
             library,
             name_context: NameContext::Sourced(SourcedNameContext { span }),
@@ -150,7 +233,7 @@ impl Name {
         }
     }
 
-    pub fn create_intrinsic(library: Rc<Library>, name: &str) -> Self {
+    pub(crate) fn create_intrinsic(library: Rc<ast::Library>, name: &str) -> Self {
         Self {
             library,
             name_context: NameContext::Intrinsic(IntrinsicNameContext { name: name.to_owned() }),
@@ -158,11 +241,36 @@ impl Name {
         }
     }
 
+    pub(crate) fn create_anonymous(
+        library: Rc<ast::Library>,
+        span: Span,
+        context: Rc<NamingContext>,
+        provenance: NameProvenance,
+    ) -> Self {
+        Self {
+            library,
+            name_context: NameContext::Anonymous(AnonymousNameContext {
+                context,
+                span,
+                provenance,
+            }),
+            member_name: None,
+        }
+    }
+
+    pub(crate) fn as_anonymous(&self) -> Option<AnonymousNameContext> {
+        match self.name_context {
+            NameContext::Sourced(_) => None,
+            NameContext::Intrinsic(_) => None,
+            NameContext::Anonymous(ref ctx) => Some(ctx.clone()),
+        }
+    }
+
     pub fn decl_name(&self) -> String {
         match &self.name_context {
             NameContext::Sourced(ctx) => ctx.span.data.to_owned(),
             NameContext::Intrinsic(ctx) => ctx.name.clone(),
-            NameContext::Anonymous(ctx) => "TODO".to_owned(),
+            NameContext::Anonymous(ctx) => ctx.context.flattened_name.clone(),
         }
     }
 
@@ -202,7 +310,7 @@ fn library_name(name: OnceCell<Vec<String>>, sep: &str) -> String {
     name.get().unwrap().clone().join(sep)
 }
 
-pub fn name_flat_name(name: Name) -> String {
+pub fn name_flat_name(name: &Name) -> String {
     let mut compiled_name = String::new();
 
     if !name.is_intrinsic() {

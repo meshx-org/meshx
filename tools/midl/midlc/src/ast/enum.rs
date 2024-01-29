@@ -29,7 +29,7 @@ impl std::ops::Index<EnumMemberId> for Enum {
 /// A enum member declaration.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EnumMember {
-    pub(crate) name: Identifier,
+    pub(crate) name: Span,
 
     /// The value of this enum member.
     ///     

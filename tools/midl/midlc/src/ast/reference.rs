@@ -51,7 +51,7 @@ impl Target {
             //}
             Element::EnumMember{ inner } => {
                 let member = inner.borrow();
-                return self.maybe_parent.unwrap().name().with_member_name(member.name.value.clone());  
+                return self.maybe_parent.unwrap().name().with_member_name(member.name.data.clone());  
             }
             Element::Library|
             //Element::ProtocolCompose|
@@ -106,7 +106,7 @@ impl ReferenceKey {
 /// resolves to fx.ObjType.CHANNEL.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Contextual {
-    name: Identifier,
+    name: Span,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -138,7 +138,7 @@ impl std::fmt::Debug for ReferenceState {
                 val.member_name
             ),
             ReferenceState::Contextual(_) => write!(f, "Contextual"),
-            ReferenceState::Resolved(_) => write!(f, "Resolved"),
+            ReferenceState::Resolved(target) => write!(f, "Resolved({:?})", target.element().name()),
             ReferenceState::Failed => write!(f, "Failed"),
         }
     }

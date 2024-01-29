@@ -76,26 +76,12 @@ pub(crate) fn consume_type_constructor(
                 layout = Some(ast::Reference::new_sourced(name));
             }
             Rule::inline_struct_layout => {
-                let decl = consume_struct_layout(
-                    current,
-                    ast::Name::create_intrinsic(ctx.library.clone(), ""),
-                    name_context.clone(),
-                    ctx,
-                )
-                .unwrap();
-
+                let decl = consume_struct_layout(current, name_context.clone(), ctx).unwrap();
                 ctx.library.declarations.borrow_mut().insert(decl.clone());
                 layout = Some(ast::Reference::new_synthetic(Target::new(decl)));
             }
             Rule::inline_enum_layout => {
-                let decl = consume_enum_layout(
-                    current,
-                    ast::Name::create_intrinsic(ctx.library.clone(), ""),
-                    name_context.clone(),
-                    ctx,
-                )
-                .unwrap();
-
+                let decl = consume_enum_layout(current, name_context.clone(), ctx).unwrap();
                 ctx.library.declarations.borrow_mut().insert(decl.clone());
                 layout = Some(ast::Reference::new_synthetic(Target::new(decl)));
             }

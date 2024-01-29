@@ -53,8 +53,12 @@ pub(crate) struct ParsingContext<'db> {
     pub(crate) all_libraries: Rc<RefCell<Libraries>>,
     pub(crate) diagnostics: &'db mut Diagnostics,
     pub(crate) source_id: SourceId,
+
+    /// Declaration for default underlying type to use for bits and enums.
     pub(crate) default_underlying_type: ast::Declaration,
-    pub(crate) inline_declataions: Vec<ast::Declaration>
+
+    /// Declaration for the type to use for framework_err.
+    pub(crate) framework_err_type: ast::Declaration,
 }
 
 impl<'db> ParsingContext<'db> {
@@ -71,13 +75,20 @@ impl<'db> ParsingContext<'db> {
             .borrow()
             .lookup_builtin(ast::BuiltinIdentity::uint32);
 
+        let framework_err_type = all_libraries
+            .borrow()
+            .root_library()
+            .declarations
+            .borrow()
+            .lookup_builtin(ast::BuiltinIdentity::framework_err);
+
         ParsingContext {
             library,
             source_id,
             diagnostics,
             all_libraries,
             default_underlying_type,
-            inline_declataions: Vec::new()
+            framework_err_type,
         }
     }
 

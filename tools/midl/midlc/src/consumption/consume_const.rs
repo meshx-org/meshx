@@ -81,7 +81,7 @@ pub(crate) fn consume_constant_declaration(
                 value = Some(consume_constant(current, ctx));
             }
             Rule::type_constructor => {
-                let mut naming_context = ast::NamingContext::create(&name.clone().unwrap());
+                let naming_context = ast::NamingContext::create(&name.clone().unwrap());
                 type_ctor = Some(consume_type_constructor(current, &naming_context, ctx));
             }
             _ => consume_catch_all(&current, "const"),

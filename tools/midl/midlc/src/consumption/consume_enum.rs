@@ -22,10 +22,10 @@ fn consume_enum_member(
     debug_assert!(pair.as_rule() == Rule::value_layout_member);
 
     let pair_span = pair.as_span();
-    let mut name: Option<ast::Identifier> = None;
-    let attributes: Vec<ast::Attribute> = Vec::new();
-    let mut comment: Option<ast::Comment> = block_comment.and_then(consume_comment_block);
-    let mut member_value: Option<ast::Constant> = None;
+    let mut name = None;
+    let attributes = Vec::new();
+    let mut comment = block_comment.and_then(consume_comment_block);
+    let mut member_value = None;
 
     for current in pair.into_inner() {
         match current.as_rule() {
@@ -47,27 +47,25 @@ fn consume_enum_member(
         }
     }
 
-    match (name, member_value) {
-        (Some(name), Some(value)) => Ok(ast::EnumMember {
-            name,
-            documentation: None,
-            attributes,
-            value,
-            span: ast::Span::from_pest(pair_span, ctx.source_id),
-        }),
-        _ => panic!("Encountered impossible enum member declaration during parsing"),
-    }
+    Ok(ast::EnumMember {
+        name: name.unwrap(),
+        documentation: None,
+        attributes,
+        value: member_value.unwrap(),
+        span: ast::Span::from_pest(pair_span, ctx.source_id),
+    })
 }
 
 pub(crate) fn consume_enum_layout(
     token: Pair<'_>,
-    name: ast::Name,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
     debug_assert!(token.as_rule() == Rule::inline_enum_layout);
 
-    let token_span = token.as_span();
+    let span = token.as_span();
+    let enum_span = ast::Span::from_pest(span, ctx.source_id);
+
     let attributes = ast::AttributeList(vec![]);
     let mut members = Vec::new();
     let mut pending_field_comment = None;
@@ -101,13 +99,13 @@ pub(crate) fn consume_enum_layout(
     }
 
     Ok(ast::Enum {
-        name,
+        name: name_context.to_name(ctx.library.clone(), enum_span.clone()),
+        span: enum_span,
         members,
         attributes,
         documentation: None,
         unknown_value_signed: 0,
         unknown_value_unsigned: 0,
-        span: ast::Span::from_pest(token_span, ctx.source_id),
         subtype_ctor: subtype_ctor.unwrap_or(identifier_type_for_decl(ctx.default_underlying_type.clone())),
         r#type: None,
         compiled: false,
