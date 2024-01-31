@@ -16,6 +16,7 @@
             "options": {
                 "outputPath": "dist/./tools/nx_rust",
                 "tsConfig": "tools/nx_rust/tsconfig.lib.json",
+
                 "packageJson": "tools/nx_rust/package.json",
                 "main": "tools/nx_rust/src/index.ts",
                 "assets": [

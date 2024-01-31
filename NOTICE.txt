@@ -1,0 +1,6 @@
+MeshX (https://meshx.co/)
+Copyright MeshX Contributors
+
+This product includes software developed as part of
+The Fuschia Project (https://fuchsia.dev/) under a BSD-style license found in the LICENSE.fuchsia file.
+Copyright The Fuchsia Authors.

@@ -229,7 +229,7 @@ pub struct Overflowable {
 pub struct Method {
     /// Raw JSON IR data about this method. Embedded to provide access to fields
     /// common to all bindings.
-    pub base: ir::Method,
+    pub base: ir::ProtocolMethod,
     /// Name of the method converted to snake_case. Used when generating
     /// rust-methods associated with this method, such as proxy methods and
     /// encoder methods.

@@ -1,0 +1,7 @@
+api_version: "1"
+name: test
+version: "1"
+manifests:
+    - test
+files:
+    - test.txt

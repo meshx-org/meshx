@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/schema",
+    "type": "object",
+    "required": ["binding", "outDir"],
+    "properties": {
+        "binding": {
+            "type": "string"
+        },
+        "cwd": {
+            "type": "string"
+        },
+        "outDir": {
+            "type": "string"
+        }
+    }
+}

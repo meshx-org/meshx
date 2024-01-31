@@ -1,0 +1,18 @@
+[package]
+authors = ["Roland Sz. Kovács <Roland.Szarka-Kovacs@meshx.co>"]
+edition = "2021"
+name = "meshx-url"
+version = "0.1.0"
+
+[dependencies]
+assert_matches = "1.5"
+lazy_static = "1.0"
+meshx-hash = {path = "../../sys/pkg/lib/meshx-hash"}
+percent-encoding = "2.3"
+serde = {version = "1.0",features = ["derive"]}
+thiserror = "1.0"
+url = "2.5"
+proptest={version="=1.0", features = []}
+
+[dev-dependencies]
+serde_json = "1.0"

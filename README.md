@@ -12,10 +12,11 @@ parent:
 
 <!-- Badges -->
 <p align="center">
+    <a href="https://github.com/meshx-org/meshx/issues"><img src="https://img.shields.io/github/issues/meshx-org/meshx" alt="Open Issues"></a>
     <a href="https://github.com/meshx-org/meshx/actions/workflows/ci.yaml"><img src="https://github.com/meshx-org/meshx/actions/workflows/ci.yaml/badge.svg?branch=main" alt="CI Status"></a>
     <a href="https://packagist.org/packages/laravel/cashier"><img src="https://img.shields.io/github/license/meshx-org/meshx?color=blue" alt="License"></a>
-    <a href="#"><img alt="Discord" src="https://img.shields.io/discord/674675845423562762?label=Discord&logo=discord&style=social"></a>
-    <a href="#"><img src="https://img.shields.io/twitter/follow/meshxhq?style=social" alt="Twitter"></a>
+    <a href="#"><img alt="Discord" src="https://img.shields.io/discord/674675845423562762?label=Discord&logo=discord"></a>
+    <a href="https://twitter.com/meshx_hq"><img src="https://img.shields.io/twitter/follow/meshxhq" alt="Twitter"></a>
 </p>
 
 ---
@@ -57,11 +58,8 @@ Please see our [security policy](./SECURITY.md) for additional details about res
 
 ## 📜 License
 
-MeshX Workspace is open-sourced software licensed under the [Apache2.0 license](LICENSE).
+MeshX Workspace is open-sourced software licensed under the [Apache v2.0 license](LICENSE).
 
 ## ©️ Copyright
 
-Copyright MeshX Contributors.
-
-[app-link]: https://meshx.co
-[cloud-link]: https://meshx.co
+Copyright MeshX Contributors. See [NOTICE](NOTICE.txt) for details.

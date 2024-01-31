@@ -1,0 +1,9 @@
+{
+    "executors": {
+        "pack": {
+            "implementation": "./src/pack/index",
+            "schema": "./src/pack/schema.json",
+            "description": "Create a MeshX Package out of a folder"
+        }
+    }
+}

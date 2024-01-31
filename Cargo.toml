@@ -4,8 +4,8 @@ license = "Apache-2.0"
 
 ## All dependency versions, used in the project
 [workspace.dependencies]
-openssl = {version = "0.10", features = ["vendored"]}
 libloading = "0.8"
+openssl = {version = "0.10", features = ["vendored"]}
 
 [workspace]
 members = [
@@ -27,6 +27,9 @@ members = [
   "tools/midl/midlgen",
   "tools/midl/midlgen_ts",
   "tools/midl/midlgen_rust",
+  "src/sys/pkg/lib/package-tool",
+  "src/lib/meshx-url",
+  "src/sys/pkg/bin/package-tool",
 ]
 resolver = "2"
 

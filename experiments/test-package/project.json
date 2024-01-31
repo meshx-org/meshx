@@ -1,0 +1,19 @@
+{
+    "name": "experiments/test-package",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "experiments/test-package",
+    "projectType": "application",
+    "implicitDependencies": ["tools/nx-pack"],
+    "targets": {
+        
+        "build": {
+            "executor": "./dist/tools/nx-pack:pack",
+            "dependsOn": ["^build"],
+            "outputs": ["{workspaceRoot}/dist/out/base/test-package"],
+            "options": {
+                "outDir": "{workspaceRoot}/dist/pkg/test-package",
+                "packageName": "test-package"
+            }
+        }
+    }
+}

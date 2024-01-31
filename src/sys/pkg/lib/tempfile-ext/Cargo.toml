@@ -1,0 +1,11 @@
+[package]
+authors = ["Roland Sz. Kovács <Roland.Szarka-Kovacs@meshx.co>"]
+edition = "2021"
+name = "tempfile-ext"
+version = "0.1.0"
+
+[dependencies]
+tempfile="3.9"
+
+[dev-dependencies]
+ 

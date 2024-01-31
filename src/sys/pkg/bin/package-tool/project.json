@@ -1,0 +1,19 @@
+{
+    "name": "src/sys/pkg/bin/package-tool",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "src/sys/pkg/bin/package-tool/src",
+    "root": "src/sys/pkg/bin/package-tool",
+    "projectType": "application",
+    "implicitDependencies": ["tools/nx_rust"],
+    "targets": {
+        "build": {
+            "executor": "./dist/tools/nx_rust:build",
+            "dependsOn": ["^build"],
+            "outputs": ["{workspaceRoot}/dist/sys/pkg/bin/package-tool"],
+            "options": {
+                "cwd": "src/sys/pkg/bin/package-tool/src",
+                "outDir": "{workspaceRoot}/dist/sys/pkg/bin/package-tool"
+            }
+        }
+    }
+}

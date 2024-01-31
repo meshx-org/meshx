@@ -1,0 +1,12 @@
+[package]
+authors = ["Roland Sz. Kovács <Roland.Szarka-Kovacs@meshx.co>"]
+edition = "2021"
+name = "utf8-path"
+version = "0.1.0"
+
+[dependencies]
+anyhow = "1.0"
+camino = "1.1"
+pathdiff = {version = "0.2", features = ["camino"]}
+
+[dev-dependencies]

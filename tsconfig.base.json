@@ -11,8 +11,10 @@
             "@meshx-org/fiber-types": ["src/typescript/fiber-types/src/index.ts"],
             "@meshx-org/meshx": ["sdk/typescript/meshx/src/index.ts"],
             "@meshx-org/midl": ["sdk/typescript/midl/src/index.ts"],
-            "nx-midl": ["tools/nx-midl/src/index.ts"],
-            "midl-discover": ["midl-discover/src/index.ts"]
+           
+            "@meshx-org/nx_rust": ["tools/nx_rust/src/index.ts"],
+            "@meshx-org/nx-midl": ["tools/nx-midl/src/index.ts"],
+            "@meshx-org/nx-pack": ["tools/nx-pack/src/index.ts"]
         }
     }
 }

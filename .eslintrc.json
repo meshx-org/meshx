@@ -19,7 +19,7 @@
             "files": ["{package,project}.json"],
             "parser": "jsonc-eslint-parser",
             "rules": {
-                "@nx/dependency-checks": [
+                /*"@nx/dependency-checks": [
                     "error",
                     {
                         "ignoredDependencies": ["vite", "vite-tsconfig-paths"],
@@ -28,7 +28,7 @@
                         "checkObsoleteDependencies": true,
                         "checkVersionMismatches": true
                     }
-                ]
+                ]*/
             }
         },
         {

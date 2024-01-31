@@ -4,6 +4,11 @@
             "implementation": "./src/midlc/index",
             "schema": "./src/midlc/schema.json",
             "description": "Genereates the library IR from a MIDL library"
+        },
+        "midlgen": {
+            "implementation": "./src/midlgen/index",
+            "schema": "./src/midlgen/schema.json",
+            "description": "Generates language bindings from a MIDL library IR"
         }
     }
 }

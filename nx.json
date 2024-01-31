@@ -1,7 +1,7 @@
 {
-    "useDaemonProcess": false,
+    "useDaemonProcess": true,
     "extends": "nx/presets/npm.json",
-    "plugins": ["midl-discover"],
+    "plugins": ["@meshx-org/nx-midl"],
     "pluginsConfig": {
         "@nx/js": {
             "analyzeSourceFiles": true

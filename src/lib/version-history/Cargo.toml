@@ -1,0 +1,10 @@
+[package]
+authors = ["Roland Sz. Kovács <Roland.Szarka-Kovacs@meshx.co>"]
+edition = "2021"
+name = "version-history"
+version = "0.1.0"
+
+[dependencies]
+serde = {version = "1", features = ["derive"]}
+
+[dev-dependencies]

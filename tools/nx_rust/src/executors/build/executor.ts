@@ -1,6 +1,16 @@
-import { logger, ExecutorContext, offsetFromRoot } from "@nrwl/devkit"
-import { spawn } from "child_process"
+import { logger, ExecutorContext } from "@nrwl/devkit"
 import { resolve } from "path"
+
+/**
+ * Workaround for NX's lack of ESM support
+ *
+ * See the following issues:
+ * - {@link https://github.com/nrwl/nx/issues/16776 require() of ES Module executor.js ... not supported with custom plugin using es2015 module #16776 }
+ * - {@link https://github.com/nrwl/nx/issues/15682 ESM Support for Nx Plugins #15682}
+ */
+function requireEsm<T>(module: string): Promise<T> {
+    return import(module)
+}
 
 export interface BuildOptions {
     outDir: string
@@ -10,35 +20,19 @@ export interface BuildOptions {
 async function doBuild(options: BuildOptions, context: ExecutorContext): Promise<number | null> {
     const outDir = resolve(context.root, options.outDir)
 
+    const { execa } = await (Function('return import("execa")')() as Promise<typeof import("execa")>)
+
     const projectRoot = context.projectsConfigurations?.projects[context.projectName!].root
+    
+    const { stdout, stderr, exitCode } = await execa(
+        `cargo`,
+        ["build", "-Z", "unstable-options", "--color=always", `--out-dir=${outDir}`],
+        {
+            cwd: options.cwd ? options.cwd : projectRoot,
+        }
+    )
 
-    const child = spawn(`cargo`, ["build", "-Z", "unstable-options", "--color=always", `--out-dir=${outDir}`], {
-        cwd: options.cwd ? options.cwd : projectRoot,
-    })
-
-    child.stdout.setEncoding("utf8")
-    child.stdout.on("data", (data) => {
-        //Here is where the output goes
-        logger.log(data)
-    })
-
-    child.stderr.setEncoding("utf8")
-    child.stderr.on("data", (data) => {
-        //Here is where the error output goes
-        logger.error(data)
-    })
-
-    const exitCode = await new Promise<number | null>((resolve, reject) => {
-        child.on("close", (code) => {
-            logger.log("exited with code:", code)
-            resolve(code)
-        })
-
-        child.on("error", (error) => {
-            logger.error(error)
-            reject(-1)
-        })
-    })
+    logger.log(stdout, stderr)
 
     return exitCode
 }
@@ -56,7 +50,7 @@ export default async function buildExecutor(
 
         return { success: true }
     } catch (e) {
-        console.error("error:", e)
+        console.error("error:", (e as any).stderr)
         return { success: false }
     }
 }

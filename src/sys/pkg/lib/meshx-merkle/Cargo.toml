@@ -1,0 +1,13 @@
+[package]
+authors = ["Roland Sz. Kovács <Roland.Szarka-Kovacs@meshx.co>"]
+edition = "2021"
+name = "meshx-merkle"
+version = "0.1.0"
+
+[dependencies]
+futures="0.3"
+sha2="0.10"
+meshx-hash={path = "../meshx-hash"}
+
+[dev-dependencies]
+test-case="3.3"
