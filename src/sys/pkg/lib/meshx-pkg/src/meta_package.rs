@@ -107,7 +107,6 @@ struct MetaPackageV0Serialize<'a> {
     variant: &'a str,
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -175,4 +174,3 @@ mod tests {
         }
     }
 }
-*/

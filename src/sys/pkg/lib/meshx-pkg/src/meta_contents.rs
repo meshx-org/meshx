@@ -173,14 +173,13 @@ impl MetaContents {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use {
         super::*,
         crate::test::*,
         assert_matches::assert_matches,
-        fuchsia_url::{errors::ResourcePathError, test::*},
+        meshx_url::{errors::ResourcePathError, test::*},
         maplit::hashmap,
         proptest::prelude::*,
         std::str::FromStr,
@@ -350,4 +349,3 @@ mod tests {
         }
     }
 }
-*/

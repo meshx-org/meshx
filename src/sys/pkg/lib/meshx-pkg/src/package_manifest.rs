@@ -692,7 +692,7 @@ fn resolve_subpackage_manifest_path(
     Ok(SubpackageInfo { manifest_path, ..subpackage })
 }
 
-/* 
+
 #[cfg(test)]
 mod tests {
     use {
@@ -1225,7 +1225,7 @@ mod tests {
             }, BlobInfo {
                 source_path: "../data_source/p2".into(),
                 path: "meta/".into(),
-                merkle: Hash::from([2; fuchsia_hash::HASH_SIZE]),
+                merkle: Hash::from([2; meshx_hash::HASH_SIZE]),
                 size: 1,
             }],
             subpackages: vec![SubpackageInfo {
@@ -1304,7 +1304,7 @@ mod tests {
             BlobInfo {
                 source_path: expected_meta_far_source_path,
                 path: "meta/".into(),
-                merkle: Hash::from([2; fuchsia_hash::HASH_SIZE]),
+                merkle: Hash::from([2; meshx_hash::HASH_SIZE]),
                 size: 1,
             }
         );
@@ -1377,7 +1377,7 @@ mod tests {
             }, BlobInfo {
                 source_path: "../data_source/p2".into(),
                 path: "meta/".into(),
-                merkle:  Hash::from([2; fuchsia_hash::HASH_SIZE]),
+                merkle:  Hash::from([2; meshx_hash::HASH_SIZE]),
                 size: 1,
             }],
             subpackages: vec![SubpackageInfo {
@@ -1437,7 +1437,7 @@ mod tests {
             BlobInfo {
                 source_path: expected_meta_far_source_path,
                 path: "meta/".into(),
-                merkle: Hash::from([2; fuchsia_hash::HASH_SIZE]),
+                merkle: Hash::from([2; meshx_hash::HASH_SIZE]),
                 size: 1,
             }
         );
@@ -1482,7 +1482,7 @@ mod tests {
         assert!(result.is_err())
     }
 
-    #[fuchsia_async::run_singlethreaded(test)]
+    #[tokio::test]
     async fn test_from_package_manifest_archive_manifest() {
         let outdir = TempDir::new().unwrap();
 
@@ -1731,4 +1731,3 @@ mod tests {
         assert_eq!(subpackage_manifest_path, "../subpackage_manifests/1111111111111111111111111111111111111111111111111111111111111111");
     }
 }
-*/

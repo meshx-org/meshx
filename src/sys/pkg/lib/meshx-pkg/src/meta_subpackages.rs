@@ -104,11 +104,10 @@ impl Serialize for MetaSubpackagesV1 {
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use {
-        super::*, crate::test::*, fuchsia_url::test::random_relative_package_url, maplit::hashmap,
+        super::*, crate::test::*, meshx_url::test::random_relative_package_url, maplit::hashmap,
         proptest::prelude::*, serde_json::json,
     };
 
@@ -186,4 +185,3 @@ mod tests {
         }
     }
 } 
-*/

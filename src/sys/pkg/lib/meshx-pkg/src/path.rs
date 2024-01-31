@@ -60,11 +60,10 @@ impl std::fmt::Display for PackagePath {
     }
 }
 
-/* 
 #[cfg(test)]
 mod test {
     use {
-        super::*, crate::test::random_package_path, fuchsia_url::errors::PackagePathSegmentError,
+        super::*, crate::test::random_package_path, meshx_url::errors::PackagePathSegmentError,
         proptest::prelude::*,
     };
 
@@ -118,4 +117,3 @@ mod test {
         }
     }
 }
-*/

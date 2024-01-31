@@ -3,9 +3,7 @@
 // found in the LICENSE file.
 
 use crate::errors::BuildError;
-use crate::{
-    MetaContents, MetaPackageError, Package, PackageBuildManifest, PackageManifest, SubpackageEntry,
-};
+use crate::{MetaContents, MetaPackageError, Package, PackageBuildManifest, PackageManifest, SubpackageEntry};
 use meshx_merkle::{Hash, MerkleTree};
 use std::collections::{btree_map, BTreeMap};
 use std::io::{Seek, SeekFrom};
@@ -65,27 +63,28 @@ pub(crate) fn build_with_file_system<'a>(
         return Err(BuildError::MetaPackage(MetaPackageError::MetaPackageMissing));
     };
 
-    let mut package_builder =
-        Package::builder(published_name.as_ref().parse().map_err(BuildError::PackageName)?);
+    let mut package_builder = Package::builder(published_name.as_ref().parse().map_err(BuildError::PackageName)?);
 
-    for SubpackageEntry { name, merkle, package_manifest_path } in subpackages.into_iter() {
+    for SubpackageEntry {
+        name,
+        merkle,
+        package_manifest_path,
+    } in subpackages.into_iter()
+    {
         package_builder.add_subpackage(name, merkle, package_manifest_path);
     }
 
-    let external_content_infos =
-        get_external_content_infos(creation_manifest.external_contents(), file_system)?;
+    let external_content_infos = get_external_content_infos(creation_manifest.external_contents(), file_system)?;
 
     for (path, info) in external_content_infos.iter() {
-        package_builder.add_entry(
-            path.to_string(),
-            info.hash,
-            PathBuf::from(info.source_path),
-            info.size,
-        );
+        package_builder.add_entry(path.to_string(), info.hash, PathBuf::from(info.source_path), info.size);
     }
 
     let meta_contents = MetaContents::from_map(
-        external_content_infos.iter().map(|(path, info)| (path.clone(), info.hash)).collect(),
+        external_content_infos
+            .iter()
+            .map(|(path, info)| (path.clone(), info.hash))
+            .collect(),
     )?;
 
     let mut meta_contents_bytes = Vec::new();
@@ -95,7 +94,9 @@ pub(crate) fn build_with_file_system<'a>(
     for (resource_path, source_path) in creation_manifest.far_contents() {
         far_contents.insert(
             resource_path,
-            file_system.read(source_path).map_err(|e| (e, source_path.to_string()))?,
+            file_system
+                .read(source_path)
+                .map_err(|e| (e, source_path.to_string()))?,
         );
     }
 
@@ -160,22 +161,24 @@ fn get_external_content_infos<'a, 'b>(
 ) -> Result<BTreeMap<String, ExternalContentInfo<'a>>, BuildError> {
     external_contents
         .iter()
-        .map(|(resource_path, source_path)| -> Result<(String, ExternalContentInfo<'_>), BuildError> {
-            let file = file_system.open(source_path)
-                .map_err(|e| (e, source_path.to_string()))?;
-            Ok((
-                resource_path.clone(),
-                ExternalContentInfo {
-                    source_path,
-                    size: file_system.len(source_path)?,
-                    hash: MerkleTree::from_reader(file)?.root(),
-                },
-            ))
-        })
+        .map(
+            |(resource_path, source_path)| -> Result<(String, ExternalContentInfo<'_>), BuildError> {
+                let file = file_system
+                    .open(source_path)
+                    .map_err(|e| (e, source_path.to_string()))?;
+                Ok((
+                    resource_path.clone(),
+                    ExternalContentInfo {
+                        source_path,
+                        size: file_system.len(source_path)?,
+                        hash: MerkleTree::from_reader(file)?.root(),
+                    },
+                ))
+            },
+        )
         .collect()
 }
 
-/*
 #[cfg(test)]
 mod test_build_with_file_system {
     use super::*;
@@ -202,8 +205,10 @@ mod test_build_with_file_system {
             rng: &mut impl rand::Rng,
         ) -> FakeFileSystem {
             let mut content_map = HashMap::new();
-            for (resource_path, host_path) in
-                creation_manifest.far_contents().iter().chain(creation_manifest.external_contents())
+            for (resource_path, host_path) in creation_manifest
+                .far_contents()
+                .iter()
+                .chain(creation_manifest.external_contents())
             {
                 if *resource_path == *"meta/package" {
                     let mut v = vec![];
@@ -214,7 +219,9 @@ mod test_build_with_file_system {
                     let file_size = rng.gen_range(0..6000);
                     content_map.insert(
                         host_path.to_string(),
-                        rng.sample_iter(&rand::distributions::Standard).take(file_size).collect(),
+                        rng.sample_iter(&rand::distributions::Standard)
+                            .take(file_size)
+                            .collect(),
                     );
                 }
             }
@@ -270,8 +277,7 @@ mod test_build_with_file_system {
             &file_system,
         )
         .unwrap();
-        let mut reader =
-            fuchsia_archive::Utf8Reader::new(File::open(&meta_far_path).unwrap()).unwrap();
+        let mut reader = meshx_archive::Utf8Reader::new(File::open(&meta_far_path).unwrap()).unwrap();
         let actual_meta_package_bytes = reader.read_file("meta/package").unwrap();
         let expected_meta_package_bytes = v.as_slice();
         assert_eq!(actual_meta_package_bytes.as_slice(), expected_meta_package_bytes);
@@ -280,7 +286,10 @@ mod test_build_with_file_system {
             b"lib/mylib.so=4a886105646222c10428e5793868b13f536752d4b87e6497cdf9caed37e67410\n";
         assert_eq!(actual_meta_contents_bytes.as_slice(), &expected_meta_contents_bytes[..]);
         let actual_meta_component_bytes = reader.read_file("meta/my_component.cml").unwrap();
-        assert_eq!(actual_meta_component_bytes.as_slice(), component_manifest_contents.as_bytes());
+        assert_eq!(
+            actual_meta_component_bytes.as_slice(),
+            component_manifest_contents.as_bytes()
+        );
     }
 
     #[test]
@@ -349,7 +358,7 @@ mod test_build_with_file_system {
             )
                 .unwrap();
             let reader =
-                fuchsia_archive::Utf8Reader::new(File::open(&meta_far_path).unwrap()).unwrap();
+                meshx_archive::Utf8Reader::new(File::open(&meta_far_path).unwrap()).unwrap();
             let expected_far_directory_names = {
                 let mut map: HashSet<&str> = HashSet::new();
                 for path in GENERATED_FAR_CONTENTS.iter() {
@@ -387,7 +396,7 @@ mod test_build_with_file_system {
             )
                 .unwrap();
             let mut reader =
-                fuchsia_archive::Utf8Reader::new(File::open(&meta_far_path).unwrap()).unwrap();
+                meshx_archive::Utf8Reader::new(File::open(&meta_far_path).unwrap()).unwrap();
             for (resource_path, host_path) in creation_manifest.far_contents().iter() {
                 let expected_contents = file_system.content_map.get(host_path).unwrap();
                 let actual_contents = reader.read_file(resource_path).unwrap();
@@ -418,7 +427,7 @@ mod test_build_with_file_system {
             )
                 .unwrap();
             let mut reader =
-                fuchsia_archive::Utf8Reader::new(File::open(&meta_far_path).unwrap()).unwrap();
+                meshx_archive::Utf8Reader::new(File::open(&meta_far_path).unwrap()).unwrap();
             let meta_contents =
                 MetaContents::deserialize(
                     reader.read_file("meta/contents").unwrap().as_slice())
@@ -490,21 +499,12 @@ mod test_build {
             }
             new_map
         }
-        let new_far_contents = populate_filesystem_and_make_new_map(
-            temp_dir_path,
-            creation_manifest.far_contents(),
-            rng,
-        );
-        let new_external_contents = populate_filesystem_and_make_new_map(
-            temp_dir_path,
-            creation_manifest.external_contents(),
-            rng,
-        );
-        let new_creation_manifest = PackageBuildManifest::from_external_and_far_contents(
-            new_external_contents,
-            new_far_contents,
-        )
-        .unwrap();
+        let new_far_contents =
+            populate_filesystem_and_make_new_map(temp_dir_path, creation_manifest.far_contents(), rng);
+        let new_external_contents =
+            populate_filesystem_and_make_new_map(temp_dir_path, creation_manifest.external_contents(), rng);
+        let new_creation_manifest =
+            PackageBuildManifest::from_external_and_far_contents(new_external_contents, new_far_contents).unwrap();
         (new_creation_manifest, temp_dir)
     }
 
@@ -535,7 +535,7 @@ mod test_build {
             )
                 .unwrap();
             let mut reader =
-                fuchsia_archive::Utf8Reader::new(fs::File::open(&meta_far_path).unwrap()).unwrap();
+                meshx_archive::Utf8Reader::new(fs::File::open(&meta_far_path).unwrap()).unwrap();
             for (resource_path, host_path) in creation_manifest.far_contents().iter() {
                 let expected_contents = std::fs::read(host_path).unwrap();
                 let actual_contents = reader.read_file(resource_path).unwrap();
@@ -543,5 +543,4 @@ mod test_build {
             }
         }
     }
-} 
-*/
+}
