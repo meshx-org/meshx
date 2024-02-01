@@ -1,5 +1,6 @@
 import { logger, ExecutorContext } from "@nrwl/devkit"
 import * as path from "path"
+import { exec } from "child_process"
 import { promises as fs } from "fs"
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -10,19 +11,8 @@ export interface Options {
     cwd?: string
 }
 
-async function createArchive(options: Options, context: ExecutorContext): Promise<void> {
-    const outDir = path.resolve(context.root, options.outDir)
-    const root = context.projectsConfigurations?.projects[context.projectName!].root
-
-    await fs.mkdir(`${outDir}/meta`, { recursive: true })
-
-    // Generate meta/package file.
-    const pkg = { name: options.packageName }
-    await fs.writeFile(`${outDir}/meta/package`, JSON.stringify(pkg))
-
-    // const command = `${context.root}/dist/tools/mxpm/mxpm pack --out=${outDir} --dir=${directory} `
-
-    /* return new Promise((resolve, reject) => {
+function runCmd(command: string, cwd: string) {
+    return new Promise<void>((resolve, reject) => {
         exec(
             command,
             {
@@ -30,22 +20,37 @@ async function createArchive(options: Options, context: ExecutorContext): Promis
                     CLICOLOR_FORCE: "1",
                     RUST_LOG: "info",
                 },
-                cwd: options.cwd ? options.cwd : root,
+                cwd,
             },
             (err, stdout, stderr) => {
                 if (err) reject(err)
 
                 logger.log(stdout)
-                //logger.log(stderr)
+
                 resolve()
             }
         )
-    })*/
+    })
+}
+
+async function packageBuild(options: Options, context: ExecutorContext): Promise<void> {
+    const outDir = path.resolve(context.root, options.outDir)
+    const root = context.projectsConfigurations?.projects[context.projectName!].root
+    const absoluteRoot = path.resolve(root!)
+    const cwd = options.cwd ?? root!
+
+    await fs.mkdir(outDir, { recursive: true })
+
+    const buildCmd = `${context.root}/dist/sys/pkg/bin/package-tool/package-tool package build ${absoluteRoot}/package.fini -o ${outDir} --api-level 1 --published-name test`
+    await runCmd(buildCmd, cwd)
+
+    const archiveCmd = `${context.root}/dist/sys/pkg/bin/package-tool/package-tool package archive create ${outDir}/package_manifest.json -o ${outDir}/package.far`
+    await runCmd(archiveCmd, cwd)
 }
 
 export default async function executor(options: Options, context: ExecutorContext): Promise<{ success: boolean }> {
     try {
-        await createArchive(options, context)
+        await packageBuild(options, context)
 
         return { success: true }
     } catch (e) {

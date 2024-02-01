@@ -7,6 +7,7 @@
     "targets": {
         "build": {
             "executor": "@nx/js:tsc",
+            "inputs": ["{workspaceRoot}/dist/sys/pkg/bin/package-tool/*"],
             "outputs": ["{options.outputPath}"],
             "options": {
                 "outputPath": "dist/tools/nx-pack",

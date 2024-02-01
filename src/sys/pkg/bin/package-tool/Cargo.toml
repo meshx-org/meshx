@@ -7,6 +7,5 @@ version = "0.1.0"
 [dependencies]
 anyhow = "1.0"
 argh = "0.1"
-camino = "1.0"
 tokio = {version = "1.30", features = ["full"]}
 package_tool={path = "../../lib/package-tool", package = "package_tool_lib"}

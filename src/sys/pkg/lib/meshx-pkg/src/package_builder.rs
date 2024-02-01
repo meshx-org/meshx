@@ -378,7 +378,7 @@ impl PackageBuilder {
     /// Set the API Level that should be included in the package. This will return an error if there
     /// is no ABI revision that corresponds with this API Level.
     pub fn api_level(&mut self, api_level: u64) -> Result<()> {
-        for v in version_history::VERSION_HISTORY {
+        for v in version_history::version_history().unwrap() {
             if v.api_level == api_level {
                 self.abi_revision(v.abi_revision.0);
                 return Ok(());

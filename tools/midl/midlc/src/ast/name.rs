@@ -19,7 +19,7 @@ enum NamingContextKind {
 /// identifies the use of a layout. For example, for the FIDL:
 ///
 /// ```rust
-/// library fuchsia.bluetooth.le;
+/// library meshx.bluetooth.le;
 ///
 /// protocol Peripheral {
 ///     StartAdvertising(table { 1: data struct {}; });

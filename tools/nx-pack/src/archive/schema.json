@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/schema",
+    "type": "object",
+    "required": ["outDir", "packageManifestPath"],
+    "properties": {
+        "packageManifestPath": {
+            "type": "string"
+        },
+        "outDir": {
+            "type": "string"
+        }
+    }
+}

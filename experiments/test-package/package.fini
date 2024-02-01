@@ -1,0 +1,3 @@
+meta/package=meta/package
+bin/test.wasm=out/test.wasm
+bin/redis.wasm=out/redis.wasm

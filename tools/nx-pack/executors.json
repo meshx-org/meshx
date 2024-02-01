@@ -3,6 +3,11 @@
         "pack": {
             "implementation": "./src/pack/index",
             "schema": "./src/pack/schema.json",
+            "description": "Builds a package."
+        },
+        "archive": {
+            "implementation": "./src/archive/index",
+            "schema": "./src/archive/schema.json",
             "description": "Create a MeshX Package out of a folder"
         }
     }

@@ -1,11 +1,11 @@
-use std::array::TryFromSliceError;
+use std::{array::TryFromSliceError, fmt};
 
 use serde::{Deserialize, Serialize};
 
 pub fn version_history() -> Result<Vec<Version>, ()> {
     Ok(vec![Version {
-        api_level: 21,
-        abi_revision: AbiRevision::new(10),
+        api_level: 1,
+        abi_revision: AbiRevision::new(1),
         status: Status::Supported,
     }])
 }
@@ -22,7 +22,7 @@ pub fn latest_sdk_version() -> Version {
 
 /// VERSION_HISTORY is an array of all the known SDK versions.  It is guaranteed
 /// (at compile-time) by the proc_macro to be non-empty.
-pub const VERSION_HISTORY: &[Version] = &[];
+///pub const VERSION_HISTORY: &[Version] = &[];
 
 /// SUPPORTED_API_LEVELS are the supported API levels.
 pub const SUPPORTED_API_LEVELS: &[Version] = &[];
@@ -53,6 +53,12 @@ impl AbiRevision {
     /// Encode the ABI revision into little-endian bytes.
     pub fn as_bytes(&self) -> [u8; 8] {
         self.0.to_le_bytes()
+    }
+}
+
+impl fmt::Display for AbiRevision {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:x}", self.0)
     }
 }
 
@@ -132,7 +138,7 @@ impl Version {
 
 pub fn version_from_abi_revision(abi_revision: AbiRevision) -> Option<Version> {
     // TODO(https://fxbug.dev/42068452): Store APIs and ABIs in a map instead of a list.
-    VERSION_HISTORY.iter().find(|v| v.abi_revision == abi_revision).cloned()
+    version_history().unwrap().iter().find(|v| v.abi_revision == abi_revision).cloned()
 }
 
 /// Returns true if the given abi_revision is listed in the VERSION_HISTORY of

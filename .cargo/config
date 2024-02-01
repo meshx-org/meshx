@@ -4,3 +4,5 @@ rustflags = ["-C", "link-arg=-Wl,-export_dynamic"]
 [target.x86_64-apple-darwin]
 rustflags = ["-C", "link-arg=-Wl,-export_dynamic"]
 
+[registries.crates-io]
+protocol = "sparse"

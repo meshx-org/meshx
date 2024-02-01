@@ -3,24 +3,21 @@
 // found in the LICENSE file.
 
 use {
-    super::tempfile_ext::NamedTempFileExt as _,
+    tempfile_ext::NamedTempFileExt as _,
     super::{args::PackageBuildCommand, BLOBS_JSON_NAME, PACKAGE_MANIFEST_NAME},
     anyhow::{bail, Context as _, Result},
-    //fuchsia_pkg::{
-    //    PackageBuildManifest, PackageBuilder, SubpackagesBuildManifest,
-    //    SubpackagesBuildManifestEntry, SubpackagesBuildManifestEntryKind,
-    //},
-    meshx_pkg::{PackageBuildManifest, PackageBuilder},
+    meshx_pkg::{PackageBuildManifest, PackageBuilder, SubpackagesBuildManifest},
     std::{
         collections::BTreeSet,
         fs::{create_dir_all, File},
         io::{BufReader, BufWriter, Write},
     },
     tempfile::NamedTempFile,
+    version_history::AbiRevision,
 };
 
-const META_TAR_NAME: &str = "meta.tar";
-const META_TAR_DEPFILE_NAME: &str = "meta.tar.d";
+const META_FAR_NAME: &str = "meta.far";
+const META_FAR_DEPFILE_NAME: &str = "meta.far.d";
 const BLOBS_MANIFEST_NAME: &str = "blobs.manifest";
 
 pub async fn cmd_package_build(cmd: PackageBuildCommand) -> Result<()> {
@@ -30,12 +27,49 @@ pub async fn cmd_package_build(cmd: PackageBuildCommand) -> Result<()> {
     let package_build_manifest = PackageBuildManifest::from_pm_fini(BufReader::new(package_build_manifest))
         .with_context(|| format!("reading {}", cmd.package_build_manifest_path))?;
 
+    println!("{:?}", package_build_manifest);
+
     let mut builder = PackageBuilder::from_package_build_manifest(&package_build_manifest)
         .with_context(|| format!("creating package manifest from {}", cmd.package_build_manifest_path))?;
 
+    if let Some(abi_revision) = get_abi_revision(&cmd)? {
+        builder.abi_revision(abi_revision);
+    }
+
+    if let Some(published_name) = &cmd.published_name {
+        builder.published_name(published_name);
+    }
+
+    if let Some(repository) = &cmd.repository {
+        builder.repository(repository);
+    }
+
+    let subpackages_build_manifest = if let Some(subpackages_build_manifest_path) = &cmd.subpackages_build_manifest_path
+    {
+        let f = File::open(subpackages_build_manifest_path)?;
+        Some(SubpackagesBuildManifest::deserialize(BufReader::new(f))?)
+    } else {
+        None
+    };
+
+    if let Some(subpackages_build_manifest) = &subpackages_build_manifest {
+        for (url, hash, package_manifest_path) in subpackages_build_manifest.to_subpackages()? {
+            builder
+                .add_subpackage(&url, hash, package_manifest_path.into())
+                .with_context(|| format!("adding subpackage {url} : {hash}"))?;
+        }
+    }
+
+    if !cmd.out.exists() {
+        create_dir_all(&cmd.out).with_context(|| format!("creating {}", cmd.out))?;
+    }
+
+    let package_manifest_path = cmd.out.join(PACKAGE_MANIFEST_NAME);
+    builder.manifest_path(package_manifest_path);
+
     // Build the package.
     let gendir = tempfile::TempDir::new_in(&cmd.out)?;
-    let meta_tar_path = cmd.out.join(META_TAR_NAME);
+    let meta_tar_path = cmd.out.join(META_FAR_NAME);
     let package_manifest = builder
         .build(gendir.path(), &meta_tar_path)
         .with_context(|| format!("creating package manifest {meta_tar_path}"))?;
@@ -60,4 +94,32 @@ pub async fn cmd_package_build(cmd: PackageBuildCommand) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn get_abi_revision(cmd: &PackageBuildCommand) -> Result<Option<u64>> {
+    match (cmd.api_level, cmd.abi_revision) {
+        (Some(_), Some(_)) => {
+            bail!("--api-level and --abi-revision cannot be specified at the same time")
+        }
+        (Some(api_level), None) => {
+            for version in version_history::version_history().unwrap() {
+                if api_level == version.api_level {
+                    return Ok(Some(version.abi_revision.into()));
+                }
+            }
+
+            bail!("Unknown API level {}", api_level)
+        }
+        (None, Some(abi_revision)) => {
+            let abi_revision = AbiRevision::new(abi_revision);
+            for version in version_history::version_history().unwrap() {
+                if version.abi_revision == abi_revision {
+                    return Ok(Some(abi_revision.into()));
+                }
+            }
+
+            bail!("Unknown ABI revision {}", abi_revision)
+        }
+        (None, None) => Ok(None),
+    }
 }
