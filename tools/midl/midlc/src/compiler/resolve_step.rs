@@ -352,11 +352,16 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 let resource_property = inner.borrow();
                 self.visit_type_constructor(&resource_property.type_ctor, context);
             }
-            ast::Element::Table { .. } => todo!(),
-            ast::Element::TableMember { .. } => todo!(),
+            ast::Element::TableMember { inner } => {
+                let table_member = inner.borrow();
+                if let Some(ref used) = table_member.maybe_used {
+                    self.visit_type_constructor(&used.type_ctor, context);
+                }
+            },
             ast::Element::NewType => todo!(),
             ast::Element::Overlay => {}
             ast::Element::Protocol { .. } => {}
+            ast::Element::Table { .. } => {},
             ast::Element::Union { .. } => {}
             ast::Element::Struct { .. } => {}
             ast::Element::Builtin { .. } => {}

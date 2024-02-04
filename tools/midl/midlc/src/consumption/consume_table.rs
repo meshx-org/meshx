@@ -17,7 +17,7 @@ fn consume_table_member(
     block_comment: Option<Pair<'_>>,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
-) -> Result<ast::UnionMember, DiagnosticsError> {
+) -> Result<ast::TableMember, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::ordinal_layout_member);
 
     let pair_span = pair.as_span();
@@ -52,18 +52,18 @@ fn consume_table_member(
     }
 
     if !reserved {
-        Ok(ast::UnionMember {
+        Ok(ast::TableMember {
             documentation: None,
             attributes: ast::AttributeList(attributes),
             ordinal: ordinal.unwrap(),
-            maybe_used: Some(ast::UnionMemberUsed {
+            maybe_used: Some(ast::TableMemberUsed {
                 name: name.unwrap(),
                 type_ctor: type_ctor.unwrap(),
             }),
             span: ast::Span::from_pest(pair_span, ctx.source_id),
         })
     } else {
-        Ok(ast::UnionMember {
+        Ok(ast::TableMember {
             documentation: None,
             ordinal: ordinal.unwrap(),
             attributes: ast::AttributeList(attributes),
@@ -109,7 +109,7 @@ pub(crate) fn consume_table_layout(
         }
     }
 
-    Ok(ast::Union {
+    Ok(ast::Table {
         name: name_context.to_name(ctx.library.clone(), table_span.clone()),
         members,
         attributes,

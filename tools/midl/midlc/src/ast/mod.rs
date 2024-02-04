@@ -47,7 +47,7 @@ pub use r#struct::{Struct, StructMember};
 pub use reference::{Reference, ReferenceKey, ReferenceState, Target};
 pub use resource::{Resource, ResourceProperty};
 pub use span::Span;
-pub use table::{Table, TableMember};
+pub use table::{Table, TableMember, TableMemberUsed};
 pub use traits::{Decl, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
 pub use type_constructor::{
     ArrayType, BoxType, HandleType, IdentifierType, InternalSubtype, InternalType, LayoutConstraints, LayoutParameter,

@@ -1,9 +1,10 @@
 use anyhow::Result;
-
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use num::Num;
+use core::panic;
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc, thread::panicking};
 
 use crate::{
-    ast::{self, ConstantTrait, ConstantValue, Decl, PrimitiveSubtype, WithSpan},
+    ast::{self, ConstantTrait, ConstantValue, PrimitiveSubtype, WithSpan},
     diagnotics::{DiagnosticsError, Error},
 };
 
@@ -133,6 +134,7 @@ where
             ast::Declaration::Protocol { decl } => self.compile_protocol(decl.clone()),
             ast::Declaration::Alias { decl } => self.compile_alias(decl.clone()),
             ast::Declaration::Resource { decl } => self.compile_resource(decl.clone()),
+            ast::Declaration::Table { decl } => self.compile_table(decl.clone()),
             _ => todo!(),
         }
 
@@ -347,8 +349,12 @@ where
         }
     }
 
+    fn compile_table(&self, decl: Rc<RefCell<ast::Table>>) {
+        let table_declaration  = decl.borrow();
+    }
+
     fn compile_union(&self, decl: Rc<RefCell<ast::Union>>) {
-        let union_declaration: std::cell::Ref<'_, ast::Union> = decl.borrow();
+        let union_declaration = decl.borrow();
         let mut ordinal_scope = Ordinal64Scope::new();
         // DeriveResourceness derive_resourceness(&union_declaration.resourceness);
 
@@ -574,7 +580,7 @@ where
             panic!("ErrInvalidConstantType");
             //    self.ctx.diagnostics.fail(ErrInvalidConstantType, const_declaration.name.span().value(), const_type);
         } else if !self.resolve_constant(&mut const_declaration.value, const_type) {
-            panic!("ErrCannotResolveConstantValue {}", const_declaration.name.span().unwrap().data);
+            panic!("ErrCannotResolveConstantValue {:?}", const_declaration.value);
             //    self.ctx.diagnostics.fail(ErrCannotResolveConstantValue, const_declaration.name.span().value());
         }
     }
@@ -596,6 +602,7 @@ where
                         //  self.check_no_default_members(decl);
                         //  self.check_payload_decl_kind(method.name, decl);
                     } else {
+                        panic!("ErrInvalidMethodPayloadType");
                         // reporter()->Fail(ErrInvalidMethodPayloadType, method.name, type);
                     }
                 }
@@ -633,6 +640,7 @@ where
                             CheckPayloadDeclKind(method.name, decl);
                         }*/
                     } else {
+                        panic!("ErrInvalidMethodPayloadType")
                         //  reporter()->Fail(ErrInvalidMethodPayloadType, method.name, type);
                     }
                 }
@@ -641,6 +649,8 @@ where
     }
 
     fn resolve_constant(&self, constant: &mut ast::Constant, opt_type: Option<ast::Type>) -> bool {
+        log::warn!("resolve_const {:?} {}", constant,  constant.compiled());
+
         if constant.compiled() {
             return constant.is_resolved();
         }
@@ -674,46 +684,67 @@ where
         }
     }
 
+    fn underlying_type(&self, typ: &ast::Type) -> Option<ast::Type> {
+        if let ast::Type::Identifier(identifier_type) = typ {
+            self.compile_decl(&mut identifier_type.decl.clone());
+            
+            match &identifier_type.decl {
+                ast::Declaration::Bits { decl } => {
+                    return decl.borrow().subtype_ctor.r#type.clone();
+                }
+                ast::Declaration::Enum { decl} => {
+                    return decl.borrow().subtype_ctor.r#type.clone();
+                }
+                _ => Some(typ.clone())
+            }
+        } else {
+            return Some(typ.clone());
+        }
+    }
+
     fn resolve_or_operator_constant(
         &self,
-        constant: &ast::BinaryOperatorConstant,
+        constant: &mut ast::BinaryOperatorConstant,
         opt_type: Option<ast::Type>,
         left_operand: &ConstantValue,
         right_operand: &ConstantValue,
     ) -> bool {
-        /*assert!(left_operand.kind == right_operand.kind, "left and right operands of or operator must be of the same kind");
+        //assert!(left_operand.kind == right_operand.kind, "left and right operands of or operator must be of the same kind");
         assert!(opt_type.is_some(), "type inference not implemented for or operator");
 
-        let r#type = UnderlyingType(opt_type.value());
-        if (r#type == nullptr) {
-            return false;
-        }
-        if (r#type.kind != Type::Kind::kPrimitive) {
-            return reporter().Fail(ErrOrOperatorOnNonPrimitiveValue, constant.span);
-        }
-
-        std::unique_ptr<ConstantValue> left_operand_u64;
-        std::unique_ptr<ConstantValue> right_operand_u64;
-
-        if (!left_operand.Convert(ConstantValue::Kind::kUint64, &left_operand_u64)) {
+        let r#type = self.underlying_type(&opt_type.unwrap());
+        
+        if r#type.is_none() {
             return false;
         }
 
-        if (!right_operand.Convert(ConstantValue::Kind::kUint64, &right_operand_u64)) {
+        let r#type = r#type.unwrap();
+
+        if let ast::Type::Primitive(_) = r#type{
+            panic!("ErrOrOperatorOnNonPrimitiveValue");
+            // return reporter().Fail(ErrOrOperatorOnNonPrimitiveValue, constant.span);
+        }
+
+        let mut left_operand_u64 = ConstantValue::Bool(false);
+        let mut right_operand_u64= ConstantValue::Bool(false);
+
+        if !left_operand.convert(ast::ConstantValueKind::Uint64, &mut left_operand_u64) {
             return false;
         }
 
-        NumericConstantValue<uint64_t> result = *static_cast<NumericConstantValue<uint64_t>*>(left_operand_u64.get()) | *static_cast<NumericConstantValue<uint64_t>*>(right_operand_u64.get());
-        std::unique_ptr<ConstantValue> converted_result;
-        if (!result.Convert(ConstantValuePrimitiveKind(static_cast<const PrimitiveType*>(type)->subtype), &converted_result)) {
+        if !right_operand.convert(ast::ConstantValueKind::Uint64, &mut right_operand_u64) {
             return false;
         }
 
-        constant.resolve_to(converted_result, r#type);
-        return true;
-        */
+        //NumericConstantValue<uint64_t> result = *static_cast<NumericConstantValue<uint64_t>*>(left_operand_u64.get()) | *static_cast<NumericConstantValue<uint64_t>*>(right_operand_u64.get());
+        //std::unique_ptr<ConstantValue> converted_result;
+        //if (!result.Convert(ConstantValuePrimitiveKind(static_cast<const PrimitiveType*>(type)->subtype), &converted_result)) {
+        //    return false;
+        //}
 
-        return false;
+        // TODO: resolve it to correct value
+        constant.resolve_to(ConstantValue::Bool(false), r#type);
+        true
     }
 
     fn constant_value_primitive_kind(&self, subtype: ast::PrimitiveSubtype) -> ast::ConstantValueKind {
@@ -909,7 +940,7 @@ where
     fn infer_type(&self, literal: &mut ast::LiteralConstant) -> ast::Type { 
         match &literal.literal {
             ast::Literal::StringValue(string_literal, span) => {
-                let inferred_size = todo!(); // TODO: string_literal_length(span.data);
+                let inferred_size = string_literal.len(); // TODO: string_literal_length(span.data);
                 return ast::Type::String(self.typespace().get_string_type(inferred_size));
             }
             ast::Literal::NumericValue(_, _) => ast::Type::UntypedNumeric(self.typespace().get_untyped_numeric_type()),
@@ -934,14 +965,15 @@ where
         };
 
         if !self.type_is_convertible_to(&inferred_type, &r#type) {
-        //self.ctx.diagnostics.push_error(
-        //    ErrTypeCannotBeConvertedToType,
-        //    literal_constant.literal.span(),
-        //    literal_constant,
-        //    inferred_type,
-        //    r#type,
-        //);
-        // return false;
+            panic!("ErrTypeCannotBeConvertedToType");
+            //self.ctx.diagnostics.push_error(
+            //    ErrTypeCannotBeConvertedToType,
+            //    literal_constant.literal.span(),
+            //    literal_constant,
+            //    inferred_type,
+            //    r#type,
+            //);
+            return false;
         }
 
         match literal_constant.literal {
@@ -1023,51 +1055,101 @@ where
         r#type: ast::Type,
     ) -> bool {
         let span = literal_constant.literal.span();
-        let string_data = String::from(span.data);
+        let string_data = span.data.clone();
+
+        log::warn!("resolve_literal_constant: {} {:?}", span.data.clone(), subtype);
 
         let result: Result<()> = try {
-            match subtype {
-                ast::PrimitiveSubtype::Float64 => {
-                    let value = string_data.parse::<f64>()?;
-                    literal_constant.resolve_to(ConstantValue::Float64(value), r#type);
+            let is_hex = span.data.strip_prefix("0x");
+
+            if let Some(hex) = is_hex {
+                match subtype {
+                    ast::PrimitiveSubtype::Float64 => {
+                        let value = f64::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Float64(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Float32 => {
+                        let value = f32::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Float32(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Int8 => {
+                        let value = i8::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Int8(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Int16 => {
+                        let value = i16::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Int16(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Int32 => {
+                        let value = i32::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Int32(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Int64 => {
+                        let value = i64::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Int64(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Uint8 => {
+                        let value = u8::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Uint8(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Uint16 => {
+                        let value = u16::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Uint16(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Uint32 => {
+                        let value = u32::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Uint32(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Uint64 => {
+                        let value = u64::from_str_radix(hex, 16).unwrap();
+                        literal_constant.resolve_to(ConstantValue::Uint64(value), r#type);
+                    }
+                    _ => panic!("non numeric value"),
                 }
-                ast::PrimitiveSubtype::Float32 => {
-                    let value = string_data.parse::<f32>()?;
-                    literal_constant.resolve_to(ConstantValue::Float32(value), r#type);
+            } else {
+                match subtype {
+                    ast::PrimitiveSubtype::Float64 => {
+                        let value = string_data.parse::<f64>()?;
+                        literal_constant.resolve_to(ConstantValue::Float64(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Float32 => {
+                        let value = string_data.parse::<f32>()?;
+                        literal_constant.resolve_to(ConstantValue::Float32(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Int8 => {
+                        let value = string_data.parse::<i8>()?;
+                        literal_constant.resolve_to(ConstantValue::Int8(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Int16 => {
+                        let value = string_data.parse::<i16>()?;
+                        literal_constant.resolve_to(ConstantValue::Int16(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Int32 => {
+                        let value = string_data.parse::<i32>()?;
+                        literal_constant.resolve_to(ConstantValue::Int32(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Int64 => {
+                        let value = string_data.parse::<i64>()?;
+                        literal_constant.resolve_to(ConstantValue::Int64(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Uint8 => {
+                        let value = string_data.parse::<u8>()?;
+                        literal_constant.resolve_to(ConstantValue::Uint8(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Uint16 => {
+                        let value = string_data.parse::<u16>()?;
+                        literal_constant.resolve_to(ConstantValue::Uint16(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Uint32 => {
+                        let value = string_data.parse::<u32>()?;
+                        literal_constant.resolve_to(ConstantValue::Uint32(value), r#type);
+                    }
+                    ast::PrimitiveSubtype::Uint64 => {
+                        let value = string_data.parse::<u64>()?;
+                        literal_constant.resolve_to(ConstantValue::Uint64(value), r#type);
+                    }
+                    _ => panic!("non numeric value"),
                 }
-                ast::PrimitiveSubtype::Int8 => {
-                    let value = string_data.parse::<i8>()?;
-                    literal_constant.resolve_to(ConstantValue::Int8(value), r#type);
-                }
-                ast::PrimitiveSubtype::Int16 => {
-                    let value = string_data.parse::<i16>()?;
-                    literal_constant.resolve_to(ConstantValue::Int16(value), r#type);
-                }
-                ast::PrimitiveSubtype::Int32 => {
-                    let value = string_data.parse::<i32>()?;
-                    literal_constant.resolve_to(ConstantValue::Int32(value), r#type);
-                }
-                ast::PrimitiveSubtype::Int64 => {
-                    let value = string_data.parse::<i64>()?;
-                    literal_constant.resolve_to(ConstantValue::Int64(value), r#type);
-                }
-                ast::PrimitiveSubtype::Uint8 => {
-                    let value = string_data.parse::<u8>()?;
-                    literal_constant.resolve_to(ConstantValue::Uint8(value), r#type);
-                }
-                ast::PrimitiveSubtype::Uint16 => {
-                    let value = string_data.parse::<u16>()?;
-                    literal_constant.resolve_to(ConstantValue::Uint16(value), r#type);
-                }
-                ast::PrimitiveSubtype::Uint32 => {
-                    let value = string_data.parse::<u32>()?;
-                    literal_constant.resolve_to(ConstantValue::Uint32(value), r#type);
-                }
-                ast::PrimitiveSubtype::Uint64 => {
-                    let value = string_data.parse::<u64>()?;
-                    literal_constant.resolve_to(ConstantValue::Uint64(value), r#type);
-                }
-                _ => panic!("non numeric value"),
             }
         };
 

@@ -289,6 +289,7 @@ pub enum Constant {
 
 impl Constant {
     pub fn is_resolved(&self) -> bool {
+        log::warn!("is_resolved: {:?}", self);
         match self {
             Constant::Identifier(c) => c.constant_value.is_some(),
             Constant::Literal(c) => c.constant_value.is_some(),

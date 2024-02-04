@@ -48,7 +48,6 @@ impl Target {
             Element::Table{..}|
             Element::Alias{..}|
             Element::Union{..}  => {
-                log::warn!("{:?}", self.target.as_decl().unwrap().name());
                 self.target.as_decl().unwrap().name()
             }
             Element::BitsMember { inner }=> {

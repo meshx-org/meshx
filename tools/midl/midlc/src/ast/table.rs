@@ -26,7 +26,7 @@ impl std::ops::Index<TableMemberId> for Table {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TableMemberUsed {
-    pub(crate) name: Identifier,
+    pub(crate) name: Span,
     pub(crate) type_ctor: TypeConstructor,
 }
 
