@@ -1,0 +1,7 @@
+{
+    "name": "fx",
+    "bindings": ["rust"],
+    "include": ["**/*.midl"],
+    "exclude": ["fx_common.midl", "fx_not_ready.midl", "rights.midl"],
+    "references": []
+}

@@ -1,9 +1,10 @@
+use pest::pratt_parser::PrattParser;
+
 use crate::ast::Name;
 use crate::compiler::ParsingContext;
 use crate::diagnotics::DiagnosticsError;
 
 use super::consume_attribute::consume_attribute_list;
-use super::consume_identifier;
 use super::consume_type_constructor;
 use crate::consumption::consume_compound_identifier;
 use crate::consumption::consume_value::consume_literal;
@@ -13,45 +14,75 @@ use super::ast;
 use super::helpers::Pair;
 use super::Rule;
 
+lazy_static::lazy_static! {
+    static ref PRATT_PARSER: PrattParser<Rule> = {
+        use pest::pratt_parser::{Assoc::*, Op};
+        use super::Rule::*;
+
+        // Precedence is defined lowest to highest
+        PrattParser::new()
+            // Addition and subtract have equal precedence
+            .op(Op::infix(or_op, Left))
+    };
+}
+
 pub(crate) fn consume_constant(pair: Pair<'_>, ctx: &mut ParsingContext<'_>) -> ast::Constant {
     assert!(pair.as_rule() == Rule::constant);
 
-    // let literal_token = pair.into_inner().next().unwrap();
-    // let value = consume_literal(literal_token, ctx);
-    let mut constant = None;
+    let constant = PRATT_PARSER
+        .map_primary(|primary| {
+            // let literal_token = pair.into_inner().next().unwrap();
+            // let value = consume_literal(literal_token, ctx);
+            let mut constant = None;
 
-    for current in pair.into_inner() {
-        let span = current.as_span();
-        let span = ast::Span::from_pest(span, ctx.source_id);
+            let span = primary.as_span();
+            let span = ast::Span::from_pest(span, ctx.source_id);
 
-        match current.as_rule() {
-            Rule::literal => {
-                let literal = consume_literal(current, ctx);
-                let concrete_constant = ast::LiteralConstant {
-                    literal,
-                    constant_value: None,
-                    span,
-                    compiled: false,
-                };
+            match primary.as_rule() {
+                Rule::literal => {
+                    let literal = consume_literal(primary, ctx);
+                    let concrete_constant = ast::LiteralConstant {
+                        literal,
+                        constant_value: None,
+                        span,
+                        compiled: false,
+                    };
 
-                constant = Some(ast::Constant::Literal(concrete_constant));
+                    constant = Some(ast::Constant::Literal(concrete_constant));
+                }
+                Rule::compound_identifier => {
+                    let name = consume_compound_identifier(&primary, ctx);
+                    let concrete_constant = ast::IdentifierConstant {
+                        reference: ast::Reference::new_sourced(name),
+                        constant_value: None,
+                        span,
+                        compiled: false,
+                    };
+
+                    constant = Some(ast::Constant::Identifier(concrete_constant));
+                }
+                rule => unreachable!("Expr::parse expected atom, found {:?}", rule),
             }
-            Rule::compound_identifier => {
-                let name = consume_compound_identifier(&current, ctx);
-                let concrete_constant = ast::IdentifierConstant {
-                    reference: ast::Reference::new_sourced(name),
-                    constant_value: None,
-                    span,
-                    compiled: false,
-                };
 
-                constant = Some(ast::Constant::Identifier(concrete_constant));
-            }
-            _ => consume_catch_all(&current, "constant"),
-        }
-    }
+            constant.unwrap()
+        })
+        .map_infix(|lhs, op, rhs| {
+            let op = match op.as_rule() {
+                Rule::or_op => ast::ConstantOp::Or,
+                rule => unreachable!("Expr::parse expected infix operation, found {:?}", rule),
+            };
 
-    constant.unwrap()
+            ast::Constant::BinaryOperator(ast::BinaryOperatorConstant {
+                lhs: Box::new(lhs),
+                op,
+                rhs: Box::new(rhs),
+                constant_value: None,
+                compiled: false,
+            }) 
+        })
+        .parse(pair.into_inner());
+
+    constant
 }
 
 pub(crate) fn consume_constant_declaration(

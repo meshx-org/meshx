@@ -35,7 +35,7 @@ fn consume_table_member(
                 ordinal = Some(consume_ordinal64(current, ctx)?);
             }
             Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, &name_context, ctx)),
-            Rule::inline_attribute_list => {}
+            Rule::block_attribute_list => {}
             Rule::RESERVED_KEYWORD => {
                 reserved = true;
             }
@@ -75,13 +75,13 @@ fn consume_table_member(
 
 pub(crate) fn consume_table_layout(
     token: Pair<'_>,
-    name: ast::Name,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
     debug_assert!(token.as_rule() == Rule::inline_table_layout);
 
     let token_span = token.as_span();
+    let table_span = ast::Span::from_pest(token_span, ctx.source_id);
 
     let attributes = ast::AttributeList(vec![]);
     let mut members = Vec::new();
@@ -90,8 +90,8 @@ pub(crate) fn consume_table_layout(
     for current in token.into_inner() {
         match current.as_rule() {
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
-            Rule::declaration_modifiers => todo!(),
-            Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
+            Rule::declaration_modifiers => {},
+            Rule::inline_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::ordinal_layout_member => {
                 match consume_table_member(current, pending_field_comment.take(), name_context.clone(), ctx) {
                     Ok(member) => {
@@ -110,12 +110,12 @@ pub(crate) fn consume_table_layout(
     }
 
     Ok(ast::Union {
-        name,
+        name: name_context.to_name(ctx.library.clone(), table_span.clone()),
         members,
         attributes,
         documentation: None,
         strictness: Strictness::Flexible,
-        span: ast::Span::from_pest(token_span, ctx.source_id),
+        span: table_span,
         compiled: false,
         compiling: false,
         recursive: false,

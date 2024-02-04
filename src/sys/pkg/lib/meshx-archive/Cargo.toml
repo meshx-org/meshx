@@ -8,8 +8,10 @@ version = "0.1.0"
 static_assertions="1.0"
 thiserror="1.0"
 zerocopy={version="=0.8.0-alpha.2",features = ["derive"]}
+meshx-fs={path = "../../../../lib/meshx-fs"}
 
 [dev-dependencies]
+futures="0.3"
 assert_matches="1.0"
 itertools="0.12"
 tokio={version="1.0", features = ["full"]}

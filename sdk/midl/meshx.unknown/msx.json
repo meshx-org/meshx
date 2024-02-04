@@ -1,0 +1,7 @@
+{
+    "name": "meshx.unknown",
+    "bindings": [],
+    "include": ["**/*.midl"],
+    "exclude": [],
+    "references": [{ "path": "../fx" }]
+}

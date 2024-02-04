@@ -1,0 +1,364 @@
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+library meshx.io;
+
+using fx;
+
+type DirectoryInfo = table {
+    /// Requested attributes for the directory. This is only populated if requested.
+    @available(added=HEAD)
+    1: attributes NodeAttributes2;
+};
+
+closed protocol DirectoryIterator {
+    /// Reads a collection of variably sized directory entries into a buffer.
+    ///
+    /// The number of entries in a directory may be very large: akin to
+    /// calling read multiple times on a file, directories have a seek
+    /// offset which is updated on subsequent calls to `Enumerate`.
+    /// The caller should always use a receiving buffer size as large as the
+    /// maximum channel limit.
+    ///
+    /// When the end of iteration is reached, the returned `entries` vector
+    /// will be empty.
+    ///
+    /// This method does not require any rights, as the rights are checked
+    /// in the [`Directory.Enumerate`] call.
+    @selector("meshx.io/DirectoryIterator.GetNext")
+    strict GetNext() -> (struct {
+        /// Information about an immediate child node of a directory.
+        ///
+        /// If a particular attribute is not applicable or not supported,
+        /// implementations should leave the corresponding field absent.
+        entries vector<@generated_name("DirectoryEntry") table {
+            /// Name of the node. This field must be present.
+            1: name Name;
+
+            /// Describes the kinds of representations supported by the node.
+            2: protocols NodeProtocolKinds;
+
+            /// Describes the kinds of operations supported by the node.
+            3: abilities Abilities;
+
+            /// An ID for the node. See [`Id`].
+            /// This `id` should be unique among all entries of a directory.
+            4: id Id;
+        }>:8192;
+    }) error fx.Status;
+};
+
+// TODO(https://fxbug.dev/42056856): Use a generated constant.
+const DIRECTORY_PROTOCOL_NAME string = "meshx.io/Directory";
+
+/// A [`Node2`] that is capable of containing other nodes.
+closed protocol Directory2 {
+    compose Node2;
+    compose AdvisoryLocking;
+
+    /// Opens or creates a new node relative to this directory node.
+    ///
+    /// This method requires the following rights on the current connection:
+    ///
+    /// * [`Rights.ENUMERATE`]
+    /// * [`Rights.TRAVERSE`]
+    ///
+    /// Errors are presented as an epitaph on the `object_request` channel.
+    ///
+    /// * error `FX_ERR_ACCESS_DENIED` if the requested rights exceeds
+    ///   what is allowed.
+    /// * error `FX_ERR_BAD_PATH` if `path` is invalid.
+    @selector("meshx.io/Directory.Open")
+    strict Open2(resource struct {
+        /// Identifies the node to open.
+        ///
+        /// If it contains multiple segments, then the directory is traversed,
+        /// one segment at a time, relative to the directory represented by this
+        /// connection.
+        path Path;
+
+        /// The representations accepted by the caller to support a form of
+        /// protocol negotiation on the node being opened.
+        protocols @generated_name("ConnectionProtocols") flexible union {
+            /// Requests that the node's underlying protocol be served on the
+            /// connection.
+            1: connector @generated_name("ConnectorFlags") flexible bits : uint64 {};
+
+            /// Requests that the underlying [`Node`] protocol be served on the
+            /// connection.
+            2: node @generated_name("NodeOptions") table {
+                1: flags @generated_name("NodeFlags") flexible bits : uint64 {
+                    /// Requests that an [`Node.OnRepresentation`] event be sent
+                    /// as the first message on the protocol request.
+                    ///
+                    /// This is a special case of
+                    /// [`meshx.unknown/Queryable.Query`] + inherent
+                    /// `Describe` methods on the specific protocols. It exists
+                    /// as an optimization to avoid an additional round trip.
+                    GET_REPRESENTATION = 0x01;
+                };
+
+                /// Callers may assert the type of the object by setting the
+                /// protocol corresponding to the expected type:
+                ///
+                /// * If the caller expected a directory but the node cannot be
+                /// accessed as a directory, the error is `FX_ERR_NOT_DIR`.
+                ///
+                /// * If the caller expected a file but the node cannot be
+                /// accessed as a file, the error is `FX_ERR_NOT_FILE`.
+                ///
+                /// * In other mismatched cases, and for an empty table, the error
+                /// is `FX_ERR_WRONG_TYPE`.
+                ///
+                /// If more than one protocol is present, the resultant protocol
+                /// may become any one of them. Callers should specify
+                /// [`NodeFlags.GET_REPRESENTATION`] to receive a
+                /// [`Node.OnRepresentation`] event, in order to ascertain the
+                /// protocol.
+                ///
+                /// If absent, indicates that the caller accepts any [`Node`]
+                /// protocol (including [`Node`] itself for connector nodes, for
+                /// instance).
+                2: protocols @generated_name("NodeProtocols") table {
+                    1: directory @generated_name("DirectoryProtocolOptions") table {
+                        /// Optional rights to be negotiated.
+                        ///
+                        /// When present, indicates that the caller requests
+                        /// additional optional rights equal to the intersection
+                        /// of this value and the rights on the requesting
+                        /// connection. This acts as a high water mark that
+                        /// prevents rights escalation as this request is
+                        /// proxied over multiple hops; each proxy must
+                        /// intersect the value with the rights on the
+                        /// requesting connection before proxying on.
+                        ///
+                        /// This field is necessary to express POSIX semantics
+                        /// where `open` of a directory must be `O_RDONLY` yet
+                        /// `openat` can be used to open non-directory nodes
+                        /// within that directory with privileges exceeding
+                        /// `O_RDONLY`. This means that POSIX clients must
+                        /// always set this to the full set of [`Rights`] to
+                        /// implement `open` or `openat` calls which do not
+                        /// forbid directories (e.g. `O_WRONLY` and `O_RDWR`
+                        /// do forbid directories).
+                        1: optional_rights Rights;
+                    };
+                    2: file @generated_name("FileProtocolFlags") flexible bits : uint64 {
+                        /// Opens the file in append mode, i.e. the connection
+                        /// should seek to the end of the file before every
+                        /// write.
+                        ///
+                        /// If the file does not support appending, it should
+                        /// result in a `FX_ERR_NOT_SUPPORTED` epitaph.
+                        /// Currently, only [`fileProtocols.FILE`] connections
+                        /// may be configured for appending.
+                        APPEND = 0x01;
+
+                        /// Truncates the object before usage, by setting its
+                        /// length to 0. Requires the [`Rights.WRITE_BYTES`]
+                        /// right on the connection.
+                        ///
+                        /// If the file does not support truncating, it should
+                        /// result in a `FX_ERR_NOT_SUPPORTED` epitaph.
+                        TRUNCATE = 0x02;
+                    };
+                    @available(added=HEAD)
+                    3: symlink @generated_name("SymlinkProtocolFlags") flexible bits : uint64 {};
+                    /// Asks for the node protocol. The only right supported is
+                    /// GET_ATTRIBUTES. Calling `SetFlags` on the resulting
+                    /// connection will result in `FX_ERR_BAD_HANDLE`. If
+                    /// [`NodeFlags.GET_REPRESENTATION`] is specified, the
+                    /// `connector` variant will be returned (even if the object
+                    /// supports a different representation).
+                    @available(added=HEAD)
+                    4: node @generated_name("NodeProtocolFlags") flexible bits : uint64 {
+                        /// Only allow the connection if the underlying object
+                        /// is a directory. An attempt to open something other
+                        /// than a directory will result in a `FX_ERR_NOT_DIR`
+                        /// epitaph.
+                        MUST_BE_DIRECTORY = 0x01;
+                    };
+                };
+
+                /// Specifies behavior with respect to existence. If an object
+                /// is to be created, its type is specified by `protocols`; it
+                /// must be present. If a valid object type cannot be
+                /// unambiguously inferred e.g. both `directory` and `file` are
+                /// set, the request must fail.
+                3: mode @generated_name("OpenMode") strict enum : uint32 {
+                    /// Only succeed if the object exists.
+                    OPEN_EXISTING = 1;
+
+                    /// Create the object if it does not exist, otherwise open
+                    /// existing. The check and the creation are performed in
+                    /// one atomic step.
+                    MAYBE_CREATE = 2;
+
+                    /// Assert that the object does not exist, then create it.
+                    /// The assertion and creation are performed in one atomic
+                    /// step.
+                    ALWAYS_CREATE = 3;
+                };
+
+                /// Requested rights on the new connection.
+                ///
+                /// If [`rights`] exceed the rights of the requesting connection
+                /// then [`object_request`] will be closed with a
+                /// `FX_ERR_ACCESS_DENIED` epitaph.
+                ///
+                /// This applies in addition to
+                /// [`DirectoryProtocolOptions.optional_rights`].
+                ///
+                /// If absent, inherits appropriate rights from the requesting
+                /// connection. For example, if using the node protocol, only
+                /// the GET_ATTRIBUTES right is inherited.
+                4: rights Rights;
+
+                /// If the `GET_REPRESENTATION` flag is set, attributes to be
+                /// returned in [`Node.OnRepresentation`]. This requires the
+                /// GET_ATTRIBUTES right on the parent connection, but this is
+                /// not required on the resulting connection.
+                @available(added=HEAD)
+                5: attributes NodeAttributesQuery;
+
+                /// If an object is to be created, this specifies attributes
+                /// that should be stored with the object at creation time.
+                /// Servers might not support setting any or all attributes in
+                /// which case they will return `FX_ERR_NOT_SUPPORTED`.
+                @available(added=HEAD)
+                6: create_attributes MutableNodeAttributes;
+            };
+        };
+
+        /// The server end of a channel created for the new connection. The
+        /// caller may proceed to send messages on the corresponding client end
+        /// right away.
+        object_request fx.Handle:CHANNEL;
+    });
+
+    /// Removes a child node from the this directory's list of entries.
+    ///
+    /// Note: this does not guarantee that the underlying object is destroyed.
+    /// Although the link will be removed from the containing directory,
+    /// objects with multiple references (such as files which are still open)
+    /// will not actually be destroyed until all references are closed.
+    ///
+    /// * error `FX_ERR_ACCESS_DENIED` if the connection does not have
+    ///   [`Rights.WRITE_BYTES`].
+    /// * error `FX_ERR_NOT_SUPPORTED` if the underlying filesystem does not
+    ///   support writing.
+    /// * error `FX_ERR_BAD_PATH` if `name` is invalid.
+    /// * error `FX_ERR_NOT_EMPTY` if `name` refers to a non-empty directory.
+    /// * error `FX_ERR_UNAVAILABLE` if `name` refers to a mount point,
+    ///   containing a remote channel.
+    /// * error `FX_ERR_NOT_DIR` if the options requested a directory but
+    ///     something other than a directory was found.
+    ///
+    /// Other errors may be returned for filesystem-specific reasons.
+    ///
+    /// This method requires the following rights:
+    ///
+    /// * [`Rights.ENUMERATE`]
+    /// * [`Rights.MODIFY_DIRECTORY`]
+    @selector("meshx.io/Directory.Unlink")
+    strict Unlink(struct {
+        name Name;
+        options @generated_name("UnlinkOptions") table {
+            1: flags @generated_name("UnlinkFlags") strict bits : uint64 {
+                /// If set, the unlink will fail (with FX_ERR_NOT_DIR) if the
+                /// object is not a directory.
+                MUST_BE_DIRECTORY = 0x01;
+            };
+        };
+    }) -> () error fx.Status;
+
+    /// Initiates a directory listing operation over the input channel,
+    /// starting at seek offset 0.
+    ///
+    /// This method requires the [`Rights.ENUMERATE`] right. If this right is
+    /// absent, `iterator` will be closed with a `FX_ERR_ACCESS_DENIED` epitaph.
+    @selector("meshx.io/Directory.Enumerate")
+    strict Enumerate(resource struct {
+        options @generated_name("DirectoryEnumerateOptions") table {};
+        iterator server_end:DirectoryIterator;
+    });
+
+    /// Renames a node named `src` to the name `dst`, in a directory represented
+    /// by `dst_parent_token`.
+    ///
+    /// `src` and `dst` must be valid node names.
+    /// See [`Name`] for what constitutes a valid name.
+    ///
+    /// This method requires the following rights on both the current connection, and the connection
+    /// identified by `dst_parent_token`:
+    ///
+    /// * [`Rights.ENUMERATE`]
+    /// * [`Rights.MODIFY_DIRECTORY`]
+    ///
+    /// The following requirements are necessary to avoid rights escalations.
+    ///
+    /// If the source and destination directory differ, the source directory must also have the
+    /// maximal set of abilities supported for files, which would typically be
+    /// [`Rights.READ_BYTES`], [`Rights.WRITE_BYTES`], [`Rights.GET_ATTRIBUTES`] and
+    /// [`Rights.UPDATE_ATTRIBUTES`]. Some filesystems might also support the [`Rights.EXECUTE`]
+    /// right.
+    ///
+    /// If `src` refers to a directory, and differs from the destination directory, then the source
+    /// directory must have also have the [`Rights.CONNECT`] and [`Rights.TRAVERSE`] rights.
+    ///
+    /// * error `FX_ERR_INVALID_ARGS` if `src` or `dst` is invalid.
+    /// * error `FX_ERR_ACCESS_DENIED` for insufficient rights.
+    @selector("meshx.io/Directory.Rename")
+    strict Rename(resource struct {
+        src Name;
+        dst_parent_token Token;
+        dst Name;
+    }) -> () error fx.Status;
+
+    // TODO(https://fxbug.dev/42157659): uncomment and implement.
+    // /// Creates a link to a node named `src` by the name `dst`,
+    // /// in a directory represented by `dst_parent_token`.
+    // ///
+    // /// Directories cannot be linked, to prevent reference cycles.
+    // ///
+    // /// `src` and `dst` must be valid node names.
+    // /// See [`Name`] for what constitutes a valid name.
+    // ///
+    // /// This method requires the following rights on both the current
+    // /// connection, and the connection identified by `dst_parent_token`:
+    // ///
+    // /// * [`Rights.ENUMERATE`]
+    // /// * [`Rights.MODIFY_DIRECTORY`]
+    // ///
+    // /// * error `FX_ERR_INVALID_ARGS` if `src` or `dst` is invalid.
+    // /// * error `FX_ERR_INVALID_ARGS` if `src` is a directory.
+    // @selector("meshx.io/Directory.Link")
+    // Link2(resource struct {
+    //     src Name;
+    //     dst_parent_token Token;
+    //     dst Name;
+    // }) -> () error fx.Status;
+
+    /// Creates a symbolic link.
+    ///
+    /// `name` is the name to be given to the created symbolic link.
+    /// `target` is the target of the symbolic link, which has no meaning on the server. The server
+    /// will perform no validation of `target` except for a server chosen maximum length.
+    /// `connection` is an optional server end of a channel that will speak the Symlink protocol
+    /// on the successfully created node.
+    ///
+    /// * [`Rights.MODIFY_DIRECTORY`]
+    ///
+    /// * error `FX_ERR_ALREADY_EXISTS` if `name` already exists.
+    /// * error `FX_ERR_BAD_PATH` if `target` exceeds the server length limit for symbolic links.
+    /// * error `FX_ERR_INVALID_ARGS` if `name` is not a valid [`Name`].
+    /// * error `FX_ERR_NOT_SUPPORTED` if creating symbolic links is not supported by the server.
+    @available(added=HEAD)
+    @selector("meshx.io/Directory.CreateSymlink")
+    @transitional
+    strict CreateSymlink(resource struct {
+        name Name;
+        target SymlinkTarget;
+        connection server_end:<Symlink, optional>;
+    }) -> () error fx.Status;
+};

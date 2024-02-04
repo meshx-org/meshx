@@ -60,11 +60,11 @@ pub use read::Reader;
 mod utf8_reader;
 pub use utf8_reader::Utf8Reader;
 
-//mod async_read;
-//pub use async_read::AsyncReader;
+mod async_read;
+pub use async_read::AsyncReader;
 
-//mod async_utf8_reader;
-//pub use async_utf8_reader::AsyncUtf8Reader;
+mod async_utf8_reader;
+pub use async_utf8_reader::AsyncUtf8Reader;
 
 mod write;
 pub use write::write;

@@ -23,7 +23,13 @@ impl Target {
         }
     }
 
-    pub fn element_or_parent_decl(&self) {}
+    pub fn element_or_parent_decl(&self) -> Declaration {
+        if self.maybe_parent.is_some() { 
+            self.maybe_parent.as_ref().unwrap().clone()
+        } else { 
+            self.target.as_decl().unwrap() 
+        } 
+    }
 
     pub fn element(&self) -> Element {
         self.target.clone()
@@ -31,24 +37,24 @@ impl Target {
 
     pub fn name(self) -> Name {
         match self.target {
-            Element::Bits |
+            Element::Bits { .. } |
             Element::Builtin{..}|
             Element::Const{..}|
             Element::Enum {..}|
             Element::NewType|
             Element::Protocol{..}|
-            Element::Resource|
-            // Element::Service|
+            Element::Resource {..}|
             Element::Struct{..}|
             Element::Table{..}|
             Element::Alias{..}|
-            Element::Union{..}|
-            Element::Overlay => {
+            Element::Union{..}  => {
+                log::warn!("{:?}", self.target.as_decl().unwrap().name());
                 self.target.as_decl().unwrap().name()
             }
-            //Element::BitsMember => {
-            //    return self.maybe_parent.name.WithMemberName(std::string(static_cast<Bits::Member*>(target_)->name.data()));
-            //}
+            Element::BitsMember { inner }=> {
+                let member = inner.borrow();
+                return self.maybe_parent.unwrap().name().with_member_name(member.name.data.clone());
+            }
             Element::EnumMember{ inner } => {
                 let member = inner.borrow();
                 return self.maybe_parent.unwrap().name().with_member_name(member.name.data.clone());  
@@ -56,12 +62,14 @@ impl Target {
             Element::Library|
             //Element::ProtocolCompose|
             Element::ProtocolMethod{..} |
-            Element::ResourceProperty|
+            Element::ResourceProperty{..}|
             //Element::ServiceMember|
             Element::StructMember{..} |
             Element::TableMember {..}|
             // Element::OverlayMember
-            Element::UnionMember{..} => panic!("invalid element kind")
+            Element::UnionMember{..} => panic!("invalid element kind"),
+            // Element::Service|
+            Element::Overlay => { todo!() }
         }
     }
 }
@@ -128,8 +136,8 @@ pub enum ReferenceState {
 impl std::fmt::Debug for ReferenceState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ReferenceState::RawSourced(_) => write!(f, "RawSourced"),
-            ReferenceState::RawSynthetic(_) => write!(f, "RawSynthetic"),
+            ReferenceState::RawSourced(sourced) => write!(f, "RawSourced({:?})", sourced.identifier),
+            ReferenceState::RawSynthetic(raw) =>  write!(f, "RawSynthetic({:?})", raw.target.element().get_name()),
             ReferenceState::Key(val) => write!(
                 f,
                 "Key({}.{}/{:?})",
@@ -138,7 +146,7 @@ impl std::fmt::Debug for ReferenceState {
                 val.member_name
             ),
             ReferenceState::Contextual(_) => write!(f, "Contextual"),
-            ReferenceState::Resolved(target) => write!(f, "Resolved({:?})", target.element().name()),
+            ReferenceState::Resolved(target) => write!(f, "Resolved({:?})", target.element().get_name()),
             ReferenceState::Failed => write!(f, "Failed"),
         }
     }

@@ -7,6 +7,7 @@ use super::{helpers::Pair, Rule};
 use crate::ast;
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_attribute::consume_attribute_list;
+use crate::consumption::identifier_type_for_decl;
 use crate::diagnotics::DiagnosticsError;
 
 pub(super) fn consume_resource_properties(
@@ -22,6 +23,9 @@ pub(super) fn consume_resource_properties(
     for current in token.into_inner() {
         match current.as_rule() {
             Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
+            Rule::resource_property => {
+                // todo!()
+            }
             Rule::identifier => {
                 let name_span = current.as_span();
                 let name_span = ast::Span::from_pest(name_span, ctx.source_id);
@@ -56,7 +60,7 @@ pub(super) fn consume_resource_declaration(
     let mut name = None;
     let mut name_context = None;
 
-    let mut maybe_type_ctor: Option<ast::TypeConstructor> = None;
+    let mut subtype_ctor: Option<ast::TypeConstructor> = None;
     let mut attributes: Option<ast::AttributeList> = None;
     let mut properties: Vec<ast::ResourceProperty> = vec![];
 
@@ -74,13 +78,17 @@ pub(super) fn consume_resource_declaration(
                 name_context = Some(ast::NamingContext::create(&sourced));
                 name = Some(sourced);
             }
-            Rule::type_constructor => {
+            Rule::layout_subtype => {
                 let name_context = name_context.as_ref().unwrap();
-                maybe_type_ctor = Some(consume_type_constructor(current, &name_context, ctx));
+                subtype_ctor = Some(consume_type_constructor(
+                    current.into_inner().next().unwrap(),
+                    name_context,
+                    ctx,
+                ));
             }
             Rule::resource_properties => {
                 let name_context = name_context.as_ref().unwrap().clone();
-                consume_resource_properties(current, name_context, ctx);
+                // consume_resource_properties(current, name_context, ctx);
             }
             _ => consume_catch_all(&current, "resource"),
         }
@@ -101,6 +109,7 @@ pub(super) fn consume_resource_declaration(
         attributes: attributes.unwrap_or_default(),
         documentation: None,
         properties,
+        subtype_ctor: subtype_ctor.unwrap_or(identifier_type_for_decl(ctx.default_underlying_type.clone())),
         span: ast::Span::from_pest(token_span, ctx.source_id),
         compiled: false,
         compiling: false,

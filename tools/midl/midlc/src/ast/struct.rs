@@ -2,8 +2,8 @@ use std::{cell::RefCell, rc::Rc};
 
 use super::{
     traits::{Decl, TypeDecl},
-    AttributeList, Comment, Constant, Declaration, Identifier, Name, Span, TypeConstructor, WithAttributes,
-    WithDocumentation, WithIdentifier, WithName, WithSpan,
+    AttributeList, Comment, Constant, Declaration, Name, Span, TypeConstructor, WithAttributes,
+    WithDocumentation, WithName, WithSpan,
 };
 
 /// An opaque identifier for a field in an AST model. Use the

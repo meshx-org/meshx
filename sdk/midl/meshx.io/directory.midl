@@ -1,20 +1,338 @@
 // Copyright 2018 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-library meshx.io
 
-import fx
+library meshx.io;
 
-// TODO(https://fxbug.dev/105608): Use a generated constant.
-const DIRECTORY_PROTOCOL_NAME string = "fuchsia.io/Directory"
+using fx;
 
-protocol Directory {
-    compose Directory1
-    compose Directory2
-}
+type OpenFlags = strict bits : uint32 {
+    /// Can read from target object.
+    RIGHT_READABLE = 0x00000001;
+    /// Can write to target object.
+    RIGHT_WRITABLE = 0x00000002;
+    /// Connection can map target object executable.
+    RIGHT_EXECUTABLE = 0x00000008;
 
-/// A [`Node2`] that is capable of containing other nodes.
-protocol Directory2 {
-    compose Node2
-    compose AdvisoryLocking
-}
+    /// Create the object if it doesn't exist.
+    CREATE = 0x00010000;
+    /// (with Create) Fail if the object already exists.
+    CREATE_IF_ABSENT = 0x00020000;
+    /// Truncate the object before usage.
+    TRUNCATE = 0x00040000;
+    /// Assert that the object to be opened is a directory.
+    /// Return an error if the target object is not a directory.
+    DIRECTORY = 0x00080000;
+    /// Seek to the end of the object before all writes.
+    APPEND = 0x00100000;
+    /// Open a reference to the object, not the object itself.
+    /// It is ONLY valid to pass the following flags together with `NODE_REFERENCE`:
+    /// - `DIRECTORY`
+    /// - `NOT_DIRECTORY`
+    /// - `DESCRIBE`
+    /// otherwise an error is returned.
+    /// If an object is opened or cloned using this method, the resulting connection does not carry
+    /// any permission flags.
+    /// The resulting connection allows a limited set of operations: `GetAttr`, `Clone`, `Close`,
+    /// `Describe`, and `GetFlags`. The connection will speak the `Node` protocol. Calling `SetAttr`
+    /// or `SetFlags` will result in `ZX_ERR_BAD_HANDLE`.
+    NODE_REFERENCE = 0x00400000;
+    /// Requests that an "OnOpen" event is sent to the interface request.
+    ///
+    /// The event will contain a non-null `NodeInfoDeprecated` if the open/clone is successful. This
+    /// can be used to open a protocol that does not compose meshx.io/Node; the event is sent as
+    /// if the protocol is meshx.io/Node and then the target protocol is used exclusively.
+    DESCRIBE = 0x00800000;
+    /// Specify this flag to request POSIX-compatibility with respect to write permission handling.
+    /// Currently, it affects permission handling specifically during Open:
+    /// - If the target path is a directory, the rights on the new connection expand to include
+    ///   `WRITABLE` if and only if the current connection and all intermediate mount points
+    ///   are writable.
+    /// - Otherwise, this flag is ignored. It is an access denied error to request more rights
+    ///   than those on the current connection, or any intermediate mount points.
+    ///
+    /// If this flag is omitted, opening always uses the requested rights, failing the operation with
+    /// access denied error if requested rights exceeds the rights attached to the current connection.
+    ///
+    /// If the requesting connection is read-only and the requested rights are read-only, the flag
+    /// may be ignored by the server, and is not forwarded downstream. This is an implementation detail,
+    /// necessary to enforce hierarchical permissions across mount points, and should have no effect
+    /// on the expected behavior for clients.
+    POSIX_WRITABLE = 0x08000000;
+    /// Specify this flag to request POSIX-compatibility with respect to execute permission handling.
+    /// Currently, it affects permission handling specifically during Open:
+    /// - If the target path is a directory, the rights on the new connection expand to include
+    ///   `EXECUTABLE` if and only if the current connection and all intermediate mount
+    ///   points are executable.
+    /// - Otherwise, this flag is ignored. It is an access denied error to request more rights
+    ///   than those on the current connection, or any intermediate mount points.
+    ///
+    /// If this flag is omitted, opening always uses the requested rights, failing the operation with
+    /// access denied error if requested rights exceeds the rights attached to the current connection.
+    ///
+    /// If the requesting connection is read-only and the requested rights are read-only, the flag
+    /// may be ignored by the server, and is not forwarded downstream. This is an implementation detail,
+    /// necessary to enforce hierarchical permissions across mount points, and should have no effect
+    /// on the expected behavior for clients.
+    POSIX_EXECUTABLE = 0x10000000;
+    /// Assert that the object to be opened is not a directory.
+    /// Return an error if the target object is a directory.
+    NOT_DIRECTORY = 0x02000000;
+
+    /// When used during clone, the new connection inherits the rights on the source connection,
+    /// regardless if it is a file or directory. Otherwise, clone attempts to use the requested rights.
+    /// It is invalid to pass any of the `RIGHT_*` flags together with `OpenFlags.CLONE_SAME_RIGHTS`.
+    CLONE_SAME_RIGHTS = 0x04000000;
+
+    /// Open the target object as a block device.
+    // TODO(https://fxbug.dev/42071940): this form of protocol negotiation is unprincipled.
+    BLOCK_DEVICE = 0x01000000;
+};
+
+/// All known rights.
+const OPEN_RIGHTS OpenFlags = OpenFlags.RIGHT_READABLE | OpenFlags.RIGHT_WRITABLE | OpenFlags.RIGHT_EXECUTABLE;
+
+/// Flags used when opening a node reference must fall within this mask.
+const OPEN_FLAGS_ALLOWED_WITH_NODE_REFERENCE OpenFlags = OpenFlags.DIRECTORY | OpenFlags.NOT_DIRECTORY | OpenFlags.DESCRIBE | OpenFlags.NODE_REFERENCE;
+
+type ModeType = strict bits : uint32 {
+    DO_NOT_USE = 0x80000000;
+};
+
+/// The maximal buffer size which can be transmitted for buffered operations.
+/// This capacity is currently set somewhat arbitrarily.
+const MAX_BUF uint64 = 8192;
+/// The maximum length, in bytes, of a single filesystem component.
+const MAX_FILENAME uint64 = 255;
+
+// Dirent type information associated with the results of ReadDirents.
+// The following values are aligned with the values from libc's "dirent.h" "DT_...".
+type DirentType = strict enum : uint8 {
+    /// A dirent with an unknown type.
+    UNKNOWN = 0;
+    /// A dirent representing a directory object.
+    DIRECTORY = 4;
+    /// A dirent representing a block device object.
+    BLOCK_DEVICE = 6;
+    /// A dirent representing a file object.
+    FILE = 8;
+    /// A symbolic link.
+    @available(added=HEAD)
+    SYMLINK = 10;
+    /// A dirent representing a service object.
+    SERVICE = 16;
+};
+
+/// Nodes which do not have ino values should return this value
+/// from Readdir and GetAttr.
+const INO_UNKNOWN uint64 = 0xFFFFFFFFFFFFFFFF;
+
+/// DirectoryWatcher transmits messages from a filesystem server
+/// about events happening in the filesystem. Clients can register
+/// new watchers using the `Directory.Watch` method, where they can
+/// filter which events they want to receive notifications for.
+///
+/// The DirectoryWatcher will send messages of the form:
+/// ```
+/// struct {
+///   uint8 event;
+///   uint8 len;
+///   char name[];
+/// };
+/// ```
+/// Where names are NOT null-terminated. The name is the relative
+/// path to the entry the event is refering to. It will be empty if
+/// the event isn't referencing a particular entry (e.g. for the
+/// `IDLE` event).
+closed protocol DirectoryWatcher {};
+
+type WatchEvent = strict enum : uint8 {
+    /// Indicates the directory being watched has been deleted. The name returned for this event
+    /// will be `.` (dot), as it is refering to the directory itself.
+    DELETED = 0;
+    /// Indicates a node has been created (either new or moved) into a directory.
+    ADDED = 1;
+    /// Identifies a node has been removed (either deleted or moved) from the directory.
+    REMOVED = 2;
+    /// Identifies a node already existed in the directory when watching started.
+    EXISTING = 3;
+    /// Identifies that no more `EXISTING` events will be sent. The name returned for this event
+    /// will be empty, as it is not refering to a specific entry.
+    IDLE = 4;
+};
+
+type WatchMask = strict bits : uint32 {
+    /// Used by `Directory.Watch`. Requests transmission of `WatchEvent.DELETED`.
+    DELETED = 0x00000001;
+    /// Used by `Directory.Watch`. Requests transmission of `WatchEvent.ADDED`.
+    ADDED = 0x00000002;
+    /// Used by `Directory.Watch`. Requests transmission of `WatchEvent.REMOVED`.
+    REMOVED = 0x00000004;
+    /// Used by `Directory.Watch`. Requests transmission of `WatchEvent.EXISTING`.
+    EXISTING = 0x00000008;
+    /// Used by `Directory.Watch`. Requests transmission of `WatchEvent.IDLE`.
+    IDLE = 0x00000010;
+};
+
+closed protocol Directory {
+    compose Directory1;
+    compose Directory2;
+};
+
+// Extracted from Directory1 for composition with protocols in other libraries.
+closed protocol Openable {
+    /// Opens a new object relative to this directory object.
+    ///
+    /// `path` may contain multiple segments, separated by "/" characters, and should never be
+    /// empty; i.e. "" is an invalid path. A trailing slash implies OpenFlags.DIRECTORY. Components
+    /// must not be empty (i.e. "foo//bar" is invalid). ".." is disallowed anywhere in the path. "."
+    /// is only allowed if the path is exactly ".", but not otherwise. A leading '/' is allowed (and
+    /// is treated the same way as if not present, i.e. "/foo/bar' and "foo/bar" are the same).
+    ///
+    /// If an unknown value is sent for flags the connection should be closed.
+    ///
+    /// `OpenFlags.RIGHT_*` flags provided in `flags` will restrict access rights on
+    /// the `object` channel which will be connected to the opened entity.
+    ///
+    /// Rights are never increased. When you open a nested entity within a directory, you may only
+    /// request the same rights as what the directory connection already has, or a subset of those.
+    /// Exceeding those rights causes an access denied error to be transmitted in the
+    /// `OnOpen` event if applicable, and the `object` connection closed.
+    ///
+    /// `mode` is ignored.
+    @available(deprecated=11, replaced=12, note="Use the new signature of Open.")
+    @selector("meshx.io1/Directory.Open")
+    strict Open(resource struct {
+        flags OpenFlags;
+        mode ModeType;
+        path string:MAX_PATH;
+        object server_end:Node;
+    });
+
+    /// Opens a new object relative to this directory object.
+    ///
+    /// `path` may contain multiple segments, separated by "/" characters, and should never be
+    /// empty; i.e. "" is an invalid path. A trailing slash implies OpenFlags.DIRECTORY. Components
+    /// must not be empty (i.e. "foo//bar" is invalid). ".." is disallowed anywhere in the path. "."
+    /// is only allowed if the path is exactly ".", but not otherwise. A leading '/' is allowed (and
+    /// is treated the same way as if not present, i.e. "/foo/bar' and "foo/bar" are the same).
+    ///
+    /// If an unknown value is sent for flags the connection should be closed.
+    ///
+    /// `OpenFlags.RIGHT_*` flags provided in `flags` will restrict access rights on
+    /// the `object` channel which will be connected to the opened entity.
+    ///
+    /// Rights are never increased. When you open a nested entity within a directory, you may only
+    /// request the same rights as what the directory connection already has, or a subset of those.
+    /// Exceeding those rights causes an access denied error to be transmitted in the
+    /// `OnOpen` event if applicable, and the `object` connection closed.
+    ///
+    /// `mode` is ignored.
+    @available(added=12)
+    @selector("meshx.io1/Directory.Open")
+    strict Open(resource struct {
+        flags OpenFlags;
+        mode ModeType;
+        path string:MAX_PATH_LENGTH;
+        object server_end:Node;
+    });
+};
+
+/// Directory defines a node which is capable of containing other Objects.
+closed protocol Directory1 {
+    compose Node1;
+    compose Openable;
+
+    /// Reads a collection of variably sized dirents into a buffer.
+    /// The number of dirents in a directory may be very large: akin to
+    /// calling read multiple times on a file, directories have a seek
+    /// offset which is updated on subsequent calls to ReadDirents.
+    /// Each call to ReadDirents will only return whole dirent structures,
+    /// they will not get split across ReadDirent calls. When the seek
+    /// offset reaches the end, `dirents` will be empty.
+    ///
+    /// These dirents are of the form:
+    /// ```
+    /// struct dirent {
+    ///   // Describes the inode of the entry.
+    ///   uint64 ino;
+    ///   // Describes the length of the dirent name in bytes.
+    ///   uint8 size;
+    ///   // Describes the type of the entry. Aligned with the
+    ///   // POSIX d_type values. Use `DirentType` constants.
+    ///   uint8 type;
+    ///   // Unterminated name of entry.
+    ///   char name[0];
+    /// }
+    /// ```
+    ///
+    /// This method does not require any rights, since one could always probe for
+    /// directory contents by triggering name conflicts during file creation.
+    @selector("meshx.io1/Directory.ReadDirents")
+    strict ReadDirents(struct {
+        max_bytes uint64;
+    }) -> (struct {
+        s fx.Status;
+        dirents vector<uint8>:MAX_BUF;
+    });
+
+    /// Resets the directory seek offset.
+    ///
+    /// This method does not require any rights, similar to ReadDirents.
+    @selector("meshx.io1/Directory.Rewind")
+    strict Rewind() -> (struct {
+        s fx.Status;
+    });
+
+    /// Acquires a token to a Directory which can be used to identify access to it at a later point
+    /// in time. The token will remain valid for as long as the connection requesting the token
+    /// remains open.
+    ///
+    /// This method requires following rights: `OpenFlags.RIGHT_WRITABLE`, otherwise returns
+    /// `ZX_ERR_BAD_HANDLE`.
+    @selector("meshx.io1/Directory.GetToken")
+    strict GetToken() -> (resource struct {
+        s fx.Status;
+        token fx.Handle:optional;
+    });
+
+    /// Creates a link to an object named src by the name dst, within a directory represented by
+    /// token.
+    ///
+    /// `src` must be a resolved object name. Including "/" in the string will
+    /// return `ZX_ERR_INVALID_ARGS`.
+    ///
+    /// `dst` must be a resolved object name. Including "/" in the string will
+    /// return `ZX_ERR_INVALID_ARGS`.
+    ///
+    /// This method requires following rights: `OpenFlags.RIGHT_WRITABLE` and
+    /// `OpenFlags.RIGHT_READABLE`, otherwise returns `ZX_ERR_BAD_HANDLE`.
+    ///
+    /// This will be atomic with respect to renaming or unlinking the source concurrently e.g. if
+    /// there are two actors operating concurrently, and one actor performs a rename that affects
+    /// the source within this directory, and the other does a link, each will appear to occur
+    /// atomically in an unspecified order.
+    @selector("meshx.io1/Directory.Link")
+    strict Link(resource struct {
+        src string:MAX_FILENAME;
+        dst_parent_token fx.Handle;
+        dst string:MAX_FILENAME;
+    }) -> (struct {
+        s fx.Status;
+    });
+
+    /// Watches a directory, receiving events of added messages on the
+    /// watcher request channel.
+    ///
+    /// Options must be zero; it is reserved.
+    ///
+    /// This method does not require any rights, similar to ReadDirents.
+    @selector("meshx.io1/Directory.Watch")
+    strict Watch(resource struct {
+        mask WatchMask;
+        options uint32;
+        watcher server_end:DirectoryWatcher;
+    }) -> (struct {
+        s fx.Status;
+    });
+};

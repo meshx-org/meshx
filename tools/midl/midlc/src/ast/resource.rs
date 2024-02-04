@@ -46,13 +46,19 @@ pub struct Resource {
     pub(crate) span: Span,
 
     // Set during construction.
-    // pub(crate) subtype_ctor: TypeConstructor,
+    pub(crate) subtype_ctor: TypeConstructor,
     pub(crate) properties: Vec<ResourceProperty>,
 
     // Set during compilation
     pub(crate) compiled: bool,
     pub(crate) compiling: bool,
     pub(crate) recursive: bool
+}
+
+impl Resource {
+    pub(crate) fn lookup_property(&self, name: &str) -> Option<ResourceProperty> {
+        None
+    }
 }
 
 impl Into<Declaration> for Resource {

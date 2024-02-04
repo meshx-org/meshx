@@ -1,47 +1,47 @@
 // Copyright 2018 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-library meshx.pkg
+library meshx.pkg;
 
-import meshx.io
-import zx
+using meshx.io;
+using fx;
 
 /// Error codes for PackageResolver operations.
-// TODO(https://fxbug.dev/42122591): Use this instead of zx.Status for `GetHash`
+// TODO(https://fxbug.dev/42122591): Use this instead of fx.Status for `GetHash`
 type ResolveError = strict enum : int32 {
     /// The resolver encountered an otherwise unspecified error while handling the request.
-    INTERNAL = 1
+    INTERNAL = 1;
 
     /// The resolver does not have permission to fetch a package blob.
-    ACCESS_DENIED = 2
+    ACCESS_DENIED = 2;
 
     /// Some unspecified error during I/O.
-    IO = 3
+    IO = 3;
 
     /// The package blob does not exist.
-    BLOB_NOT_FOUND = 4
+    BLOB_NOT_FOUND = 4;
 
     /// The package does not exist.
-    PACKAGE_NOT_FOUND = 5
+    PACKAGE_NOT_FOUND = 5;
 
     /// The resolver does not know about the repo.
-    REPO_NOT_FOUND = 6
+    REPO_NOT_FOUND = 6;
 
     /// There is no space available to store the package or metadata.
-    NO_SPACE = 7
+    NO_SPACE = 7;
 
     /// The resolver is currently unable to fetch a package blob.
-    UNAVAILABLE_BLOB = 8
+    UNAVAILABLE_BLOB = 8;
 
     /// The resolver is currently unable to fetch a repository's metadata.
-    UNAVAILABLE_REPO_METADATA = 9
+    UNAVAILABLE_REPO_METADATA = 9;
 
     /// The `package_url` provided to resolver is invalid.
-    INVALID_URL = 10
+    INVALID_URL = 10;
 
     /// The `context` provided to resolver is invalid.
-    INVALID_CONTEXT = 11
-}
+    INVALID_CONTEXT = 11;
+};
 
 /// This resolves packages from a repository.
 ///
@@ -68,11 +68,11 @@ closed protocol PackageResolver {
     ///   scenarios.
     // TODO(https://fxbug.dev/42122377) change `package_url` from string to PackageUrl
     strict Resolve(resource struct {
-        package_url string
-        dir server_end:meshx.io.Directory
+        package_url string;
+        dir server_end:meshx.io.Directory;
     }) -> (struct {
-        resolved_context ResolutionContext
-    }) error ResolveError
+        resolved_context ResolutionContext;
+    }) error ResolveError;
 
     /// Populates or updates the cache of a package using either an absolute or
     /// a relative package URL. If relative, the package will be resolved
@@ -95,27 +95,27 @@ closed protocol PackageResolver {
     ///   scenarios.
     // TODO(https://fxbug.dev/42122377) change `package_url` from string to PackageUrl
     strict ResolveWithContext(resource struct {
-        package_url string
-        context ResolutionContext
-        dir server_end:fuchsia.io.Directory
+        package_url string;
+        context ResolutionContext;
+        dir server_end:meshx.io.Directory;
     }) -> (struct {
-        resolved_context ResolutionContext
-    }) error ResolveError
+        resolved_context ResolutionContext;
+    }) error ResolveError;
 
     /// Determines the hash of a package.
     ///
     /// + request `package_url` the package URL for a package.
     /// - response `meta_far_blob_id` the hash of the package.
-    /// * error a zx_status value indicating failure. One of the following:
-    ///     * `ZX_ERR_INTERNAL` if the resolver encountered an otherwise unspecified error
+    /// * error a fx_status value indicating failure. One of the following:
+    ///     * `FX_ERR_INTERNAL` if the resolver encountered an otherwise unspecified error
     ///       while handling the request.
-    ///     * `ZX_ERR_NOT_FOUND` if the package does not exist in the repository specified by
+    ///     * `FX_ERR_NOT_FOUND` if the package does not exist in the repository specified by
     ///       `package_url`.
-    ///     * `ZX_ERR_BAD_STATE` if the resolver does not know about the repository specified by
+    ///     * `FX_ERR_BAD_STATE` if the resolver does not know about the repository specified by
     ///       `package_url`.
     strict GetHash(struct {
-        package_url PackageUrl
+        package_url PackageUrl;
     }) -> (struct {
-        meta_far_blob_id BlobId
-    }) error zx.Status
-}
+        meta_far_blob_id BlobId;
+    }) error fx.Status;
+};

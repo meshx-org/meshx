@@ -3,10 +3,11 @@ use derivative::Derivative;
 use crate::diagnotics::Diagnostics;
 
 use super::{
-    constraints::IdentifierConstraints, Const, Constant, Declaration, Element, Identifier, LiteralConstant, Name,
-    Nullability, Reference, Span, VectorConstraints,
+    constraints::IdentifierConstraints, Alias, Const, Constant, ConstantValue, Declaration, Element, HandleConstraints,
+    Identifier, LiteralConstant, Name, Nullability, NullabilityTrait, Reference, Resource, Span,
+    TransportSideConstraints, VectorConstraints,
 };
-use std::{borrow::Borrow, cell::RefCell, rc::Rc, str::FromStr};
+use std::{cell::RefCell, rc::Rc, str::FromStr};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub enum PrimitiveSubtype {
@@ -26,6 +27,12 @@ pub enum PrimitiveSubtype {
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
 pub enum InternalSubtype {
     FrameworkErr,
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+pub enum TransportSide {
+    Client,
+    Server,
 }
 
 impl FromStr for PrimitiveSubtype {
@@ -141,6 +148,24 @@ impl LayoutParameter {
             LayoutParameter::Literal(_) => todo!(),
         }
     }
+}
+
+/// This is a struct used to group together all data produced during compilation
+/// that might be used by consumers that are downstream from type compilation
+/// (e.g. typeshape code, declaration sorting, JSON generator), that can't be
+/// obtained by looking at a type constructor's Type.
+/// Unlike TypeConstructor::Type which will always refer to the fully resolved/
+/// concrete (and eventually, canonicalized) type that the type constructor
+/// resolves to, this struct stores data about the actual parameters on this
+/// type constructor used to produce the type.
+/// These fields should be set in the same place where the parameters actually get
+/// resolved, i.e. create (for layout parameters) and apply_constraints (for type
+/// constraints)
+pub struct LayoutInvocation {
+    /// Set if this type constructor refers to an alias
+    from_alias: Option<Alias>,
+    // Parameter data below: if a foo_resolved form is set, then its corresponding
+    // foo_raw form must be defined as well (and vice versa).
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -294,6 +319,60 @@ impl StringType {
     }
 }
 
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
+pub struct TransportSideType {
+    #[derivative(PartialEq = "ignore", Ord = "ignore", PartialOrd = "ignore")]
+    pub constraints: TransportSideConstraints,
+
+    pub name: Name,
+    pub end: TransportSide,
+    pub protocol_transport: String,
+}
+
+impl TransportSideType {
+    pub(crate) fn new(name: Name, end: TransportSide, transport: &str) -> Self {
+        Self {
+            name,
+            end,
+            protocol_transport: transport.to_owned(),
+            constraints: TransportSideConstraints::default(),
+        }
+    }
+
+    pub fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        // TODO: Constraints c;
+        // if (!ResolveAndMergeConstraints(resolver, reporter, constraints.span, layout.resolved().name(),
+        //                                 nullptr, constraints.items, &c, out_params)) {
+        //     return false;
+        // }
+
+        // if (!c.HasConstraint<ConstraintKind::kProtocol>()) {
+        //    return reporter.Fail(ErrProtocolConstraintRequired, layout.span(), layout.resolved().name());
+        //}
+
+        // let transport_attribute = c.protocol_decl.attributes.Get("transport");
+        // std::string_view transport("Channel");
+
+        //if (transport_attribute) {
+        //    let arg = if (transport_attribute.compiled) {
+        //                 transport_attribute.GetArg(AttributeArg::kDefaultAnonymousName)} else {
+        //                 transport_attribute.GetStandaloneAnonymousArg()};
+        //    let quoted_transport = static_cast<const LiteralConstant*>(arg->value.get())->literal->span().data();
+        //    // Remove quotes around the transport.
+        //    transport = quoted_transport.substr(1, quoted_transport.size() - 2);
+        //}
+
+        Ok(Type::TransportSide(self.clone()))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InternalType {
     pub name: Name,
@@ -317,7 +396,10 @@ impl InternalType {
         //    return false;
         //}
 
-        Ok(Type::Internal(Rc::new(InternalType::new(self.name.clone(), self.subtype))))
+        Ok(Type::Internal(Rc::new(InternalType::new(
+            self.name.clone(),
+            self.subtype,
+        ))))
     }
 }
 
@@ -353,44 +435,182 @@ impl IdentifierType {
     }
 }
 
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
+pub struct BoxType {
+    pub name: Name,
+    pub boxed_type: Type,
+}
+
+impl BoxType {
+    pub(crate) fn new(name: Name, boxed_type: Type) -> Self {
+        Self { name, boxed_type }
+    }
+
+    pub fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        //if (!self.resolve_and_merge_constraints(resolver, reporter, constraints.span, layout.resolved().name(), nullptr, constraints.items, &c, out_params)) {
+        //  return false;
+        //}
+
+        Ok(Type::Box(Rc::new(self.clone())))
+    }
+}
+
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
+pub struct HandleType {
+    pub name: Name,
+    pub resource: Rc<RefCell<Resource>>,
+    pub constraints: HandleConstraints,
+}
+
+impl HandleType {
+    pub(crate) fn new(name: Name, resource: Rc<RefCell<Resource>>) -> Self {
+        Self {
+            name,
+            resource,
+            constraints: HandleConstraints::default(),
+        }
+    }
+
+    pub fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        //if (!self.resolve_and_merge_constraints(resolver, reporter, constraints.span, layout.resolved().name(), nullptr, constraints.items, &c, out_params)) {
+        //  return false;
+        //}
+
+        Ok(Type::Handle(Rc::new(self.clone())))
+    }
+}
+
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
+pub struct ArrayType {
+    pub name: Name,
+    pub element_type: Type,
+
+    #[derivative(PartialEq = "ignore", Ord = "ignore", PartialOrd = "ignore")]
+    pub size_value: ConstantValue,
+}
+
+impl ArrayType {
+    pub(crate) fn new(name: Name, element_type: Type, size_value: ConstantValue) -> Self {
+        Self {
+            name,
+            element_type,
+            size_value,
+        }
+    }
+
+    pub fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        //if (!self.resolve_and_merge_constraints(resolver, reporter, constraints.span, layout.resolved().name(), nullptr, constraints.items, &c, out_params)) {
+        //  return false;
+        //}
+
+        Ok(Type::Array(Rc::new(self.clone())))
+    }
+}
+
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
+pub struct UntypedNumericType {
+    pub name: Name,
+}
+
+impl UntypedNumericType {
+    pub(crate) fn new(name: Name) -> Self {
+        Self { name }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Type {
-    ArrayType {
-        element_type: Box<Type>,
-    },
+    Array(Rc<ArrayType>),
+    Box(Rc<BoxType>),
     Vector(Rc<VectorType>),
     Primitive(Rc<PrimitiveType>),
     Internal(Rc<InternalType>),
     String(Rc<StringType>),
     Identifier(Rc<IdentifierType>),
+    TransportSide(TransportSideType),
+    Handle(Rc<HandleType>),
+    UntypedNumeric(Rc<UntypedNumericType>),
     RequestType {
         nullable: bool,
         subtype: String, // "test.handles/DriverProtocol",
-    },
-    HandleType {
-        nullable: bool,
-        resource_identifier: String,
-        subtype: String,
-        rights: u32,
     },
 }
 
 impl Type {
     pub fn is_nullable(&self) -> bool {
         match self {
-            Type::ArrayType { element_type } => false,
+            Type::Array(_) => false,
             Type::Vector(_) => false,
             Type::Primitive(_) => false,
+            // All boxes are implicitly nullable.
+            Type::Box(_) => true,
             Type::Internal(_) => false,
             Type::String(string) => string.constraints.nullabilty() == Nullability::Nullable,
             Type::Identifier(_) => false,
             Type::RequestType { nullable, subtype } => *nullable,
-            Type::HandleType {
-                nullable,
-                resource_identifier,
-                subtype,
-                rights,
-            } => *nullable,
+            Type::TransportSide(_) => todo!(),
+            Type::Handle(handle) => handle.constraints.nullability() == Nullability::Nullable,
+            Type::UntypedNumeric(_) => false,
+        }
+    }
+
+    pub fn name(&self) -> Name {
+        match self {
+            Type::Array(typ) => typ.name.clone(),
+            Type::Vector(typ) => typ.name.clone(),
+            Type::Primitive(typ) => typ.name.clone(),
+            Type::Box(typ) => typ.name.clone(),
+            Type::Internal(typ) => typ.name.clone(),
+            Type::String(typ) => typ.name.clone(),
+            Type::Identifier(typ) => typ.name.clone(),
+            Type::RequestType { nullable, subtype } => todo!(),
+            Type::TransportSide(typ) => typ.name.clone(),
+            Type::UntypedNumeric(typ) => typ.name.clone(),
+            Type::Handle(typ) => typ.name.clone(),
+        }
+    }
+
+    pub(crate) fn apply_constraints(
+        &self,
+        resolver: &crate::compiler::TypeResolver<'_, '_>,
+        diagnostics: Rc<Diagnostics>,
+        constraints: &LayoutConstraints,
+        layout: &Reference,
+    ) -> Result<Type, bool> {
+        match self {
+            Type::Array(typ) => typ.apply_constraints(resolver, diagnostics, constraints, layout),
+            Type::Vector(typ) => typ.apply_constraints(resolver, diagnostics, constraints, layout),
+            Type::Primitive(typ) => typ.apply_constraints(resolver, diagnostics, constraints, layout),
+            Type::Internal(_) => todo!(),
+            Type::Box(typ) => typ.apply_constraints(resolver, diagnostics, constraints, layout),
+            Type::String(typ) => typ.apply_constraints(resolver, diagnostics, constraints, layout),
+            Type::Handle(typ) => typ.apply_constraints(resolver, diagnostics, constraints, layout),
+            Type::Identifier(typ) => typ.apply_constraints(resolver, diagnostics, constraints, layout),
+            Type::TransportSide(_) => todo!(),
+            Type::UntypedNumeric(_) => todo!(),
+            Type::RequestType { nullable, subtype } => todo!(),
         }
     }
 }

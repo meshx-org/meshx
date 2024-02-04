@@ -42,7 +42,7 @@ pub struct NamingContext {
 }
 
 fn to_upper_camel_case(str: String) -> String {
-    str.to_case(Case::Pascal)
+    str.to_case(Case::UpperCamel)
 }
 
 fn build_flattened_name(name: ast::Span, kind: NamingContextKind, parent: &Option<Rc<NamingContext>>) -> String {
@@ -97,6 +97,16 @@ impl NamingContext {
         }
 
         Name::create_anonymous(library, declataion_span, self, NameProvenance::AnonymousLayout)
+    }
+
+    fn flattened_name(&self) -> String {
+        let flattened_name_override = self.flattened_name_override.borrow();
+
+        if flattened_name_override.is_some() {
+            return flattened_name_override.as_ref().unwrap().clone();
+        }
+
+        self.flattened_name.clone()
     }
 
     pub(crate) fn set_name_override(&self, value: String) {
@@ -192,6 +202,20 @@ pub(crate) struct AnonymousNameContext {
     span: Span,
     provenance: NameProvenance,
     pub context: Rc<NamingContext>,
+
+    // The string is owned by the naming context.
+    flattened_name: String,
+}
+
+impl AnonymousNameContext {
+    fn new(span: Span, context: Rc<NamingContext>, provenance: NameProvenance) -> NameContext {
+        NameContext::Anonymous(AnonymousNameContext {
+            flattened_name: context.flattened_name(),
+            context,
+            span,
+            provenance,
+        })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -206,7 +230,7 @@ pub(crate) enum NameContext {
 /// `Name::Kind`. See the documentation for `Name::Kind` for details.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Name {
-    pub library: Rc<ast::Library>,
+    library: Option<Rc<ast::Library>>,
     member_name: Option<String>,
     name_context: NameContext,
 }
@@ -227,13 +251,13 @@ impl Name {
 
     pub(crate) fn create_sourced(library: Rc<ast::Library>, span: Span) -> Self {
         Self {
-            library,
+            library: Some(library),
             name_context: NameContext::Sourced(SourcedNameContext { span }),
             member_name: None,
         }
     }
 
-    pub(crate) fn create_intrinsic(library: Rc<ast::Library>, name: &str) -> Self {
+    pub(crate) fn create_intrinsic(library: Option<Rc<ast::Library>>, name: &str) -> Self {
         Self {
             library,
             name_context: NameContext::Intrinsic(IntrinsicNameContext { name: name.to_owned() }),
@@ -248,12 +272,8 @@ impl Name {
         provenance: NameProvenance,
     ) -> Self {
         Self {
-            library,
-            name_context: NameContext::Anonymous(AnonymousNameContext {
-                context,
-                span,
-                provenance,
-            }),
+            library: Some(library),
+            name_context: AnonymousNameContext::new(span, context, provenance),
             member_name: None,
         }
     }
@@ -266,11 +286,18 @@ impl Name {
         }
     }
 
+    pub fn library(&self) -> Rc<ast::Library> {
+        self.library.clone().unwrap()
+    }
+
     pub fn decl_name(&self) -> String {
         match &self.name_context {
             NameContext::Sourced(ctx) => ctx.span.data.to_owned(),
             NameContext::Intrinsic(ctx) => ctx.name.clone(),
-            NameContext::Anonymous(ctx) => ctx.context.flattened_name.clone(),
+            // since decl_name() is used in Name::Key, using the flattened name
+            // here ensures that the flattened name will cause conflicts if not
+            // unique
+            NameContext::Anonymous(ctx) => ctx.flattened_name.clone(),
         }
     }
 
@@ -314,7 +341,7 @@ pub fn name_flat_name(name: &Name) -> String {
     let mut compiled_name = String::new();
 
     if !name.is_intrinsic() {
-        compiled_name += library_name(name.library.name.clone(), ".").as_str();
+        compiled_name += library_name(name.library.as_ref().unwrap().name.clone(), ".").as_str();
         compiled_name += "/";
     }
 

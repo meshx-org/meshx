@@ -267,6 +267,13 @@ pub enum Type {
         #[serde(rename = "subtype")]
         primitive_subtype: PrimitiveSubtype,
     },
+    #[serde(rename = "client_end")]
+    TransportSide {
+        identifier: EncodedCompoundIdentifier,
+        protocol_transport: String,
+        #[serde(default)]
+        nullable: bool,
+    },
     #[serde(rename = "handle")]
     HandleType {
         #[serde(rename = "subtype")]

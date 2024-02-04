@@ -15,7 +15,7 @@ use crate::diagnotics::DiagnosticsError;
 fn consume_union_member(
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
-    name_context: Rc<ast::NamingContext>,
+    name_context: &Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::UnionMember, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::ordinal_layout_member);
@@ -34,8 +34,15 @@ fn consume_union_member(
             Rule::ordinal => {
                 ordinal = Some(consume_ordinal64(current, ctx)?);
             }
-            Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, &name_context, ctx)),
-            Rule::inline_attribute_list => {}
+            Rule::type_constructor => {
+                let name_context = name_context.clone();
+                type_ctor = Some(consume_type_constructor(
+                    current,
+                    &name_context.enter_member(name.as_ref().unwrap().clone()),
+                    ctx,
+                ))
+            }
+            Rule::block_attribute_list => {}
             Rule::RESERVED_KEYWORD => {
                 reserved = true;
             }
@@ -75,13 +82,13 @@ fn consume_union_member(
 
 pub(crate) fn consume_union_layout(
     token: Pair<'_>,
-    name: ast::Name,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::Declaration, DiagnosticsError> {
     debug_assert!(token.as_rule() == Rule::inline_union_layout);
 
     let token_span = token.as_span();
+    let union_span = ast::Span::from_pest(token_span, ctx.source_id);
 
     let attributes = ast::AttributeList(vec![]);
     let mut members = Vec::new();
@@ -90,10 +97,10 @@ pub(crate) fn consume_union_layout(
     for current in token.into_inner() {
         match current.as_rule() {
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
-            Rule::declaration_modifiers => todo!(),
-            Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
+            Rule::declaration_modifiers => {},
+            Rule::inline_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::ordinal_layout_member => {
-                match consume_union_member(current, pending_field_comment.take(), name_context.clone(), ctx) {
+                match consume_union_member(current, pending_field_comment.take(), &name_context, ctx) {
                     Ok(member) => {
                         members.push(Rc::new(RefCell::new(member)));
                     }
@@ -110,61 +117,15 @@ pub(crate) fn consume_union_layout(
     }
 
     Ok(ast::Union {
-        name,
+        name: name_context.to_name(ctx.library.clone(), union_span.clone()),
         members,
         attributes,
         documentation: None,
         strictness: Strictness::Flexible,
-        span: ast::Span::from_pest(token_span, ctx.source_id),
+        span: union_span,
         compiled: false,
         compiling: false,
         recursive: false,
     }
     .into())
 }
-
-/*pub(crate) fn parse_union(token: Pair<'_>, doc_comment: Option<Pair<'_>>, diagnostics: &mut Diagnostics) -> Model {
-    assert!(token.as_rule() == Rule::constant);
-
-    let pair_span = pair.as_span();
-    let mut name: Option<Identifier> = None;
-    let mut attributes: Vec<Attribute> = Vec::new();
-    let mut fields: Vec<Field> = Vec::new();
-    let mut pending_field_comment: Option<Pair<'_>> = None;
-
-    for current in pair.into_inner() {
-        match current.as_rule() {
-            Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
-            Rule::identifier => name = Some(current.into()),
-            // Rule::block_attribute => attributes.push(parse_attribute(current, diagnostics)),
-            Rule::field_declaration => match parse_field(
-                &name.as_ref().unwrap().value,
-                "model",
-                current,
-                pending_field_comment.take(),
-                diagnostics,
-            ) {
-                Ok(field) => fields.push(field),
-                Err(err) => diagnostics.push_error(err),
-            },
-            Rule::comment_block => pending_field_comment = Some(current),
-            Rule::BLOCK_LEVEL_CATCH_ALL => diagnostics.push_error(DiagnosticsError::new_validation_error(
-                "This line is not a valid field or attribute definition.",
-                current.as_span().into(),
-            )),
-            _ => parsing_catch_all(&current, "union"),
-        }
-    }
-
-    match name {
-        Some(name) => Model {
-            name,
-            fields,
-            attributes,
-            documentation: doc_comment.and_then(parse_comment_block),
-            is_view: false,
-            span: Span::from(pair_span),
-        },
-        _ => panic!("Encountered impossible model declaration during parsing",),
-    }
-}*/

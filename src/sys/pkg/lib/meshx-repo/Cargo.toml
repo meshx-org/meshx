@@ -1,0 +1,48 @@
+[package]
+authors = ["Roland Sz. Kovács <Roland.Szarka-Kovacs@meshx.co>"]
+edition = "2021"
+name = "meshx-repo"
+version = "0.1.0"
+
+[lib]
+doctest = false
+
+[dependencies]
+anyhow = "1.0"
+async-lock = "3.3"
+async-net = "2.0"
+async-trait = "0.1"
+bytes = "1.5"
+camino = "1.0"
+chrono = "0.4"
+data-encoding = "2.5"
+ed25519-dalek = {version = "2.1", features = ["rand_core"]}
+futures = "0.3"
+http = "1.0"
+hyper = {version = "0.14", features = ["server"]}
+maplit = "1.0"
+meshx-archive = {path = "../meshx-archive"}
+meshx-fs = {path = "../../../../lib/meshx-fs"}
+meshx-hash = {path = "../meshx-hash"}
+meshx-merkle = {path = "../meshx-merkle"}
+meshx-pkg = {path = "../meshx-pkg"}
+meshx-pkg-midl-ext = {path = "../meshx-pkg-midl-ext"}
+meshx-url = {path = "../../../../lib/meshx-url"}
+notify = "6.1"
+pin-project = "1.1"
+rand = {version = "0.8", features = ["std"]}
+serde = "1.0"
+serde_json = "1.0"
+tempfile = "3.9"
+thiserror = "1.0"
+tokio = {version = "1.0", features = ["full"]}
+tracing = "0.1"
+tuf = "=0.3.0-beta11"
+url = "2.5"
+walkdir = "2.4"
+
+[dev-dependencies]
+assert_matches = "1.0"
+pretty_assertions = "1.0"
+proptest = "1.0"
+tempfile = "3.9"

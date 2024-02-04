@@ -2,10 +2,27 @@ use derivative::Derivative;
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
-    AttributeList, Comment, Decl, Declaration, Identifier, Literal, Name, Reference, Span, Type, TypeConstructor, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan
+    AttributeList, Comment, Decl, Declaration, Literal, Name, Reference, Span, Type, TypeConstructor, WithAttributes,
+    WithDocumentation, WithName, WithSpan,
 };
 
 struct Numeric<T>(T);
+
+#[derive(Debug, Copy, Clone)]
+pub enum ConstantValueKind {
+    Float64,
+    Float32,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Bool,
+    String,
+}
 
 #[derive(Debug, Clone)]
 pub enum ConstantValue {
@@ -21,6 +38,12 @@ pub enum ConstantValue {
     Uint64(u64),
     Bool(bool),
     String(String),
+}
+
+impl ConstantValue {
+    pub fn convert(&self, kind: ConstantValueKind, val: &mut ConstantValue) -> bool {
+        false
+    }
 }
 
 impl From<ConstantValue> for u8 {
@@ -213,10 +236,55 @@ impl ConstantTrait for LiteralConstant {
     }
 }
 
+// Constant represents the _use_ of a constant. (For the _declaration_, see
+// Const. For the _value_, see ConstantValue.) A Constant can either be a
+// reference to another constant (IdentifierConstant), a literal value
+// (LiteralConstant). Every Constant resolves to a concrete ConstantValue.
+#[derive(Debug, Clone, Derivative)]
+#[derivative(PartialEq, Eq, PartialOrd, Ord)]
+pub struct BinaryOperatorConstant {
+    pub lhs: Box<Constant>,
+    pub op: ConstantOp,
+    pub rhs: Box<Constant>,
+
+    #[derivative(PartialEq = "ignore")]
+    #[derivative(PartialOrd = "ignore")]
+    #[derivative(Ord = "ignore")]
+    pub(crate) constant_value: Option<ConstantValue>,
+
+    /// compiled tracks whether we attempted to resolve this constant, to avoid
+    /// resolving twice a constant which cannot be resolved.
+    pub compiled: bool,
+}
+
+impl ConstantTrait for BinaryOperatorConstant {
+    fn value(&self) -> ConstantValue {
+        todo!()
+    }
+
+    fn span(&self) -> &Span {
+        todo!()
+    }
+
+    fn is_resolved(&self) -> bool {
+        todo!()
+    }
+
+    fn resolve_to(&mut self, value: ConstantValue, r#type: Type) {
+        todo!()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Copy)]
+pub enum ConstantOp {
+    Or,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Constant {
     Identifier(IdentifierConstant),
     Literal(LiteralConstant),
+    BinaryOperator(BinaryOperatorConstant),
 }
 
 impl Constant {
@@ -224,6 +292,7 @@ impl Constant {
         match self {
             Constant::Identifier(c) => c.constant_value.is_some(),
             Constant::Literal(c) => c.constant_value.is_some(),
+            Constant::BinaryOperator(c) => c.constant_value.is_some(),
         }
     }
 
@@ -237,6 +306,7 @@ impl Constant {
         match self {
             Constant::Identifier(c) => c.constant_value.clone().unwrap(),
             Constant::Literal(c) => c.constant_value.clone().unwrap(),
+            Constant::BinaryOperator(c) => c.constant_value.clone().unwrap(),
         }
     }
 
@@ -244,6 +314,7 @@ impl Constant {
         match self {
             Constant::Identifier(c) => c.compiled = value,
             Constant::Literal(c) => c.compiled = value,
+            Constant::BinaryOperator(c) => c.compiled = value,
         }
     }
 
@@ -251,6 +322,7 @@ impl Constant {
         match self {
             Constant::Identifier(c) => c.compiled,
             Constant::Literal(c) => c.compiled,
+            Constant::BinaryOperator(c) => c.compiled,
         }
     }
 }
@@ -302,7 +374,7 @@ pub struct Const {
     // Set during compilation
     pub(crate) compiled: bool,
     pub(crate) compiling: bool,
-    pub(crate) recursive: bool
+    pub(crate) recursive: bool,
 }
 
 impl Into<Declaration> for Const {

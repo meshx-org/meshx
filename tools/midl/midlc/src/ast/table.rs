@@ -122,6 +122,11 @@ pub struct Table {
 
     /// The location of this table in the text representation.
     pub(crate) span: Span,
+
+    // Set during compilation
+    pub(crate) compiled: bool,
+    pub(crate) compiling: bool,
+    pub(crate) recursive: bool,
 }
 
 impl Into<Declaration> for Table {

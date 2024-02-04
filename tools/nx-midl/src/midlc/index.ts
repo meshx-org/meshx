@@ -88,6 +88,7 @@ async function buildIR(options: Options, context: ExecutorContext): Promise<void
                 env: {
                     CLICOLOR_FORCE: "1",
                     RUST_LOG: "info",
+                    RUST_BACKTRACE: "1"
                 },
                 cwd: options.cwd ? options.cwd : root,
             },

@@ -16,6 +16,15 @@ enum TypeKind {
     ResponsePayload,
 }
 
+fn should_expose_alias_of_parametrized_type(r#type: &ast::Type) -> bool {
+    match r#type {
+        ast::Type::Array(_) => true,
+        ast::Type::Vector(_) => true,
+        ast::Type::TransportSide(transport_side) => transport_side.end == ast::TransportSide::Server,
+        _ => false,
+    }
+}
+
 impl JSONGenerator {
     pub fn new(compilation: compiler::Compilation, flags: ExperimentalFlags) -> Self {
         Self { compilation }
@@ -213,26 +222,44 @@ impl JSONGenerator {
             ast::Type::Primitive(r#type) => ir::Type::PrimitiveType {
                 primitive_subtype: self.generate_primitive_subtype(&r#type.subtype),
             },
+            // We treat client_end the same as an IdentifierType of a protocol to avoid changing
+            // the JSON IR.
+            // TODO(https://fxbug.dev/42149402): clean up client/server end representation in the IR
+            ast::Type::TransportSide(r#type) => {
+                // This code path should only apply to client ends. The server end code
+                // path is colocated with the parameterized types.
+                assert!(matches!(r#type.end, ast::TransportSide::Client));
+
+                ir::Type::TransportSide {
+                    identifier: self.generate_name(&r#type.name),
+                    protocol_transport: r#type.protocol_transport,
+                    nullable: self.generate_nullable(&r#type.constraints.nullabilty()),
+                }
+            }
             _ => panic!("unsupported type: {:?}", value),
         }
     }
 
     fn generate_type_and_from_alias(&self, parent_type_kind: TypeKind, value: ast::TypeConstructor) -> ir::Type {
-        let r#type = value.clone().r#type;
+        let r#type = value.r#type;
+        let r#type = r#type.unwrap();
         // let invocation = value.resolved_params;
 
-        // if (ShouldExposeAliasOfParametrizedType(*type)) {
-        //        if invocation.from_alias {
-        //            GenerateParameterizedType(parent_type_kind, type, invocation.from_alias.partial_type_ctor.get());
-        //        } else {
-        //            GenerateParameterizedType(parent_type_kind, type, value);
-        //        }
-        //    GenerateExperimentalMaybeFromAlias(invocation);
-        //
-        //    return;
-        //}
+        if should_expose_alias_of_parametrized_type(&r#type) {
+            //        if invocation.from_alias {
+            //            GenerateParameterizedType(parent_type_kind, type, invocation.from_alias.partial_type_ctor.get());
+            //        } else {
+            //            GenerateParameterizedType(parent_type_kind, type, value);
+            //        }
+            //    GenerateExperimentalMaybeFromAlias(invocation);
+            //
+            //    return;
+            return ir::Type::PrimitiveType {
+                primitive_subtype: ir::PrimitiveSubtype::Bool,
+            };
+        }
 
-        self.generate_type(r#type.unwrap())
+        self.generate_type(r#type)
     }
 
     fn generate_literal(&self, value: ast::LiteralConstant) -> ir::Literal {
@@ -259,6 +286,7 @@ impl JSONGenerator {
                 expression: literal.span().data.clone(),
                 literal: self.generate_literal(literal),
             },
+            ast::Constant::BinaryOperator(_) => todo!(),
         }
     }
 
@@ -280,7 +308,7 @@ impl JSONGenerator {
             if let Some(ref used) = member.maybe_used {
                 members.push(ir::UnionMember {
                     name: Some(self.generate_identifier(used.name.clone())),
-                    r#type: Some(self.generate_type(used.type_ctor.r#type.as_ref().unwrap().clone())),
+                    r#type: Some(self.generate_type_and_from_alias(TypeKind::Concrete, used.type_ctor.clone())),
                     reserved: false,
                     ordinal: self.generate_ordinal64(member.ordinal.clone()),
                     max_out_of_line: 0,
@@ -313,7 +341,7 @@ impl JSONGenerator {
             members.push(ir::StructMember {
                 name: self.generate_identifier(member.name.clone()),
                 location: self.generate_location(member.span.clone()),
-                r#type: self.generate_type(member.type_ctor.r#type.as_ref().unwrap().clone()),
+                r#type: self.generate_type_and_from_alias(TypeKind::Concrete, member.type_ctor.clone()),
                 field_shape_v2: self.generate_field_shape(),
                 // value: self.generate_constant(member.value.clone()),
             })
@@ -369,11 +397,12 @@ impl JSONGenerator {
             let mut maybe_response_payload = None;
 
             if let Some(typ) = &method.maybe_request {
-                maybe_request_payload = Some(self.generate_type(typ.r#type.as_ref().unwrap().clone()));
+                maybe_request_payload = Some(self.generate_type_and_from_alias(TypeKind::RequestPayload, typ.clone()));
             }
 
             if let Some(typ) = &method.maybe_response {
-                maybe_response_payload = Some(self.generate_type(typ.r#type.as_ref().unwrap().clone()));
+                maybe_response_payload =
+                    Some(self.generate_type_and_from_alias(TypeKind::ResponsePayload, typ.clone()));
             }
 
             methods.push(ir::ProtocolMethod {

@@ -24,6 +24,7 @@ struct NodeInfo {
     neighbors: BTreeSet<ast::Element>,
 }
 
+#[derive(Debug)]
 enum ResolveMode {
     // Calls ParseReference and InsertReferenceEdges.
     ParseAndInsert,
@@ -111,17 +112,37 @@ impl<'a, 'ctx, 'd> Lookup<'a, 'ctx, 'd> {
         None
     }
 
-    fn try_member(&self, parent: ast::Declaration, name: &String) -> Option<ast::Element> {
+    fn try_member(&self, parent: ast::Declaration, name: String) -> Option<ast::Element> {
         match parent {
-            // TODO: bits and enums
+            ast::Declaration::Bits { decl } => {
+                let parent = decl.borrow();
+                for member in parent.members.iter() {
+                    let bits_member = member.borrow();
+                    if bits_member.name.data == name {
+                        return Some(ast::Element::BitsMember { inner: member.clone() });
+                    }
+                }
+                return None;
+            }
+            ast::Declaration::Enum { decl } => {
+                let parent = decl.borrow();
+                for member in parent.members.iter() {
+                    let enum_member = member.borrow();
+                    if enum_member.name.data == name {
+                        return Some(ast::Element::EnumMember { inner: member.clone() });
+                    }
+                }
+                return None;
+            }
+
             _ => None,
         }
     }
 
-    fn must_member(&self, parent: ast::Declaration, name: &String) -> Option<ast::Element> {
+    fn must_member(&self, parent: ast::Declaration, name: String) -> Option<ast::Element> {
         match parent {
-            ast::Declaration::Bits | ast::Declaration::Enum { .. } => {
-                if let Some(member) = self.try_member(parent, name) {
+            ast::Declaration::Bits { .. } | ast::Declaration::Enum { .. } => {
+                if let Some(member) = self.try_member(parent, name.clone()) {
                     return Some(member);
                 }
             }
@@ -132,7 +153,7 @@ impl<'a, 'ctx, 'd> Lookup<'a, 'ctx, 'd> {
                 return None;
             }
         }
-        panic!("ErrMemberNotFound");
+        panic!("ErrMemberNotFound: {}", name);
         //  Fail(ErrMemberNotFound, ref_.span(), parent, name);
         return None;
     }
@@ -266,8 +287,6 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
     }
 
     fn visit_element(&self, element: ast::Element, context: &ResolveContext) {
-        // log::debug!("visit_element: {:?}", element);
-
         // TODO: attribute parsing
         // for  attribute in element.attributes.attributes {
         //    for (let arg : attribute.args) {
@@ -280,7 +299,6 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 self.visit_type_constructor(&inner.borrow().type_ctor, context);
                 self.visit_constant(&inner.borrow().value, context);
             }
-            ast::Element::Struct { .. } => {}
             ast::Element::StructMember { inner } => {
                 let struct_member = inner.borrow();
                 self.visit_type_constructor(&struct_member.type_ctor, context);
@@ -289,7 +307,6 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                     self.visit_constant(&constant, context);
                 }
             }
-            ast::Element::Protocol { .. } => {}
             ast::Element::ProtocolMethod { inner } => {
                 let method = inner.borrow();
 
@@ -313,20 +330,37 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 let enum_member = inner.borrow();
                 self.visit_constant(&enum_member.value, context);
             }
-            ast::Element::Union { .. } => {}
             ast::Element::UnionMember { inner } => {
                 let union_member = inner.borrow();
                 if let Some(ref used) = union_member.maybe_used {
                     self.visit_type_constructor(&used.type_ctor, context);
                 }
             }
+            ast::Element::Bits { inner } => {
+                let bits_decl = inner.borrow();
+                self.visit_type_constructor(&bits_decl.subtype_ctor, context);
+            }
+            ast::Element::BitsMember { inner } => {
+                let bits_member = inner.borrow();
+                self.visit_constant(&bits_member.value, context);
+            }
+            ast::Element::Resource { inner } => {
+                let resource_decl = inner.borrow();
+                self.visit_type_constructor(&resource_decl.subtype_ctor, context);
+            }
+            ast::Element::ResourceProperty { inner } => {
+                let resource_property = inner.borrow();
+                self.visit_type_constructor(&resource_property.type_ctor, context);
+            }
             ast::Element::Table { .. } => todo!(),
             ast::Element::TableMember { .. } => todo!(),
-            ast::Element::Builtin { .. } => {}
-            ast::Element::Bits => todo!(),
-            ast::Element::Resource => {}
             ast::Element::NewType => todo!(),
-            ast::Element::Overlay => todo!(),
+            ast::Element::Overlay => {}
+            ast::Element::Protocol { .. } => {}
+            ast::Element::Union { .. } => {}
+            ast::Element::Struct { .. } => {}
+            ast::Element::Builtin { .. } => {}
+
             _ => todo!(),
         }
     }
@@ -357,6 +391,10 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             ast::Constant::Identifier(identifier_constant) => {
                 self.visit_reference(&identifier_constant.reference, context);
             }
+            ast::Constant::BinaryOperator(binop_constant) => {
+                self.visit_constant(&binop_constant.lhs, context);
+                self.visit_constant(&binop_constant.rhs, context);
+            }
             _ => return,
         }
     }
@@ -377,7 +415,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
     /// Calls ref.set_key, ref.mark_contextual, or ref.mark_failed.
     fn parse_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
         let initial_state = reference.state.clone();
-        // let checkpoint = reporter()->Checkpoint();
+        let checkpoint = self.ctx.diagnostics.checkpoint();
 
         match *initial_state.borrow() {
             ast::ReferenceState::RawSynthetic(_) => {
@@ -396,7 +434,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
         }
 
         if reference.state == initial_state {
-            // ZX_ASSERT_MSG(checkpoint.NumNewErrors() > 0, "should have reported an error");
+            assert!(checkpoint.num_new_errors() > 0, "should have reported an error");
             reference.mark_failed();
             return;
         }
@@ -423,7 +461,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             .name();
 
         reference.set_key(ast::ReferenceKey {
-            library: name.library.clone(),
+            library: name.library(),
             decl_name: name.decl_name(),
             member_name: None,
         });
@@ -570,13 +608,13 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
         }
     }
 
+    /// Calls reference.resolve_to or reference.mark_failed.
     fn resolve_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
         let initial_state = reference.state.clone();
         let checkpoint = self.ctx.diagnostics.checkpoint();
 
         match *initial_state.borrow() {
-            ast::ReferenceState::Failed => {}
-            ast::ReferenceState::Resolved(_) => {
+            ast::ReferenceState::Failed | ast::ReferenceState::Resolved(_) => {
                 // Nothing to do, either failed parsing or already attempted resolving.
                 return;
             }
@@ -586,6 +624,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
         }
 
         if reference.state == initial_state {
+            log::info!("same: {:?} {:?}", reference, checkpoint.num_new_errors());
             assert!(checkpoint.num_new_errors() > 0, "should have reported an error");
             reference.mark_failed();
         }
@@ -612,7 +651,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
 
         let lookup = Lookup::new(self, reference);
 
-        let member = lookup.must_member(decl.clone(), &ref_key.member_name.unwrap());
+        let member = lookup.must_member(decl.clone(), ref_key.member_name.unwrap());
         if member.is_none() {
             return;
         }
@@ -676,5 +715,14 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
         None
     }
 
-    fn validate_reference(&self, reference: &ast::Reference, context: &ResolveContext) {}
+    fn validate_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
+        if let ast::ReferenceState::Failed = *reference.state.borrow() {
+            return;
+        }
+
+        //if !reference.is_synthetic() && reference.resolved().unwrap().name().as_anonymous().is_some() {
+        //panic!("ErrAnonymousNameReference");
+        //reporter()->Fail(ErrAnonymousNameReference, ref.span(), ref.resolved().name());
+        //}
+    }
 }

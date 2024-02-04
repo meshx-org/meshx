@@ -1,5 +1,6 @@
 mod consume_alias;
 mod consume_attribute;
+mod consume_bits;
 mod consume_comments;
 mod consume_const;
 mod consume_enum;
@@ -17,6 +18,7 @@ mod parser;
 
 use consume_alias::consume_alias_declaration;
 use consume_attribute::consume_attribute_list;
+use consume_bits::consume_bits_layout;
 use consume_const::consume_constant_declaration;
 use consume_enum::consume_enum_layout;
 use consume_import::consume_import;
@@ -81,7 +83,6 @@ pub(crate) fn consume_layout_declaration(
 
     let span = token.as_span();
 
-    let mut name = None;
     let mut name_context = None;
 
     for current in token.into_inner() {
@@ -93,7 +94,6 @@ pub(crate) fn consume_layout_declaration(
                 let sourced = Name::create_sourced(ctx.library.clone(), name_span);
 
                 name_context = Some(ast::NamingContext::create(&sourced));
-                name = Some(sourced);
             }
             Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::inline_struct_layout => {
@@ -103,10 +103,13 @@ pub(crate) fn consume_layout_declaration(
                 return consume_enum_layout(current, name_context.unwrap(), ctx);
             }
             Rule::inline_union_layout => {
-                return consume_union_layout(current, name.unwrap(), name_context.unwrap(), ctx);
+                return consume_union_layout(current, name_context.unwrap(), ctx);
             }
             Rule::inline_table_layout => {
-                return consume_table_layout(current, name.unwrap(), name_context.unwrap(), ctx);
+                return consume_table_layout(current, name_context.unwrap(), ctx);
+            }
+            Rule::inline_bits_layout => {
+                return consume_bits_layout(current, name_context.unwrap(), ctx);
             }
             Rule::CATCH_ALL => consume_catch_all(&current, "layout_declaration"),
             _ => todo!(),

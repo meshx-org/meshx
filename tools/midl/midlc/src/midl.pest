@@ -16,17 +16,18 @@ library              =  { SOI ~ (library_declaration | import_declaration | reso
 
 declaration_list     = _{ (declaration ~ NEWLINE+) * ~ declaration? }
 declaration          = _{ alias_declaration | library_declaration | import_declaration  | const_declaration  | protocol_declaration }
-library_declaration  =  { LIBRARY_KEYWORD ~ compound_identifier }
-import_declaration   =  { IMPORT_KEYWORD ~ compound_identifier ~ import_alias? }
+library_declaration  =  { block_attribute_list ~ LIBRARY_KEYWORD ~ compound_identifier ~ ";"}
+import_declaration   =  { USING_KEYWORD ~ compound_identifier ~ import_alias? ~ ";"}
 import_alias         =  { AS_KEYWORD ~ identifier }
 
 const_declaration = { 
-    block_attribute_list 
+    block_attribute_list
     ~ CONST_KEYWORD 
     ~ identifier 
     ~ type_constructor 
     ~ "=" 
     ~ constant 
+    ~ ";"
 }
 
 alias_declaration = { 
@@ -35,58 +36,65 @@ alias_declaration = {
     ~ identifier
     ~  "="
     ~ type_constructor
+    ~ ";"
 }
 
 layout_declaration =  { 
-    block_attribute_list 
+    block_attribute_list
     ~ TYPE_KEYWORD 
     ~ identifier
     ~ "="
     ~ inline_layout
+    ~ ";"
 }
 
 protocol_declaration  =  { 
-    block_attribute_list
+    block_attribute_list?
+    ~ ("closed" | "ajar" | "flexible")
     ~ PROTOCOL_KEYWORD 
     ~ identifier 
     ~ BLOCK_OPEN
-    ~ (protocol_member | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)+
+    ~ (protocol_member | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)*
     ~ BLOCK_CLOSE
+    ~ ";"
 }
 
 resource_declaration = { 
     block_attribute_list
     ~ RESOURCE_KEYWORD
     ~ identifier 
-    ~ ( ":" ~ type_constructor )?
+    ~ layout_subtype?
     ~ BLOCK_OPEN 
     ~ (resource_properties | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)+
-    ~ BLOCK_CLOSE 
+    ~ BLOCK_CLOSE
+    ~ ";"
 }
 
 resource_properties = { 
 	"properties" 
     ~ BLOCK_OPEN 
-    ~ (member_field | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)+
+    ~ (resource_property | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)+
     ~ BLOCK_CLOSE
+    ~ ";"
 }
+
+resource_property = { member_field ~ ";" }
 
 // a block definition without a keyword. Is not valid. Just acts as a catch for the parser to display a nice error.
 arbitrary_block = { identifier ~ BLOCK_OPEN ~ ((!BLOCK_CLOSE ~ ANY) | NEWLINE)* ~ BLOCK_CLOSE }
 
-declaration_modifiers =  { STRICT_KEYWORD | FLEXIBLE_KEYWORD | RESOURCE_KEYWORD }
+declaration_modifiers  =  { STRICT_KEYWORD | FLEXIBLE_KEYWORD | RESOURCE_KEYWORD }
 
 protocol_member       = _{ protocol_method | protocol_event | protocol_compose }
-protocol_method       =  { block_attribute_list? ~ identifier ~ protocol_request ~ protocol_response? }
+protocol_method       =  { block_attribute_list? ~ ("flexible"|"strict")? ~ identifier ~ protocol_request ~ protocol_response? ~ ";"}
 protocol_request      =  { parameter_list }
 protocol_response     =  { "->" ~ parameter_list ~ ( "error" ~ type_constructor )? }
 
-protocol_event        =  { block_attribute_list? ~ "->" ~ identifier ~ parameter_list }
-protocol_compose      =  { block_attribute_list? ~ COMPOSE_KEYWORD ~ compound_identifier }
+protocol_event        =  { block_attribute_list? ~ ("flexible" | "strict")? ~ "->" ~ identifier ~ parameter_list ~ ";"}
+protocol_compose      =  { block_attribute_list? ~ COMPOSE_KEYWORD ~ compound_identifier ~ ";" }
 
-parameter_list        =  { PARENT_OPEN ~ (type_constructor | identifier)? ~ PARENT_CLOSE }
+parameter_list        =  { PARENT_OPEN ~ type_constructor? ~ PARENT_CLOSE }
 
-layout                = _{ inline_layout | compound_identifier }
 layout_subtype        =  { ":" ~ type_constructor }
 layout_body           =  { 
 							BLOCK_OPEN 
@@ -95,62 +103,79 @@ layout_body           =  {
                          }
 
 value_layout          = _{ ( NEWLINE* ~ value_layout_member ~ NEWLINE* )+ }
-value_layout_member   =  { identifier ~ "=" ~ constant~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
+value_layout_member   =  { comment_block? ~ block_attribute_list? ~identifier ~ "=" ~ constant ~ ";" ~ trailing_comment? }
 struct_layout         = _{ ( NEWLINE* ~ struct_layout_member ~ NEWLINE* )+ }
-struct_layout_member  =  { comment_block? ~ member_field ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
+struct_layout_member  =  { comment_block? ~ block_attribute_list? ~ member_field ~ ";" ~ trailing_comment? }
 ordinal_layout        = _{ ( NEWLINE* ~ ordinal_layout_member ~ NEWLINE* )+ }
-ordinal_layout_member =  { ordinal ~ ":" ~ (member_field | RESERVED_KEYWORD) ~ inline_attribute_list ~ trailing_comma? ~ trailing_comment? }
+ordinal_layout_member =  { comment_block? ~ block_attribute_list? ~ ordinal ~ ":" ~ (member_field | RESERVED_KEYWORD) ~ ";" ~ trailing_comment? }
 
-member_field          = _{ identifier ~ type_constructor }
-inline_layout        = _{ inline_union_layout | inline_table_layout | inline_enum_layout | inline_struct_layout }
+member_field           = _{ identifier ~ type_constructor }
 
 inline_struct_layout =  { 
-							block_attribute_list
-                            ~ declaration_modifiers* 
+							inline_attribute_list
+                            ~ declaration_modifiers*
                             ~ STRUCT_KEYWORD
-                            ~ BLOCK_OPEN 
-                            ~ struct_layout 
+                            ~ BLOCK_OPEN
+                            ~ struct_layout?
                             ~ BLOCK_CLOSE
                         }
 
 inline_table_layout  =  {
-							block_attribute_list
+							inline_attribute_list
                             ~ declaration_modifiers* 
                             ~ TABLE_KEYWORD
                             ~ BLOCK_OPEN 
-                            ~ ordinal_layout 
+                            ~ ordinal_layout?
                             ~ BLOCK_CLOSE
                         }
                         
 inline_union_layout  =  {
-							block_attribute_list
+							inline_attribute_list
                             ~ declaration_modifiers* 
                             ~ UNION_KEYWORD
                             ~ BLOCK_OPEN 
-                            ~ ordinal_layout 
+                            ~ ordinal_layout?
                             ~ BLOCK_CLOSE
                         }
                         
 inline_enum_layout  =  { 
-							block_attribute_list
+							inline_attribute_list
                             ~ declaration_modifiers* 
                             ~ ENUM_KEYWORD
                             ~ layout_subtype?
                             ~ BLOCK_OPEN
-                            ~ value_layout
+                            ~ value_layout?
+                            ~ BLOCK_CLOSE
+                        }
+                        
+inline_bits_layout   =  { 
+							inline_attribute_list
+                            ~ declaration_modifiers* 
+                            ~ BITS_KEYWORD
+                            ~ layout_subtype?
+                            ~ BLOCK_OPEN
+                            ~ value_layout?
                             ~ BLOCK_CLOSE
                         }
 
-layout_parameters    = !{ layout_parameter ~ ("," ~ layout_parameter ~ WHITESPACE* )*  }
-layout_parameter     = _{ type_constructor | constant }
+inline_layout        = _{ inline_bits_layout | inline_union_layout | inline_table_layout | inline_enum_layout | inline_struct_layout }
+layout               = _{ inline_layout | compound_identifier }
 
-type_constructor     =  { layout ~ ( "<" ~ layout_parameters ~ ">" )? ~ ( ":" ~ type_constraints )? }
-type_constraints     =  { type_constraint | "<" ~ type_constraint_list ~ ">" }
-type_constraint_list = _{ type_constraint | type_constraint ~ "," ~ type_constraint_list }
-
+type_constraints     =  { "<" ~ type_constraint_list ~ ">" | type_constraint }
+type_constraint_list = _{ type_constraint ~ ("," ~ type_constraint ~ WHITESPACE* )*  }
 type_constraint      =  { constant }
-constant             =  { literal | compound_identifier }
- 
+
+layout_parameters     =  { "<" ~ layout_parameter_list ~ ">" | layout_parameter }
+layout_parameter_list = _{ layout_parameter ~ ("," ~ layout_parameter ~ WHITESPACE* )*  }
+layout_parameter      = _{ type_constructor | constant }
+
+type_constructor      =  { layout ~ layout_parameters? ~ ( ":" ~ type_constraints )? }
+
+constant_atom        = _{ literal | compound_identifier }
+bin_op               = _{ or_op }
+or_op                =  { "|" }
+constant             =  { constant_atom ~ (bin_op ~ constant_atom)* }
+
 // ######################################
 // Comments and Documentation Comments
 // ######################################
@@ -176,7 +201,12 @@ attribute_arg         =  { identifier ~ "=" ~ constant }
 
 literal         =  { string_literal | numeric_literal | "true" | "false" }
 
-numeric_literal = @{ ("-")? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+dec_literal     = @{ ASCII_DIGIT+ }
+hex_literal     = @{ "0x" ~ ASCII_HEX_DIGIT+ }
+integer_literal =  { hex_literal | dec_literal  }
+float_literal    = @{ ASCII_DIGIT+ ~ "." ~ (ASCII_DIGIT+)? }
+
+numeric_literal = { ("-")? ~ (float_literal | integer_literal)}
 
 // String literals. We follow exactly the same grammar as JSON strings
 // References:
@@ -196,7 +226,7 @@ identifier               = @{ ("_" | ASCII_ALPHANUMERIC)+ }
 compound_identifier      =  { identifier ~ ( "." ~ identifier )* }
 
 // the any part is to not crash on comments next to an open block, see test `parse_comments_without_crasing_or_loosing_info`
-BLOCK_OPEN              = { "{" ~ (!NEWLINE ~ ANY)* ~ NEWLINE }
+BLOCK_OPEN              = { "{" }
 BLOCK_CLOSE             = { "}" }
 
 PARENT_OPEN             = { "(" }
@@ -206,7 +236,7 @@ CATCH_ALL               = { (!NEWLINE ~ ANY)+ ~ NEWLINE? }
 BLOCK_LEVEL_CATCH_ALL   = { !BLOCK_CLOSE ~ CATCH_ALL }
 
 LIBRARY_KEYWORD  = _{ "library" }
-IMPORT_KEYWORD   = _{ "import" }
+USING_KEYWORD    = _{ "using" }
 ALIAS_KEYWORD    = _{ "alias" }
 RESOURCE_KEYWORD = _{ "resource" }
 AS_KEYWORD       = _{ "as" }

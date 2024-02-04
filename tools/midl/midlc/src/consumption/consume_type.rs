@@ -1,12 +1,16 @@
+use std::borrow::Borrow;
 use std::rc::Rc;
 
 use crate::ast::Constant;
 use crate::ast::Reference;
 use crate::ast::Target;
 use crate::compiler::ParsingContext;
+use crate::consumption::consume_bits::consume_bits_layout;
 use crate::consumption::consume_const::consume_constant;
 use crate::consumption::consume_enum::consume_enum_layout;
 use crate::consumption::consume_struct::consume_struct_layout;
+use crate::consumption::consume_table::consume_table_layout;
+use crate::consumption::consume_union::consume_union_layout;
 use crate::consumption::helpers::consume_catch_all;
 
 use super::ast;
@@ -86,17 +90,26 @@ pub(crate) fn consume_type_constructor(
                 layout = Some(ast::Reference::new_synthetic(Target::new(decl)));
             }
             Rule::inline_table_layout => {
-                todo!()
+                let decl = consume_table_layout(current, name_context.clone(), ctx).unwrap();
+                ctx.library.declarations.borrow_mut().insert(decl.clone());
+                layout = Some(ast::Reference::new_synthetic(Target::new(decl)));
             }
             Rule::inline_union_layout => {
-                todo!()
+                let decl = consume_union_layout(current, name_context.clone(), ctx).unwrap();
+                ctx.library.declarations.borrow_mut().insert(decl.clone());
+                layout = Some(ast::Reference::new_synthetic(Target::new(decl)));
+            }
+            Rule::inline_bits_layout => {
+                let decl = consume_bits_layout(current, name_context.clone(), ctx).unwrap();
+                ctx.library.declarations.borrow_mut().insert(decl.clone());
+                layout = Some(ast::Reference::new_synthetic(Target::new(decl)));
             }
             Rule::layout_parameters => {
                 params_span = Some(ast::Span::from_pest(pair_span, ctx.source_id));
                 params.append(&mut consume_layout_parameters(current, name_context, ctx));
             }
             Rule::type_constraints => {
-                todo!()
+                //todo!()
             }
             _ => consume_catch_all(&current, "type constructor"),
         }

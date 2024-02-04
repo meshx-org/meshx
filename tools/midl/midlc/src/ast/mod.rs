@@ -1,6 +1,7 @@
 mod alias;
 mod ast;
 mod attributes;
+mod bits;
 mod comment;
 mod r#const;
 mod constraints;
@@ -30,24 +31,28 @@ pub use ast::*;
 use crate::source_file::SourceId;
 pub use alias::Alias;
 pub use attributes::{Attribute, AttributeArg, AttributeList};
+pub use bits::{Bits, BitsMember};
 pub use comment::Comment;
-pub use constraints::VectorConstraints;
+pub use constraints::{HandleConstraints, NullabilityTrait, TransportSideConstraints, VectorConstraints};
 pub use identifier::{CompoundIdentifier, Identifier};
 pub use name::{name_flat_name, Name, NameProvenance, NamingContext};
 pub use properties::{Nullability, Resourceness, Strictness};
 pub use protocol::{Protocol, ProtocolMethod};
-pub use r#const::{Const, Constant, ConstantTrait, ConstantValue, IdentifierConstant, LiteralConstant};
+pub use r#const::{
+    BinaryOperatorConstant, Const, Constant, ConstantOp, ConstantTrait, ConstantValue, ConstantValueKind,
+    IdentifierConstant, LiteralConstant,
+};
 pub use r#enum::{Enum, EnumMember};
 pub use r#struct::{Struct, StructMember};
 pub use reference::{Reference, ReferenceKey, ReferenceState, Target};
 pub use resource::{Resource, ResourceProperty};
 pub use span::Span;
-pub use table::{Table, TableMember, TableMemberUsed};
-pub use traits::{Decl, TypeDecl, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
+pub use table::{Table, TableMember};
+pub use traits::{Decl, WithAttributes, WithDocumentation, WithIdentifier, WithName, WithSpan};
 pub use type_constructor::{
-    IdentifierType, InternalSubtype, InternalType, LayoutConstraints, LayoutParameter, LayoutParameterList,
-    LiteralLayoutParameter, PrimitiveSubtype, PrimitiveType, StringType, Type, TypeConstructor, TypeLayoutParameter,
-    VectorType,
+    ArrayType, BoxType, HandleType, IdentifierType, InternalSubtype, InternalType, LayoutConstraints, LayoutParameter,
+    LayoutParameterList, LiteralLayoutParameter, PrimitiveSubtype, PrimitiveType, StringType, TransportSide,
+    TransportSideType, Type, TypeConstructor, TypeLayoutParameter, UntypedNumericType, VectorType,
 };
 pub use union::{Union, UnionMember, UnionMemberUsed};
 pub use versioning_types::{Availability, AvailabilityInitArgs, Platform, Version, VersionRange, VersionSelection};
@@ -63,19 +68,20 @@ pub enum Element {
     Protocol { inner: Rc<RefCell<Protocol>> },
     Const { inner: Rc<RefCell<Const>> },
     Table { inner: Rc<RefCell<Table>> },
-    Bits,
-    Resource,
+    Bits { inner: Rc<RefCell<Bits>> },
+    Resource { inner: Rc<RefCell<Resource>> },
     NewType,
     Overlay,
 
     // Elements that are not declarations
     StructMember { inner: Rc<RefCell<StructMember>> },
     EnumMember { inner: Rc<RefCell<EnumMember>> },
+    BitsMember { inner: Rc<RefCell<BitsMember>> },
     UnionMember { inner: Rc<RefCell<UnionMember>> },
     TableMember { inner: Rc<RefCell<TableMember>> },
     ProtocolMethod { inner: Rc<RefCell<ProtocolMethod>> },
+    ResourceProperty { inner: Rc<RefCell<ResourceProperty>> },
 
-    ResourceProperty,
     Library,
 }
 
@@ -95,22 +101,34 @@ impl Element {
             Element::Enum { inner } => Some(Declaration::Enum { decl: inner.clone() }),
             Element::Union { inner } => Some(Declaration::Union { decl: inner.clone() }),
             Element::Table { inner } => Some(Declaration::Table { decl: inner.clone() }),
-            Element::Bits => Some(Declaration::Bits),
+            Element::Alias { inner } => Some(Declaration::Alias { decl: inner.clone() }),
+            Element::Bits { inner } => Some(Declaration::Bits { decl: inner.clone() }),
+            Element::Resource { inner } => Some(Declaration::Resource { decl: inner.clone() }),
             Element::Protocol { inner } => Some(Declaration::Protocol { decl: inner.clone() }),
-            _ => None,
+            _ => todo!("{:?}", self),
         }
     }
 
-    pub fn name(&self) -> Name {
+    pub fn get_name(&self) -> Option<String> {
         match self {
-            Element::Const { inner } => inner.borrow().name.clone(),
-            Element::Builtin { inner } => inner.borrow().name.clone(),
-            Element::Struct { inner } => inner.borrow().name.clone(),
-            Element::Enum { inner } => inner.borrow().name.clone(),
-            Element::Union { inner } => inner.borrow().name.clone(),
-            Element::Table { inner } => inner.borrow().name.clone(),
-            Element::Protocol { inner } => inner.borrow().name.clone(),
-            _ => todo!(),
+            Element::Const { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::Builtin { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::Struct { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::Enum { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::Bits { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::Union { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::Table { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::Protocol { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::Alias { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::Resource { inner } => Some(inner.borrow().name.clone().decl_name()),
+            Element::BitsMember { inner } => {
+                return Some(inner.borrow().name.data.clone());
+            }
+            Element::EnumMember { inner } => {
+                return Some(inner.borrow().name.data.clone());
+            }
+
+            _ => todo!("{:?}", self),
         }
     }
 
@@ -124,11 +142,11 @@ impl Element {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Declaration {
-    Bits,
     NewType,
     Overlay,
     Table { decl: Rc<RefCell<Table>> },
     Union { decl: Rc<RefCell<Union>> },
+    Bits { decl: Rc<RefCell<Bits>> },
     Enum { decl: Rc<RefCell<Enum>> },
     Resource { decl: Rc<RefCell<Resource>> },
     Alias { decl: Rc<RefCell<Alias>> },
@@ -149,9 +167,9 @@ impl Into<Element> for Declaration {
             Declaration::Enum { ref decl } => Element::Enum { inner: decl.clone() },
             Declaration::Table { ref decl } => Element::Table { inner: decl.clone() },
             Declaration::Alias { ref decl } => Element::Alias { inner: decl.clone() },
+            Declaration::Bits { ref decl } => Element::Bits { inner: decl.clone() },
+            Declaration::Resource { ref decl } => Element::Resource { inner: decl.clone() },
 
-            Declaration::Bits => Element::Bits,
-            Declaration::Resource { .. } => Element::Resource,
             Declaration::NewType => Element::NewType,
             Declaration::Overlay => Element::Overlay,
         }
@@ -169,9 +187,9 @@ impl Into<Element> for Rc<Declaration> {
             Declaration::Enum { ref decl } => Element::Enum { inner: decl.clone() },
             Declaration::Union { ref decl } => Element::Union { inner: decl.clone() },
             Declaration::Table { ref decl } => Element::Table { inner: decl.clone() },
+            Declaration::Bits { ref decl } => Element::Bits { inner: decl.clone() },
+            Declaration::Resource { ref decl } => Element::Resource { inner: decl.clone() },
 
-            Declaration::Bits => Element::Bits,
-            Declaration::Resource { .. } => Element::Resource,
             Declaration::NewType => Element::NewType,
             Declaration::Overlay => Element::Overlay,
         }
@@ -190,7 +208,7 @@ impl Declaration {
             Declaration::Resource { decl } => decl.borrow().name().to_owned(),
             Declaration::Union { decl } => decl.borrow().name().to_owned(),
             Declaration::Table { decl } => decl.borrow().name().to_owned(),
-            Declaration::Bits => todo!(),
+            Declaration::Bits { decl } => decl.borrow().name().to_owned(),
             Declaration::NewType => todo!(),
             Declaration::Overlay => todo!(),
         }
@@ -208,7 +226,7 @@ impl Declaration {
             }
             Declaration::Union { .. } => todo!(),
             Declaration::Table { .. } => todo!(),
-            Declaration::Bits => todo!(),
+            Declaration::Bits { .. } => todo!(),
             Declaration::Overlay => todo!(),
             Declaration::NewType => todo!(),
             _ => panic!("not type decl"),
@@ -222,7 +240,7 @@ impl Declaration {
             Declaration::Union { decl } => decl.clone() as Rc<RefCell<dyn Decl>>,
             Declaration::Table { decl } => decl.clone() as Rc<RefCell<dyn Decl>>,
             Declaration::Const { decl } => decl.clone() as Rc<RefCell<dyn Decl>>,
-            Declaration::Bits => todo!(),
+            Declaration::Bits { decl } => decl.clone() as Rc<RefCell<dyn Decl>>,
             Declaration::Overlay => todo!(),
             Declaration::NewType => todo!(),
             Declaration::Resource { .. } => todo!(),
@@ -239,12 +257,12 @@ impl Declaration {
             Declaration::Enum { decl } => decl.borrow().compiling,
             Declaration::Const { decl } => decl.borrow().compiling,
             Declaration::Struct { decl } => decl.borrow().compiling,
-            Declaration::Table { .. } => todo!(),
+            Declaration::Table { decl } => decl.borrow().compiling,
+            Declaration::Alias { decl } => decl.borrow().compiling,
+            Declaration::Protocol { decl } => decl.borrow().compiling,
+            Declaration::Bits { decl } => decl.borrow().compiling,
             Declaration::Resource { .. } => todo!(),
-            Declaration::Alias { .. } => todo!(),
-            Declaration::Protocol { .. } => todo!(),
             Declaration::Builtin { .. } => todo!(),
-            Declaration::Bits => todo!(),
             Declaration::NewType => todo!(),
             Declaration::Overlay => todo!(),
         }
@@ -256,12 +274,12 @@ impl Declaration {
             Declaration::Enum { decl } => decl.borrow().compiled,
             Declaration::Const { decl } => decl.borrow().compiled,
             Declaration::Struct { decl } => decl.borrow().compiled,
-            Declaration::Table { .. } => todo!(),
-            Declaration::Resource { .. } => todo!(),
-            Declaration::Alias { .. } => todo!(),
-            Declaration::Protocol { .. } => todo!(),
+            Declaration::Table { decl } => decl.borrow().compiled,
+            Declaration::Alias { decl } => decl.borrow().compiled,
+            Declaration::Protocol { decl } => decl.borrow().compiled,
+            Declaration::Bits { decl } => decl.borrow().compiled,
+            Declaration::Resource { decl } => decl.borrow().compiled,
             Declaration::Builtin { .. } => todo!(),
-            Declaration::Bits => todo!(),
             Declaration::NewType => todo!(),
             Declaration::Overlay => todo!(),
         }
@@ -275,10 +293,10 @@ impl Declaration {
             Declaration::Struct { decl } => decl.borrow_mut().compiling = val,
             Declaration::Resource { decl } => decl.borrow_mut().compiling = val,
             Declaration::Protocol { decl } => decl.borrow_mut().compiling = val,
-            Declaration::Table { .. } => todo!(),
-            Declaration::Alias { .. } => todo!(),
+            Declaration::Alias { decl } => decl.borrow_mut().compiling = val,
+            Declaration::Table { decl } => decl.borrow_mut().compiling = val,
+            Declaration::Bits { decl } => decl.borrow_mut().compiling = val,
             Declaration::Builtin { .. } => todo!(),
-            Declaration::Bits => todo!(),
             Declaration::NewType => todo!(),
             Declaration::Overlay => todo!(),
         }
@@ -292,10 +310,10 @@ impl Declaration {
             Declaration::Struct { decl } => decl.borrow_mut().compiled = val,
             Declaration::Resource { decl } => decl.borrow_mut().compiled = val,
             Declaration::Protocol { decl } => decl.borrow_mut().compiled = val,
-            Declaration::Table { .. } => todo!(),
-            Declaration::Alias { .. } => todo!(),
+            Declaration::Alias { decl } => decl.borrow_mut().compiled = val,
+            Declaration::Table { decl } => decl.borrow_mut().compiled = val,
+            Declaration::Bits { decl } => decl.borrow_mut().compiled = val,
             Declaration::Builtin { .. } => todo!(),
-            Declaration::Bits => todo!(),
             Declaration::NewType => todo!(),
             Declaration::Overlay => todo!(),
         }
@@ -336,11 +354,15 @@ impl Declaration {
                     visitor(Element::TableMember { inner: member.clone() });
                 }
             }
+            Declaration::Bits { decl } => {
+                for (_, member) in decl.borrow().iter_members() {
+                    visitor(Element::BitsMember { inner: member.clone() });
+                }
+            }
             Declaration::Const { .. } => {}
             Declaration::Builtin { .. } => {}
             Declaration::Alias { .. } => {}
             Declaration::Resource { .. } => {}
-            Declaration::Bits => todo!(),
             Declaration::NewType => todo!(),
             Declaration::Overlay => todo!(),
         };
@@ -417,6 +439,7 @@ impl WithName for Builtin {
 pub struct Declarations {
     pub structs: Vec<Declaration>,
     pub enums: Vec<Declaration>,
+    pub bits: Vec<Declaration>,
     pub unions: Vec<Declaration>,
     pub tables: Vec<Declaration>,
     pub protocols: Vec<Declaration>,
@@ -459,7 +482,7 @@ impl Declarations {
             Declaration::Resource { .. } => store_decl(decl, all_ref, &mut self.resources),
             Declaration::Union { .. } => store_decl(decl, all_ref, &mut self.unions),
             Declaration::Table { .. } => store_decl(decl, all_ref, &mut self.tables),
-            Declaration::Bits => todo!(),
+            Declaration::Bits { .. } => store_decl(decl, all_ref, &mut self.bits),
             Declaration::NewType => todo!(),
             Declaration::Overlay => todo!(),
         }
@@ -629,7 +652,7 @@ impl Library {
         let library = Rc::new(library);
 
         let insert = |name: &str, id: BuiltinIdentity| {
-            let decl = Builtin::new(id, Name::create_intrinsic(library.clone(), name));
+            let decl = Builtin::new(id, Name::create_intrinsic(Some(library.clone()), name));
 
             library.declarations.borrow_mut().insert(Declaration::Builtin {
                 decl: Rc::new(RefCell::new(decl)),
@@ -703,6 +726,10 @@ pub struct UnionId(pub u32);
 
 /// An opaque identifier for a generator block in a library.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct BitsId(pub u32);
+
+/// An opaque identifier for a generator block in a library.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TableId(pub u32);
 
 /// An opaque identifier for a generator block in a library.
@@ -723,6 +750,7 @@ pub enum DeclarationId {
     Struct(StructId),
     Enum(EnumId),
     Union(UnionId),
+    Bits(BitsId),
     Table(TableId),
     Builtin(BuiltinId),
 }
@@ -736,6 +764,7 @@ impl std::ops::Index<DeclarationId> for Declarations {
             DeclarationId::Struct(StructId(idx)) => &self.structs[idx as usize],
             DeclarationId::Enum(EnumId(idx)) => &self.enums[idx as usize],
             DeclarationId::Union(UnionId(idx)) => &self.unions[idx as usize],
+            DeclarationId::Bits(BitsId(idx)) => &self.bits[idx as usize],
             DeclarationId::Table(TableId(idx)) => &self.tables[idx as usize],
             DeclarationId::Const(ConstId(idx)) => &self.consts[idx as usize],
             DeclarationId::Import(ImportId(idx)) => &self.imports[idx as usize],
@@ -753,7 +782,7 @@ fn top_idx_to_top_id(top_idx: usize, decl: &Declaration) -> DeclarationId {
         Declaration::Builtin { .. } => DeclarationId::Builtin(BuiltinId(top_idx as u32)),
         Declaration::Union { .. } => DeclarationId::Union(UnionId(top_idx as u32)),
         Declaration::Table { .. } => DeclarationId::Table(TableId(top_idx as u32)),
-        Declaration::Bits => todo!(),
+        Declaration::Bits { .. } => DeclarationId::Bits(BitsId(top_idx as u32)),
         Declaration::Alias { .. } => todo!(),
         Declaration::Resource { .. } => todo!(),
         Declaration::NewType => todo!(),

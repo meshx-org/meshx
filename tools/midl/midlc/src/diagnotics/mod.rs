@@ -8,6 +8,7 @@ pub(crate) use error::{DiagnosticsError, Error};
 pub(crate) use pretty_print::{pretty_print_error_text, DiagnosticColorer};
 pub(crate) use warning::DiagnosticsWarning;
 
+#[derive(Debug)]
 pub(crate) struct Counts<'d> {
     diagnostics: &'d Diagnostics,
     num_errors: usize,

@@ -1,0 +1,10 @@
+[package]
+authors = ["Roland Sz. Kovács <Roland.Szarka-Kovacs@meshx.co>"]
+edition = "2021"
+name = "meshx-fs"
+version = "0.1.0"
+
+[dependencies]
+futures="0.3"
+
+[dev-dependencies]

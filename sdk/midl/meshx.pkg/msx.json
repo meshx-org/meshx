@@ -2,8 +2,9 @@
     "name": "meshx.pkg",
     "bindings": ["rust"],
     "include": ["**/*.midl"],
-    "exclude": ["excluded.midl"],
+    "exclude": [],
     "references": [
-        { "path": "../fx" }
+        { "path": "../fx" },
+        { "path": "../meshx.io" }
     ]
 }

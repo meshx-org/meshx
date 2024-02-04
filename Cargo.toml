@@ -28,6 +28,7 @@ members = [
   "tools/midl/midlgen_ts",
   "tools/midl/midlgen_rust",
   "src/sys/pkg/lib/package-tool",
+  "src/sys/pkg/lib/meshx-repo",
   "src/lib/meshx-url",
   "src/sys/pkg/bin/package-tool",
 ]

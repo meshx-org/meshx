@@ -21,6 +21,18 @@ impl<'c, 'd> TypeResolver<'c, 'd> {
         type_ctor.r#type.is_some()
     }
 
+    pub fn get_decl_cycle(&self, decl: &mut ast::Declaration) -> Option<Vec<ast::Declaration>> {
+        self.compile_step.get_decl_cycle(decl)
+    }
+
+    pub fn resolve_param_as_size(
+        &self,
+        layout: &ast::Reference,
+        param: &ast::LayoutParameter,
+    ) -> Result<ast::ConstantValue, ()> {
+        Err(())
+    }
+
     pub fn resolve_param_as_type(
         &self,
         layout: &ast::Reference,

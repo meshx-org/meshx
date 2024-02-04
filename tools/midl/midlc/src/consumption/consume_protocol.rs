@@ -1,3 +1,4 @@
+use core::panic;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -7,34 +8,77 @@ use super::{consume_identifier, identifier_type_for_decl};
 use super::{helpers::Pair, Rule};
 
 use crate::ast::{self, Name, Span, TypeConstructor};
-use crate::ast::{CompoundIdentifier, Declaration};
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_attribute_list;
 use crate::consumption::consume_comments::{consume_comment_block, consume_trailing_comment};
 use crate::consumption::consume_type::consume_type_constructor;
-use crate::consumption::helpers::consume_ordinal64;
 use crate::diagnotics::DiagnosticsError;
 
 fn consume_parameter_list(
     pair: Pair<'_>,
-    name_context: Rc<ast::NamingContext>,
+    name_context: &Rc<ast::NamingContext>,
+    is_request_or_response: bool,
     ctx: &mut ParsingContext<'_>,
-) -> TypeConstructor {
+) -> Option<TypeConstructor> {
     assert!(pair.as_rule() == Rule::parameter_list);
 
     let mut maybe_type_ctor = None;
+    let span = pair.as_span();
+    let param_list_span = ast::Span::from_pest(span, ctx.source_id);
 
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::PARENT_OPEN | Rule::PARENT_CLOSE => {}
             Rule::type_constructor => {
-                maybe_type_ctor = Some(consume_type_constructor(current, &name_context, ctx));
+                println!(
+                    "to_name:   {:?} {:?}",
+                    ctx.library.arbitrary_name_span.borrow().as_ref().unwrap().data,
+                    name_context
+                        .clone()
+                        .to_name(ctx.library.clone(), ast::Span::empty())
+                        .decl_name()
+                );
+
+                maybe_type_ctor = Some(consume_type_constructor(current, name_context, ctx));
             }
             _ => consume_catch_all(&current, "parameter list"),
         }
     }
 
-    maybe_type_ctor.unwrap()
+    if let Some(type_ctor) = maybe_type_ctor {
+        Some(type_ctor)
+    } else {
+        // Empty request or response, like `Foo()` or `Foo(...) -> ()`:
+        if is_request_or_response {
+            // Nothing to do.
+            return None;
+        }
+
+        // We have an empty success variant, like `Foo(...) -> () error uint32`.
+        // Synthesize an empty struct for the result union.
+        let empty_struct = Rc::new(RefCell::new(ast::Struct {
+            documentation: None,
+            span: Span::empty(),
+            attributes: ast::AttributeList(vec![]),
+            name: ast::Name::create_anonymous(
+                ctx.library.clone(),
+                param_list_span,
+                name_context.clone(),
+                ast::NameProvenance::GeneratedEmptySuccessStruct,
+            ),
+            members: vec![],
+            // resourceness: ast::Resourceness::Value,
+            compiled: false,
+            compiling: false,
+            recursive: false,
+        }));
+
+        let empty_struct_decl = ast::Declaration::Struct { decl: empty_struct };
+
+        // let empty_struct_decl = empty_struct.get();
+        ctx.library.declarations.borrow_mut().insert(empty_struct_decl.clone());
+        return Some(identifier_type_for_decl(empty_struct_decl));
+    }
 }
 
 fn consume_protocol_request() -> Option<TypeConstructor> {
@@ -74,7 +118,7 @@ fn create_method_result(
         },
         maybe_used: Some(ast::UnionMemberUsed {
             name: success_variant_context.name(),
-            type_ctor: success_variant_ctor,
+            type_ctor: success_variant_ctor.clone(),
         }),
         span: ast::Span::empty(),
     })));
@@ -161,9 +205,6 @@ fn create_method_result(
 
     ctx.library.declarations.borrow_mut().insert(result_decl.clone());
 
-    //if (!RegisterDecl(std::move(union_decl)))
-    //return false;
-
     identifier_type_for_decl(result_decl)
 }
 
@@ -171,7 +212,7 @@ fn consume_protocol_method(
     pair: Pair<'_>,
     protocol_name: Name,
     block_comment: Option<Pair<'_>>,
-    protocol_context: Rc<ast::NamingContext>,
+    protocol_context: &Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::ProtocolMethod, DiagnosticsError> {
     let pair_span = pair.as_span();
@@ -217,13 +258,18 @@ fn consume_protocol_method(
             Rule::protocol_request => {
                 let protocol_context = protocol_context.clone();
 
-                maybe_request = Some(consume_parameter_list(
+                maybe_request = consume_parameter_list(
                     current.into_inner().next().unwrap(),
-                    protocol_context.enter_request(method_name.clone().unwrap()),
+                    &protocol_context.enter_request(method_name.clone().unwrap()),
+                    true,
                     ctx,
-                ));
+                );
             }
             Rule::protocol_response => {
+                let mut inner = current.into_inner();
+                let param_list_token = inner.next().unwrap();
+                let optional_error_token = inner.next();
+
                 let protocol_context = protocol_context.clone();
 
                 // has_framework_error is true for flexible two-way methods. We already
@@ -231,12 +277,8 @@ fn consume_protocol_method(
                 // two-way method or an event, we check has_request here.
                 let has_framework_error = has_request && strictness == ast::Strictness::Flexible;
 
-                let mut inner = current.into_inner();
-                let param_list_token = inner.next().unwrap();
-                let optional_error_token = inner.next();
-
                 let response_context = if has_request {
-                    protocol_context.enter_response(method_name.as_ref().unwrap().clone())
+                    protocol_context.enter_response(method_name.clone().unwrap())
                 } else {
                     protocol_context.enter_event(method_name.as_ref().unwrap().clone())
                 };
@@ -292,7 +334,7 @@ fn consume_protocol_method(
                     framework_err_variant_context =
                         response_context.enter_member(ast::Span::new_raw("framework_err", ctx.source_id));
 
-                    let result_payload = consume_parameter_list(param_list_token, success_variant_context.clone(), ctx);
+                    let result_payload = consume_parameter_list(param_list_token, &success_variant_context, false, ctx);
 
                     // ZX_ASSERT_MSG(err_variant_context != nullptr && framework_err_variant_context != nullptr, "error type contexts should have been computed");
 
@@ -304,14 +346,14 @@ fn consume_protocol_method(
                         has_framework_error,
                         response_span,
                         optional_error_token,
-                        result_payload,
+                        result_payload.unwrap(),
                         ctx,
                     );
 
                     maybe_response = Some(response_payload);
                 } else {
-                    let response_payload = consume_parameter_list(param_list_token, response_context, ctx);
-                    maybe_response = Some(response_payload);
+                    let response_payload = consume_parameter_list(param_list_token, &response_context, true, ctx);
+                    maybe_response = Some(response_payload.unwrap());
                 }
             }
             Rule::trailing_comment => {
@@ -356,7 +398,7 @@ pub(crate) fn consume_protocol_declaration(
     let mut pending_field_comment = None;
     let mut methods = Vec::new();
     let mut attributes = None;
-    let mut composes = Vec::new();
+    let composes = Vec::new();
 
     for current in pair.into_inner() {
         match current.as_rule() {
@@ -379,7 +421,7 @@ pub(crate) fn consume_protocol_declaration(
                     current,
                     name.as_ref().unwrap().clone(),
                     pending_field_comment.take(),
-                    name_context,
+                    &name_context,
                     ctx,
                 ) {
                     Ok(method) => {

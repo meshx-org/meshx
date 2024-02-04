@@ -1,4 +1,4 @@
-import { logger, ExecutorContext, Tr } from "@nrwl/devkit"
+import { logger, ExecutorContext } from "@nrwl/devkit"
 import { exec } from "child_process"
 import * as path from "path"
 

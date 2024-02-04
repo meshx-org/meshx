@@ -1,7 +1,7 @@
 {
     "name": "meshx.io",
-    "bindings": [],
+    "bindings": ["rust"],
     "exclude": [],
     "include": ["*.midl"],
-    "references": [{ "path": "../fx" }]
+    "references": [{ "path": "../fx" }, { "path": "../meshx.unknown" }]
 }

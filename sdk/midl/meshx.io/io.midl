@@ -1,9 +1,10 @@
-// Copyright 2018 The Fuchsia Authors. All rights reserved.
+// Copyright 2019 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-library meshx.io
+@available(added=7)
+library meshx.io;
 
-import fx
+using fx;
 
 /// The type for the name of a node, i.e. a single path component.
 /// E.g. `foo`
@@ -18,10 +19,10 @@ import fx
 /// * It cannot be "." (single dot).
 /// * It cannot contain "/".
 /// * It cannot contain embedded NUL.
-alias Name = string:MAX_NAME_LENGTH
+alias Name = string:MAX_NAME_LENGTH;
 
 /// The maximum length, in bytes, of a single filesystem component.
-const MAX_NAME_LENGTH uint64 = 255
+const MAX_NAME_LENGTH uint64 = 255;
 
 /// A path is a string of one or more components, separated by "/".
 /// E.g. `foo/bar/baz`
@@ -39,14 +40,14 @@ const MAX_NAME_LENGTH uint64 = 255
 /// Paths should be transformed into their canonical forms at client side.
 /// For example, a client should convert `"foo/bar/.././baz/"` to `"foo/baz"`
 /// before using it as a path.
-alias Path = string:MAX_PATH_LENGTH
+alias Path = string:MAX_PATH_LENGTH;
 
 /// The maximum length, in bytes, of a filesystem path.
-const MAX_PATH_LENGTH uint64 = 4095
+const MAX_PATH_LENGTH uint64 = 4095;
 
 /// The type to identify a connection to a node.
 /// It represents a capability: a reference to a node with associated rights.
-alias Token = fx.Handle:EVENT
+alias Token = fx.Handle:EVENT;
 
 /// The type to identify a node, if the implementation supports some notion of
 /// unique node ID.
@@ -64,4 +65,4 @@ alias Token = fx.Handle:EVENT
 ///
 /// The [`meshx.fs/FilesystemInfo.fs_id`] field may be used to disambiguate
 /// IDs from different backing instances.
-alias Id = uint64
+alias Id = uint64;

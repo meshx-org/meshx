@@ -33,8 +33,8 @@ fn consume_enum_member(
             Rule::constant => {
                 member_value = Some(consume_constant(current, ctx));
             }
+            Rule::block_attribute_list => {},
             Rule::inline_attribute_list => {}
-
             Rule::trailing_comment => {
                 comment = match (comment, consume_trailing_comment(current)) {
                     (c, None) | (None, c) => c,
@@ -77,7 +77,7 @@ pub(crate) fn consume_enum_layout(
             Rule::type_constructor => {
                 subtype_ctor = Some(consume_type_constructor(current, &name_context, ctx));
             }
-            Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
+            Rule::inline_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::value_layout_member => {
                 let name_context = name_context.clone();
 
@@ -87,6 +87,9 @@ pub(crate) fn consume_enum_layout(
                     }
                     Err(err) => ctx.diagnostics.push_error(err),
                 }
+            }
+            Rule::layout_subtype => {
+                // TODO: todo!() 
             }
             Rule::declaration_modifiers => {}
             Rule::comment_block => pending_field_comment = Some(current),
@@ -114,49 +117,3 @@ pub(crate) fn consume_enum_layout(
     }
     .into())
 }
-
-/*pub(crate) fn parse_struct(token: Pair<'_>, doc_comment: Option<Pair<'_>>, diagnostics: &mut Diagnostics) -> Model {
-    assert!(token.as_rule() == Rule::constant);
-
-    let pair_span = pair.as_span();
-    let mut name: Option<Identifier> = None;
-    let mut attributes: Vec<Attribute> = Vec::new();
-    let mut fields: Vec<Field> = Vec::new();
-    let mut pending_field_comment: Option<Pair<'_>> = None;
-
-    for current in pair.into_inner() {
-        match current.as_rule() {
-            Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
-            Rule::identifier => name = Some(current.into()),
-            // Rule::block_attribute => attributes.push(parse_attribute(current, diagnostics)),
-            Rule::field_declaration => match parse_field(
-                &name.as_ref().unwrap().value,
-                "model",
-                current,
-                pending_field_comment.take(),
-                diagnostics,
-            ) {
-                Ok(field) => fields.push(field),
-                Err(err) => diagnostics.push_error(err),
-            },
-            Rule::comment_block => pending_field_comment = Some(current),
-            Rule::BLOCK_LEVEL_CATCH_ALL => diagnostics.push_error(DiagnosticsError::new_validation_error(
-                "This line is not a valid field or attribute definition.",
-                current.as_span().into(),
-            )),
-            _ => parsing_catch_all(&current, "struct"),
-        }
-    }
-
-    match name {
-        Some(name) => Model {
-            name,
-            fields,
-            attributes,
-            documentation: doc_comment.and_then(parse_comment_block),
-            is_view: false,
-            span: Span::from(pair_span),
-        },
-        _ => panic!("Encountered impossible model declaration during parsing",),
-    }
-}*/

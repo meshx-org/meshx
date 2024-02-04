@@ -1,0 +1,42 @@
+// Copyright 2022 The Fuchsia Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+@available(added=9)
+library meshx.unknown;
+
+using fx;
+
+/// Provides a means of duplicating a connection.
+///
+/// See the composing protocol's documentation for a description of
+/// connection-scoped state, if any.
+closed protocol Cloneable {
+    @selector("Clone")
+    strict Clone2(resource struct {
+        request server_end:Cloneable;
+    });
+};
+
+/// Provides a means of synchronously closing a connection.
+closed protocol Closeable {
+    /// Terminates the connection.
+    ///
+    /// After calling `Close`, the client must not send any other requests.
+    ///
+    /// Servers, after sending the status response, should close the connection
+    /// regardless of status and without sending an epitaph.
+    ///
+    /// Closing the client end of the channel should be semantically equivalent
+    /// to calling `Close` without knowing when the close has completed or its
+    /// status.
+    @selector("meshx.io/Node.Close")
+    strict Close() -> () error fx.Status;
+};
+
+/// Provides a means of identifying a type-erased protocol.
+closed protocol Queryable {
+    strict Query() -> (struct {
+        /// Identifies the underlying protocol.
+        protocol vector<uint8>:MAX;
+    });
+};

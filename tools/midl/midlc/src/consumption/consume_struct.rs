@@ -14,7 +14,7 @@ use crate::diagnotics::DiagnosticsError;
 fn consume_struct_member(
     pair: Pair<'_>,
     block_comment: Option<Pair<'_>>,
-    name_context: Rc<ast::NamingContext>,
+    name_context: &Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> Result<ast::StructMember, DiagnosticsError> {
     debug_assert!(pair.as_rule() == Rule::struct_layout_member);
@@ -28,8 +28,16 @@ fn consume_struct_member(
     for current in pair.into_inner() {
         match current.as_rule() {
             Rule::identifier => name = Some(consume_identifier(&current, ctx)),
-            Rule::type_constructor => type_ctor = Some(consume_type_constructor(current, &name_context, ctx)),
-            Rule::inline_attribute_list => {}
+            Rule::type_constructor => {
+                let name_context = name_context.clone();
+
+                type_ctor = Some(consume_type_constructor(
+                    current,
+                    &name_context.enter_member(name.as_ref().unwrap().clone()),
+                    ctx,
+                ))
+            }
+            Rule::block_attribute_list => {}
             Rule::trailing_comment => {
                 comment = match (comment, consume_trailing_comment(current)) {
                     (c, None) | (None, c) => c,
@@ -72,9 +80,9 @@ pub(crate) fn consume_struct_layout(
     for current in token.into_inner() {
         match current.as_rule() {
             Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
-            Rule::block_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
+            Rule::inline_attribute_list => { /*attributes.push(parse_attribute(current, diagnostics)) */ }
             Rule::struct_layout_member => {
-                match consume_struct_member(current, pending_field_comment.take(), name_context.clone(), ctx) {
+                match consume_struct_member(current, pending_field_comment.take(), &name_context, ctx) {
                     Ok(member) => {
                         members.push(Rc::new(RefCell::new(member)));
                     }
@@ -103,49 +111,3 @@ pub(crate) fn consume_struct_layout(
     }
     .into())
 }
-
-/*pub(crate) fn parse_struct(token: Pair<'_>, doc_comment: Option<Pair<'_>>, diagnostics: &mut Diagnostics) -> Model {
-    assert!(token.as_rule() == Rule::constant);
-
-    let pair_span = pair.as_span();
-    let mut name: Option<Identifier> = None;
-    let mut attributes: Vec<Attribute> = Vec::new();
-    let mut fields: Vec<Field> = Vec::new();
-    let mut pending_field_comment: Option<Pair<'_>> = None;
-
-    for current in pair.into_inner() {
-        match current.as_rule() {
-            Rule::STRUCT_KEYWORD | Rule::BLOCK_OPEN | Rule::BLOCK_CLOSE => {}
-            Rule::identifier => name = Some(current.into()),
-            // Rule::block_attribute => attributes.push(parse_attribute(current, diagnostics)),
-            Rule::field_declaration => match parse_field(
-                &name.as_ref().unwrap().value,
-                "model",
-                current,
-                pending_field_comment.take(),
-                diagnostics,
-            ) {
-                Ok(field) => fields.push(field),
-                Err(err) => diagnostics.push_error(err),
-            },
-            Rule::comment_block => pending_field_comment = Some(current),
-            Rule::BLOCK_LEVEL_CATCH_ALL => diagnostics.push_error(DiagnosticsError::new_validation_error(
-                "This line is not a valid field or attribute definition.",
-                current.as_span().into(),
-            )),
-            _ => parsing_catch_all(&current, "struct"),
-        }
-    }
-
-    match name {
-        Some(name) => Model {
-            name,
-            fields,
-            attributes,
-            documentation: doc_comment.and_then(parse_comment_block),
-            is_view: false,
-            span: Span::from(pair_span),
-        },
-        _ => panic!("Encountered impossible model declaration during parsing",),
-    }
-}*/

@@ -34,7 +34,7 @@ pub(crate) fn consume_alias_declaration(
                 alias_name = Some(Name::create_sourced(ctx.library.clone(), name_span));
             }
             Rule::type_constructor => {
-                let mut name_context = ast::NamingContext::create(&alias_name.clone().unwrap());
+                let name_context = ast::NamingContext::create(&alias_name.clone().unwrap());
                 type_ctor = Some(consume_type_constructor(current, &name_context, ctx));
             }
             _ => consume_catch_all(&current, "const"),
@@ -47,5 +47,8 @@ pub(crate) fn consume_alias_declaration(
         attributes: attributes.unwrap(),
         documentation: None,
         span: ast::Span::from_pest(pair_span, ctx.source_id),
+        compiled: false,
+        compiling: false,
+         
     })
 }

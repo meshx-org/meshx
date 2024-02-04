@@ -1,62 +1,62 @@
-library fx
+library fx;
 
-const TEST uint8 = 0
+const TEST uint8 = 0;
 
 /// NodeAttributes defines generic information about a filesystem node.
 type NodeAttributes = struct {
     /// Protection bits and node type information describe in 'mode'.
-    mode uint32
+    mode uint32;
     /// A filesystem-unique ID.
-    id uint64
+    id uint64;
     /// Node size, in bytes.
-    content_size uint64
+    content_size uint64;
     /// Space needed to store node (possibly larger than size), in bytes.
-    storage_size uint64
+    storage_size uint64;
     /// Hard link count.
-    link_count uint64
+    link_count uint64;
     /// Time of creation (may be updated manually after creation) in ns since Unix epoch, UTC.
-    creation_time uint64
+    creation_time uint64;
     /// Time of last modification in ns since Unix epoch, UTC.
-    modification_time uint64
-}
+    modification_time uint64;
+};
 
 // Underlying type is assumed to be uint32.
 type Vessel = strict enum {
-    CUP = 0
-    BOWL = 1
-    TUREEN = 2
-    JUG = 3
-}
+    CUP = 0;
+    BOWL = 1;
+    TUREEN = 2;
+    JUG = 3;
+};
 
 type Error = struct {
-    success bool
-}
+    success bool;
+};
 
 /// The result of an operation. A result is either a single number or an
 /// [Error] value.
 type Result = union {
-    1: number float64
-    2: reserved
-    3: reserved
-    4: error Error
-}
+    1: number float64;
+    2: reserved;
+    3: reserved;
+    4: error Error;
+};
 
 type Profile = table {
-    1: locales vector<string>
-    2: calendars vector<string>
-    3: time_zones vector<string>
-}
+    1: locales vector<string>;
+    2: calendars vector<string>;
+    3: time_zones vector<string>;
+};
 
-protocol Test {
+closed protocol Test {
     a_method(struct {
-        a int32
-        b int32
+        a int32;
+        b int32;
     }) -> (struct {
-        sum int32
-    })
+        sum int32;
+    });
 
     b_method(struct {
-        a int32
-        b int32
-    })
-}
+        a int32;
+        b int32;
+    });
+};
