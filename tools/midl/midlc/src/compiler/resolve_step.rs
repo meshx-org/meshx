@@ -24,17 +24,18 @@ struct NodeInfo {
     neighbors: BTreeSet<ast::Element>,
 }
 
-#[derive(Debug)]
-enum ResolveMode {
+#[derive(Debug, Copy, Clone)]
+enum ContextMode {
     // Calls ParseReference and InsertReferenceEdges.
     ParseAndInsert,
     // Calls ResolveReference and ValidateReference.
     ResolveAndValidate,
 }
 
+#[derive(Debug, Clone)]
 struct ResolveContext {
     // What to do when we reach leaves (references).
-    mode: ResolveMode,
+    mode: ContextMode,
 
     /// Used in kParseAndInsert. If true, we call Reference::MarkContextual
     /// instead of Reference::MarkFailed for a single-component reference,
@@ -43,6 +44,22 @@ struct ResolveContext {
 
     /// Element that the reference occurs in.
     enclosing: ast::Element,
+
+    // Used in Resolve. If non-null, we look up contextual names in this enum.
+    // This enables, for example, `fx.Handle:CHANNEL` as a shorthand for
+    // `fx.Handle:fx.ObjType.CHANNEL` (here the enum is `fx.ObjType`).
+    maybe_resource_subtype: Option<Rc<RefCell<ast::Enum>>>,
+}
+
+impl ResolveContext {
+    fn new(mode: ContextMode, enclosing: ast::Element) -> Self {
+        Self {
+            mode,
+            enclosing,
+            allow_contextual: false,
+            maybe_resource_subtype: None,
+        }
+    }
 }
 
 struct Lookup<'a, 'ctx, 'd> {
@@ -193,6 +210,11 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
     pub(crate) fn run(&self) -> bool {
         let checkpoint = self.ctx.diagnostics.checkpoint();
         self.run_impl();
+
+        for (s, d) in &self.ctx.library.declarations.borrow().all {
+            println!("{:?} {:?}", s, d.len());
+        }
+
         checkpoint.no_new_errors()
     }
 
@@ -204,9 +226,10 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             self.visit_element(
                 element.clone(),
                 &ResolveContext {
-                    mode: ResolveMode::ParseAndInsert,
+                    mode: ContextMode::ParseAndInsert,
                     enclosing: element,
                     allow_contextual: false,
+                    maybe_resource_subtype: None,
                 },
             );
         });
@@ -277,9 +300,10 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
         // Resolve all references and validate them.
         self.ctx.library.traverse_elements(&mut |element| {
             let context = ResolveContext {
-                mode: ResolveMode::ResolveAndValidate,
+                mode: ContextMode::ResolveAndValidate,
                 allow_contextual: false,
                 enclosing: element.clone(),
+                maybe_resource_subtype: None,
             };
 
             self.visit_element(element.clone(), &context);
@@ -338,6 +362,7 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             }
             ast::Element::Bits { inner } => {
                 let bits_decl = inner.borrow();
+                println!("bits_, {:?}", bits_decl.clone().subtype_ctor);
                 self.visit_type_constructor(&bits_decl.subtype_ctor, context);
             }
             ast::Element::BitsMember { inner } => {
@@ -357,16 +382,85 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 if let Some(ref used) = table_member.maybe_used {
                     self.visit_type_constructor(&used.type_ctor, context);
                 }
-            },
+            }
             ast::Element::NewType => todo!(),
             ast::Element::Overlay => {}
             ast::Element::Protocol { .. } => {}
-            ast::Element::Table { .. } => {},
+            ast::Element::Table { .. } => {}
             ast::Element::Union { .. } => {}
             ast::Element::Struct { .. } => {}
             ast::Element::Builtin { .. } => {}
 
             _ => todo!(),
+        }
+    }
+
+    /// Returns an augmented context to use when visiting type_ctor's constraints.
+    fn constraint_context(&self, type_ctor: &ast::TypeConstructor, context: &ResolveContext) -> ResolveContext {
+        match context.mode {
+            ContextMode::ParseAndInsert => {
+                // Assume all constraints might be contextual.
+                let mut augmented = ResolveContext::new(ContextMode::ParseAndInsert, context.enclosing.clone());
+                augmented.allow_contextual = true;
+                return augmented;
+            }
+            // Handled below.
+            ContextMode::ResolveAndValidate => {}
+        }
+
+        if !matches!(
+            type_ctor.layout.state.borrow().clone(),
+            ast::ReferenceState::Resolved(_)
+        ) {
+            return context.clone();
+        }
+
+        let target = type_ctor.layout.resolved().unwrap().element();
+
+        if let ast::Element::Resource { inner } = target {
+            let target = inner.borrow();
+
+            let subtype_property = target.lookup_property("subtype");
+
+            println!("target {:?} subt: {:?}", target, subtype_property);
+
+            match subtype_property {
+                Some(subtype_property) => {
+                    let stp = subtype_property.borrow();
+                    let subtype_layout = &stp.type_ctor.layout;
+
+                    // If the resource_definition is in the same library, we might not have
+                    // resolved it yet depending on the element traversal order.
+                    self.resolve_reference(
+                        subtype_layout,
+                        &ResolveContext::new(
+                            ContextMode::ResolveAndValidate,
+                            ast::Element::ResourceProperty {
+                                inner: subtype_property.clone(),
+                            },
+                        ),
+                    );
+
+                    if subtype_layout.is_failed() {
+                        return context.clone();
+                    }
+
+                    let subtype_target = subtype_layout.resolved().unwrap().element();
+
+                    match subtype_target {
+                        ast::Element::Enum { inner } => {
+                            let mut augmented =
+                                ResolveContext::new(ContextMode::ResolveAndValidate, context.enclosing.clone());
+                            augmented.maybe_resource_subtype = Some(inner);
+                            augmented
+                        }
+                        _ => return context.clone(),
+                    }
+                }
+                None => return context.clone(),
+            }
+        } else {
+            return context.clone();
         }
     }
 
@@ -389,6 +483,12 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
                 }
             }
         }
+
+        let constraint_context = self.constraint_context(type_ctor, context);
+
+        for constraint in type_ctor.constraints.items.iter() {
+            self.visit_constant(constraint, &constraint_context);
+        }
     }
 
     fn visit_constant(&self, constant: &ast::Constant, context: &ResolveContext) {
@@ -406,11 +506,11 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
 
     fn visit_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
         match context.mode {
-            ResolveMode::ParseAndInsert => {
+            ContextMode::ParseAndInsert => {
                 self.parse_reference(reference, context);
                 self.insert_reference_edges(reference, context);
             }
-            ResolveMode::ResolveAndValidate => {
+            ContextMode::ResolveAndValidate => {
                 self.resolve_reference(reference, context);
                 self.validate_reference(reference, context);
             }
@@ -636,7 +736,29 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
     }
 
     fn resolve_contextual_reference(&self, reference: &ast::Reference, context: &ResolveContext) {
-        todo!()
+        let name = reference.contextual().unwrap().name;
+
+        let subtype_enum = context.maybe_resource_subtype.clone();
+        if subtype_enum.is_none() {
+            panic!("ErrNameNotFound {:?} {:?}", reference, context);
+            //reporter()->Fail(ErrNameNotFound, ref.span(), name, library()->name);
+            return;
+        }
+
+        let subtype_enum = ast::Declaration::Enum {
+            decl: subtype_enum.unwrap(),
+        };
+
+        let lookup = Lookup::new(self, reference);
+
+        let member = lookup.try_member(subtype_enum.clone(), name.data);
+        if member.is_none() {
+            panic!("ErrNameNotFound");
+            //reporter()->Fail(ErrNameNotFound, ref.span(), name, library()->name);
+            return;
+        }
+
+        reference.resolve_to(ast::Target::new_member(member.unwrap(), subtype_enum));
     }
 
     fn resolve_key_reference(&self, reference: &ast::Reference, context: &ResolveContext) {

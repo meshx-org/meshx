@@ -50,7 +50,7 @@ fn consume_enum_member(
     Ok(ast::EnumMember {
         name: name.unwrap(),
         documentation: None,
-        attributes,
+        attributes: ast::AttributeList(attributes),
         value: member_value.unwrap(),
         span: ast::Span::from_pest(pair_span, ctx.source_id),
     })

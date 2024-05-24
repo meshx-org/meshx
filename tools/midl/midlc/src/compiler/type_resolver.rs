@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use super::compile_step::CompileStep;
 use crate::ast;
 
@@ -30,7 +32,24 @@ impl<'c, 'd> TypeResolver<'c, 'd> {
         layout: &ast::Reference,
         param: &ast::LayoutParameter,
     ) -> Result<ast::ConstantValue, ()> {
-        Err(())
+        Ok(ast::ConstantValue::Uint32(0))
+    }
+
+    pub fn resolve_as_protocol(&self, constant: &ast::Constant) -> Option<Rc<RefCell<ast::Protocol>>> {
+        if let ast::Constant::Identifier(identifier) = constant {
+            let target = identifier.reference.resolved().unwrap().element();
+            if let ast::Element::Protocol { inner } = target {
+                Some(inner)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn resolve_as_optional(&self, constant: &ast::Constant) -> bool {
+        self.compile_step.resolve_as_optional(constant)
     }
 
     pub fn resolve_param_as_type(
@@ -45,6 +64,7 @@ impl<'c, 'd> TypeResolver<'c, 'd> {
             // if there were no errors reported but we couldn't resolve to a type, it must
             // mean that the parameter referred to a non-type, so report a new error here.
             if check.no_new_errors() {
+                panic!("ErrExpectedType");
                 // return reporter().Fail(ErrExpectedType, param.span);
             }
 
@@ -59,7 +79,8 @@ impl<'c, 'd> TypeResolver<'c, 'd> {
             // if there were no errors reported but we couldn't resolve to a type, it must
             // mean that the parameter referred to a non-type, so report a new error here.
             if check.no_new_errors() {
-                // return reporter().Fail(ErrExpectedType, param.span);
+                panic!("ErrExpectedType");
+                //return reporter().Fail(ErrExpectedType, param.span);
             }
 
             // otherwise, there was an error during the type resolution process, so we

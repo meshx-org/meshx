@@ -6,7 +6,6 @@ import * as path from "path"
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Options {
     language: any
-    files: string[]
     outDir: string
     midlJson?: string
     cwd?: string
@@ -88,7 +87,7 @@ async function buildIR(options: Options, context: ExecutorContext): Promise<void
                 env: {
                     CLICOLOR_FORCE: "1",
                     RUST_LOG: "info",
-                    RUST_BACKTRACE: "1"
+                    RUST_BACKTRACE: "full"
                 },
                 cwd: options.cwd ? options.cwd : root,
             },

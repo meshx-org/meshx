@@ -76,9 +76,10 @@ pub(crate) fn consume_constant(pair: Pair<'_>, ctx: &mut ParsingContext<'_>) -> 
                 lhs: Box::new(lhs),
                 op,
                 rhs: Box::new(rhs),
+                span: ast::Span::empty(),
                 constant_value: None,
                 compiled: false,
-            }) 
+            })
         })
         .parse(pair.into_inner());
 

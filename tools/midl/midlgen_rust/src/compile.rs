@@ -204,7 +204,7 @@ impl Compiler {
     }
 
     fn compute_use_midl_struct_copy(&self, typ: midlgen::ir::Type) -> bool {
-        if let midlgen::ir::Type::StringType { nullable, .. } | midlgen::ir::Type::RequestType { nullable, .. } = typ {
+        if let midlgen::ir::Type::StringType { nullable, .. } | midlgen::ir::Type::ServerEnd { nullable, .. } = typ {
             if nullable {
                 return false;
             }
@@ -217,7 +217,7 @@ impl Compiler {
             midlgen::ir::Type::VectorType { .. }
             | midlgen::ir::Type::StringType { .. }
             | midlgen::ir::Type::HandleType { .. }
-            | midlgen::ir::Type::RequestType { .. } => return false,
+            | midlgen::ir::Type::ServerEnd { .. } => return false,
             midlgen::ir::Type::PrimitiveType { primitive_subtype, .. } => {
                 return match primitive_subtype {
                     midlgen::ir::PrimitiveSubtype::Bool
@@ -352,7 +352,9 @@ impl Compiler {
             midlgen::ir::Type::PrimitiveType { .. }
             | midlgen::ir::Type::StringType { .. }
             | midlgen::ir::Type::InternalType { .. } => VALUE_TYPE,
-            midlgen::ir::Type::HandleType { .. } | midlgen::ir::Type::RequestType { .. } => RESOURCE_TYPE,
+            midlgen::ir::Type::HandleType { .. }
+            | midlgen::ir::Type::ServerEnd { .. }
+            | midlgen::ir::Type::ClientEnd { .. } => RESOURCE_TYPE,
             midlgen::ir::Type::ArrayType { element_type, .. }
             | midlgen::ir::Type::StringArray { element_type, .. }
             | midlgen::ir::Type::VectorType { element_type, .. } => self.lookup_resourceness(element_type.as_ref()),
@@ -414,6 +416,15 @@ impl Compiler {
                 t.param = s;
                 t.primitive_subtype = Some(primitive_subtype.clone());
             }
+            midlgen::ir::Type::InternalType { internal_subtype, .. } => match internal_subtype {
+                midlgen::ir::InternalSubtype::FrameworkErr => {
+                    let s = "midl::encoding::FrameworkErr".to_string();
+                    t.midl = s.clone();
+                    t.owned = s.clone();
+                    t.param = s;
+                }
+                _ => panic!("unknown internal subtype"),
+            },
             midlgen::ir::Type::ArrayType {
                 element_type,
                 element_count,
@@ -514,14 +525,27 @@ impl Compiler {
                     t.param = format!("Option<%{}>", t.param);
                 }
             }
-            midlgen::ir::Type::RequestType {
-                request_subtype,
-                nullable,
-                ..
+            midlgen::ir::Type::ClientEnd {
+                identifier, nullable, ..
             } => {
                 let s = format!(
+                    "midl::endpoints::ClientEnd<{}Marker>",
+                    self.compile_decl_identifier(identifier)
+                );
+                t.midl = format!("midl::encoding::Endpoint<{}>", s.clone());
+                t.owned = s.clone();
+                t.param = s;
+
+                if *nullable {
+                    t.midl = format!("midl::encoding::Optional<{}>", t.midl);
+                    t.owned = format!("Option<{}>", t.owned);
+                    t.param = format!("Option<{}>", t.param);
+                }
+            }
+            midlgen::ir::Type::ServerEnd { subtype, nullable, .. } => {
+                let s = format!(
                     "midl::endpoints::ServerEnd<{}Marker>",
-                    self.compile_decl_identifier(request_subtype)
+                    self.compile_decl_identifier(subtype)
                 );
                 t.nullable = *nullable;
                 t.midl = format!("midl::encoding::Endpoint<{}>", s.clone());
@@ -561,7 +585,7 @@ impl Compiler {
                             t.param = format!("&{name}");
                         }
                     }
-                    midlgen::ir::DeclType::ProtocolDecl => {
+                    /*midlgen::ir::DeclType::ProtocolDecl => {
                         let s = format!("midl::endpoints::ClientEnd<{}Marker>", name);
                         t.midl = format!("midl::encoding::Endpoint<{}>", s.clone());
                         t.owned = s.clone();
@@ -572,7 +596,7 @@ impl Compiler {
                             t.owned = format!("Option<{}>", t.owned);
                             t.param = format!("Option<{}>", t.param);
                         }
-                    }
+                    }*/
                     _ => panic!("unexpected type: {:?}", decl_info.r#type),
                 };
             }

@@ -1,7 +1,7 @@
-use midlgen::ir::{self, EncodedCompoundIdentifier, Resourceness};
+use midlgen::ir::{self, EncodedCompoundIdentifier, HandleRights, Resourceness};
 
 use crate::{
-    ast::{self, ConstantTrait},
+    ast::{self, ConstantTrait, NullabilityTrait, ProtocolTrait, WithName},
     compiler, ExperimentalFlags,
 };
 
@@ -192,10 +192,13 @@ impl JSONGenerator {
 
     fn generate_type(&self, value: ast::Type) -> ir::Type {
         match value {
+            ast::Type::Box(r#type) => {
+                self.generate_type(r#type.boxed_type.clone())
+            }
             ast::Type::Vector(r#type) => ir::Type::VectorType {
                 element_type: Box::from(self.generate_type(r#type.element_type.clone())),
                 element_count: Some(r#type.element_size()),
-                nullable: self.generate_nullable(&r#type.constraints.nullabilty()),
+                nullable: self.generate_nullable(&r#type.constraints.nullability()),
             },
             ast::Type::Identifier(ref r#type) => ir::Type::IdentifierType {
                 identifier: self.generate_name(&r#type.name),
@@ -211,7 +214,20 @@ impl JSONGenerator {
 
                 ir::Type::StringType {
                     element_count,
-                    nullable: self.generate_nullable(&r#type.constraints.nullabilty()),
+                    nullable: self.generate_nullable(&r#type.constraints.nullability()),
+                    type_shape_v2: self.generate_type_shape(),
+                }
+            }
+            ast::Type::Handle(r#type) => {
+                //GenerateObjectMember("obj_type", r#type.subtype);
+                //GenerateObjectMember("subtype", r#type.subtype);
+                //GenerateObjectMember("rights", r#type.rights.value);
+                //GenerateObjectMember("nullable", r#type.nullability);
+                //GenerateObjectMember("resource_identifier", NameFlatName(r#type.resource_decl.name));
+                ir::Type::HandleType {
+                    handle_subtype: ir::HandleSubtype::Channel,
+                    handle_rights: ir::HandleRights::READ,
+                    nullable: self.generate_nullable(&r#type.constraints.nullability()),
                     type_shape_v2: self.generate_type_shape(),
                 }
             }
@@ -222,6 +238,7 @@ impl JSONGenerator {
             ast::Type::Primitive(r#type) => ir::Type::PrimitiveType {
                 primitive_subtype: self.generate_primitive_subtype(&r#type.subtype),
             },
+            
             // We treat client_end the same as an IdentifierType of a protocol to avoid changing
             // the JSON IR.
             // TODO(https://fxbug.dev/42149402): clean up client/server end representation in the IR
@@ -230,17 +247,17 @@ impl JSONGenerator {
                 // path is colocated with the parameterized types.
                 assert!(matches!(r#type.end, ast::TransportSide::Client));
 
-                ir::Type::TransportSide {
-                    identifier: self.generate_name(&r#type.name),
+                ir::Type::ClientEnd {
+                    identifier: self.generate_name(r#type.constraints.protocol().unwrap().borrow().name()),
                     protocol_transport: r#type.protocol_transport,
-                    nullable: self.generate_nullable(&r#type.constraints.nullabilty()),
+                    nullable: self.generate_nullable(&r#type.constraints.nullability()),
                 }
             }
             _ => panic!("unsupported type: {:?}", value),
         }
     }
 
-    fn generate_type_and_from_alias(&self, parent_type_kind: TypeKind, value: ast::TypeConstructor) -> ir::Type {
+    fn generate_type_and_from_alias(&self, parent_type_kind: TypeKind, value: ast::TypeConstructor) -> ir::Type {        
         let r#type = value.r#type;
         let r#type = r#type.unwrap();
         // let invocation = value.resolved_params;
@@ -286,7 +303,10 @@ impl JSONGenerator {
                 expression: literal.span().data.clone(),
                 literal: self.generate_literal(literal),
             },
-            ast::Constant::BinaryOperator(_) => todo!(),
+            ast::Constant::BinaryOperator(bin) => ir::Constant::BinaryOperator {
+                value: bin.value().to_string(),
+                expression: bin.span().data.clone(),
+            },
         }
     }
 

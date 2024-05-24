@@ -18,6 +18,27 @@ use super::consume_compound_identifier;
 use super::helpers::Pair;
 use super::Rule;
 
+fn consume_layout_constraints(
+    pair: Pair<'_>,
+    ctx: &mut ParsingContext<'_>,
+) -> Vec<ast::Constant> {
+    debug_assert!(pair.as_rule() == Rule::type_constraints);
+
+    let mut constraints: Vec<ast::Constant> = vec![];
+    
+    for current in pair.into_inner() {
+        match current.as_rule() {
+            Rule::constant => {
+                let constant = consume_constant(current, ctx);
+                constraints.push(constant)
+            }
+            _ => consume_catch_all(&current, "type constraints"),
+        }
+    }
+
+    constraints
+}
+
 fn consume_layout_parameters(
     pair: Pair<'_>,
     name_context: &Rc<ast::NamingContext>,
@@ -70,6 +91,9 @@ pub(crate) fn consume_type_constructor(
     let mut params: Vec<ast::LayoutParameter> = vec![];
     let mut params_span = None;
 
+    let mut constraints: Vec<ast::Constant> = vec![];
+    let mut constraints_span = None;
+
     // TODO: params_signature
     // TODO: constraits_signature
 
@@ -109,7 +133,8 @@ pub(crate) fn consume_type_constructor(
                 params.append(&mut consume_layout_parameters(current, name_context, ctx));
             }
             Rule::type_constraints => {
-                //todo!()
+                constraints_span = Some(ast::Span::from_pest(pair_span, ctx.source_id));
+                constraints.append(&mut consume_layout_constraints(current, ctx));
             }
             _ => consume_catch_all(&current, "type constructor"),
         }
@@ -120,7 +145,10 @@ pub(crate) fn consume_type_constructor(
             items: params,
             span: params_span,
         },
-        constraints: ast::LayoutConstraints {},
+        constraints: ast::LayoutConstraints {
+            items: constraints,
+            span: constraints_span,
+        },
         layout: layout.unwrap(),
         r#type: None,
     }

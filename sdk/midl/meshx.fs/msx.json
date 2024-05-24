@@ -1,0 +1,7 @@
+{
+    "name": "meshx.fs",
+    "bindings": [],
+    "include": ["*.midl"],
+    "exclude": [],
+    "references": []
+}

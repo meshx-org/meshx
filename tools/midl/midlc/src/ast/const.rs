@@ -1,4 +1,5 @@
 use derivative::Derivative;
+use num::ToPrimitive;
 use std::{cell::RefCell, rc::Rc};
 
 use super::{
@@ -40,9 +41,109 @@ pub enum ConstantValue {
     String(String),
 }
 
+fn to_unsigned<T>(kind: ConstantValueKind, val: T, out_val: &mut ConstantValue) -> bool
+where
+    T: num::ToPrimitive,
+{
+    match kind {
+        ConstantValueKind::Float64 => todo!(),
+        ConstantValueKind::Float32 => todo!(),
+        ConstantValueKind::Int8 => todo!(),
+        ConstantValueKind::Int16 => todo!(),
+        ConstantValueKind::Int32 => todo!(),
+        ConstantValueKind::Int64 => todo!(),
+        ConstantValueKind::Uint8 => {
+            if let Some(val) = val.to_u8() {
+                *out_val = ConstantValue::Uint8(val);
+                return true;
+            }
+
+            false
+        }
+        ConstantValueKind::Uint16 => {
+            if let Some(val) = val.to_u16() {
+                *out_val = ConstantValue::Uint16(val);
+                return true;
+            }
+
+            false
+        }
+        ConstantValueKind::Uint32 => {
+            // let val: u32 = val.into();
+
+            if let Some(val) = val.to_u32() {
+                *out_val = ConstantValue::Uint32(val);
+                return true;
+            }
+
+            false
+        }
+        ConstantValueKind::Uint64 => {
+            if let Some(val) = val.to_u64() {
+                *out_val = ConstantValue::Uint64(val);
+                return true;
+            }
+
+            false
+        }
+        ConstantValueKind::Bool => false,
+        ConstantValueKind::String => false,
+    }
+}
+
+impl std::ops::BitOr for ConstantValue {
+    type Output = Self;
+
+    // rhs is the "right-hand side" of the expression `a | b`
+    fn bitor(self, rhs: Self) -> Self::Output {
+        match (self, rhs) {
+            (ConstantValue::Float64(_), ConstantValue::Float64(_)) => panic!(),
+            (ConstantValue::Float32(_), ConstantValue::Float64(_)) => panic!(),
+            (ConstantValue::Int8(lhs), ConstantValue::Int8(rhs)) => ConstantValue::Int8(lhs | rhs),
+            (ConstantValue::Int16(lhs), ConstantValue::Int16(rhs)) => ConstantValue::Int16(lhs | rhs),
+            (ConstantValue::Int32(lhs), ConstantValue::Int32(rhs)) => ConstantValue::Int32(lhs | rhs),
+            (ConstantValue::Int64(lhs), ConstantValue::Int64(rhs)) => ConstantValue::Int64(lhs | rhs),
+            (ConstantValue::Uint8(lhs), ConstantValue::Uint8(rhs)) => ConstantValue::Uint8(lhs | rhs),
+            (ConstantValue::Uint16(lhs), ConstantValue::Uint16(rhs)) => ConstantValue::Uint16(lhs | rhs),
+            (ConstantValue::Uint32(lhs), ConstantValue::Uint32(rhs)) => ConstantValue::Uint32(lhs | rhs),
+            (ConstantValue::Uint64(lhs), ConstantValue::Uint64(rhs)) => ConstantValue::Uint64(lhs | rhs),
+            (ConstantValue::Bool(lhs), ConstantValue::Bool(rhs)) => ConstantValue::Bool(lhs | rhs),
+            (ConstantValue::String(_), ConstantValue::String(_)) => todo!(),
+            _ => panic!(""),
+        }
+    }
+}
+
 impl ConstantValue {
-    pub fn convert(&self, kind: ConstantValueKind, val: &mut ConstantValue) -> bool {
-        false
+    pub fn convert(&self, kind: ConstantValueKind, out_val: &mut ConstantValue) -> bool {
+        //let checked_value = safemath::CheckedNumeric<ValueType>(self.value);
+
+        match self {
+            ConstantValue::Float64(value) => todo!(),
+            ConstantValue::Float32(value) => todo!(),
+            ConstantValue::Int8(value) => todo!(),
+            ConstantValue::Int16(value) => todo!(),
+            ConstantValue::Int32(value) => todo!(),
+            ConstantValue::Int64(value) => todo!(),
+            ConstantValue::Uint8(value) => to_unsigned::<u8>(kind, *value, out_val),
+            ConstantValue::Uint16(value) => to_unsigned::<u16>(kind, *value, out_val),
+            ConstantValue::Uint32(value) => to_unsigned::<u32>(kind, *value, out_val),
+            ConstantValue::Uint64(value) => to_unsigned::<u64>(kind, *value, out_val),
+            ConstantValue::Bool(value) => match kind {
+                ConstantValueKind::Bool => {
+                    *out_val = ConstantValue::Bool(*value);
+                    return true;
+                }
+                _ => false,
+            },
+            ConstantValue::String(value) => match kind {
+                ConstantValueKind::String => {
+                    *out_val = ConstantValue::String(value.clone());
+                    return true;
+                }
+                _ => false,
+            },
+        }
     }
 }
 
@@ -233,6 +334,7 @@ impl ConstantTrait for LiteralConstant {
     fn resolve_to(&mut self, value: ConstantValue, r#type: Type) {
         assert!(!self.is_resolved(), "constants should only be resolved once");
         self.constant_value = Some(value);
+        // self.r#type = r#type;
     }
 }
 
@@ -252,6 +354,8 @@ pub struct BinaryOperatorConstant {
     #[derivative(Ord = "ignore")]
     pub(crate) constant_value: Option<ConstantValue>,
 
+    pub(crate) span: Span,
+
     /// compiled tracks whether we attempted to resolve this constant, to avoid
     /// resolving twice a constant which cannot be resolved.
     pub compiled: bool,
@@ -259,19 +363,22 @@ pub struct BinaryOperatorConstant {
 
 impl ConstantTrait for BinaryOperatorConstant {
     fn value(&self) -> ConstantValue {
-        todo!()
+        assert!(self.is_resolved(), "accessing the value of an unresolved Constant: %s",);
+        self.constant_value.as_ref().expect("assert made").clone()
     }
 
     fn span(&self) -> &Span {
-        todo!()
+        &self.span
     }
 
     fn is_resolved(&self) -> bool {
-        todo!()
+        self.constant_value.is_some()
     }
 
     fn resolve_to(&mut self, value: ConstantValue, r#type: Type) {
-        todo!()
+        assert!(!self.is_resolved(), "constants should only be resolved once");
+        self.constant_value = Some(value);
+        // self.r#type = r#type;
     }
 }
 
@@ -289,7 +396,6 @@ pub enum Constant {
 
 impl Constant {
     pub fn is_resolved(&self) -> bool {
-        log::warn!("is_resolved: {:?}", self);
         match self {
             Constant::Identifier(c) => c.constant_value.is_some(),
             Constant::Literal(c) => c.constant_value.is_some(),

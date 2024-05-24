@@ -5,6 +5,8 @@
     "exclude": [],
     "references": [
         { "path": "../fx" },
-        { "path": "../meshx.io" }
+        { "path": "../meshx.io" },
+        { "path": "../meshx.url" },
+        { "path": "../meshx.fs" }
     ]
 }

@@ -9,18 +9,27 @@ export type Options = {
 }
 
 async function buildLibrary(options: Options, context: ExecutorContext): Promise<void> {
-    const projectRoot = context.projectsConfigurations?.projects[context.projectName!].root
-    const cwd = options.cwd ? options.cwd : projectRoot
+    console.dir(context.projectGraph?.nodes, { depth: null })
+    
 
+    const root = context.projectsConfigurations?.projects[context.projectName!].root
+    
     const outDir = path.resolve(context.root, options.outDir)
 
+    const binary = `${context.root}/dist/tools/midl/midlgen_${options.binding}/midlgen_${options.binding}`
+    const command = `${binary} --json ${path.resolve(outDir, "ir.json")} --out ${path.resolve(outDir, "mod.rs")}`
+
+    // console.log(command, options)
     return new Promise((resolve, reject) => {
         exec(
-            `${context.root}/dist/tools/midl/midlgen_${options.binding}/midlgen_${
-                options.binding
-            } --json ${path.resolve(outDir, "ir.json")} --out ${path.resolve(outDir, "mod.rs")}`,
+            command,
             {
-                cwd,
+                env: {
+                    CLICOLOR_FORCE: "1",
+                    RUST_LOG: "info",
+                    RUST_BACKTRACE: "1"
+                },
+                cwd: context.root,
             },
             (err, stdout, stderr) => {
                 if (err) reject(err)

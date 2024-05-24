@@ -268,11 +268,17 @@ pub enum Type {
         primitive_subtype: PrimitiveSubtype,
     },
     #[serde(rename = "client_end")]
-    TransportSide {
+    ClientEnd {
         identifier: EncodedCompoundIdentifier,
         protocol_transport: String,
         #[serde(default)]
         nullable: bool,
+    },
+    #[serde(rename = "server_end")]
+    ServerEnd {
+        subtype: EncodedCompoundIdentifier,
+        nullable: bool,
+        type_shape_v2: TypeShape,
     },
     #[serde(rename = "handle")]
     HandleType {
@@ -280,13 +286,6 @@ pub enum Type {
         handle_subtype: HandleSubtype,
         #[serde(rename = "rights")]
         handle_rights: HandleRights,
-        nullable: bool,
-        type_shape_v2: TypeShape,
-    },
-    #[serde(rename = "request")]
-    RequestType {
-        #[serde(rename = "subtype")]
-        request_subtype: EncodedCompoundIdentifier,
         nullable: bool,
         type_shape_v2: TypeShape,
     },

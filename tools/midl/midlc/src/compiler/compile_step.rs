@@ -1,7 +1,8 @@
 use anyhow::Result;
-use num::Num;
 use core::panic;
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc, thread::panicking};
+use num::{Num, Unsigned};
+use std::ops::*;
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 use crate::{
     ast::{self, ConstantTrait, ConstantValue, PrimitiveSubtype, WithSpan},
@@ -44,7 +45,7 @@ impl ScopeInsertResult {
     }
 }
 
-type MemberValidator<T> = dyn FnMut(T, Vec<ast::Attribute>, ast::Span) -> Result<(), DiagnosticsError>;
+type MemberValidator<T> = dyn FnMut(T, ast::AttributeList, ast::Span) -> Result<(), DiagnosticsError>;
 
 #[derive(Debug)]
 struct Scope<T> {
@@ -87,6 +88,27 @@ fn find_first_non_dense_ordinal(scope: &Ordinal64Scope) -> Option<(u64, ast::Spa
     }
 
     None
+}
+
+fn is_power_of_two<T>(num: T) -> bool
+where
+    T: PartialEq
+        + PartialOrd
+        + Copy
+        + std::ops::Rem<Output = T>
+        + std::ops::Shr<Output = T>
+        + From<u8>
+        + std::ops::Sub<Output = T>
+        + std::ops::BitAnd<Output = T>,
+{
+    let zero: T = 0.into();
+    let one: T = 1.into();
+
+    if num <= zero {
+        return false;
+    }
+
+    (num & (num - one)) == zero
 }
 
 impl<'ctx, 'd> CompileStep<'ctx, 'd>
@@ -169,57 +191,82 @@ where
 
     fn compile_attribute_list(&self, attrs: &ast::AttributeList) {}
 
-    fn validate_members<MemberType>(&self, decl: ast::Declaration, validator: &mut MemberValidator<MemberType>) -> bool
+    fn validate_members<T>(&self, decl: ast::Declaration, validator: &mut MemberValidator<T>) -> bool
     where
-        MemberType: From<ConstantValue> + Copy + Ord,
+        T: From<ConstantValue> + Copy + Ord,
     {
         //assert!(decl != nullptr);
-        // let checkpoint = reporter()->Checkpoint();
+        let checkpoint = self.ctx.diagnostics.checkpoint();
 
-        let mut value_scope: Scope<MemberType> = Scope::new();
+        let mut value_scope: Scope<T> = Scope::new();
 
-        if let ast::Declaration::Enum { decl } = decl {
+        let mut validate = |opt_type: Option<ast::Type>,
+                            value: &mut ast::Constant,
+                            attributes: ast::AttributeList,
+                            name: ast::Span| {
+            if !self.resolve_constant(value, opt_type) {
+                panic!("ErrCouldNotResolveMember");
+                // reporter().Fail(ErrCouldNotResolveMember, member.name, decl.kind);
+                // continue;
+            }
+
+            let v: T = value.value().into();
+            let value_result = value_scope.insert(v, name.clone());
+            if !value_result.is_ok() {
+                let previous_span = value_result.previous_occurrence();
+                // We can log the error and then continue validating other members for other bugs
+
+                panic!("ErrDuplicateMemberValue");
+                // reporter().Fail(ErrDuplicateMemberValue, member.name, decl.kind, member.name.data(), previous_span.data(), previous_span);
+            }
+
+            let result = validator(v, attributes, name);
+
+            if let Err(err) = result {
+                //reporter().Report(err);
+            }
+        };
+
+        if let ast::Declaration::Enum { decl } = &decl {
             for (_, member) in decl.borrow().iter_members() {
                 let mut member = member.borrow_mut();
+
+                let attributes = member.attributes.clone();
+                let name = member.name.clone();
+                let opt_type = decl.borrow().subtype_ctor.r#type.clone();
                 // assert(member.value != nullptr, "member value is null");
 
-                if !self.resolve_constant(&mut member.value, decl.borrow().subtype_ctor.r#type.clone()) {
-                    panic!("ErrCouldNotResolveMember");
-                    // reporter().Fail(ErrCouldNotResolveMember, member.name, decl.kind);
-                    continue;
-                }
-
-                let value: MemberType = member.value.value().into();
-                let value_result = value_scope.insert(value, member.name.clone());
-                if !value_result.is_ok() {
-                    let previous_span = value_result.previous_occurrence();
-                    // We can log the error and then continue validating other members for other bugs
-                    // reporter().Fail(ErrDuplicateMemberValue, member.name, decl.kind, member.name.data(), previous_span.data(), previous_span);
-                }
-
-                let result = validator(value, member.attributes.clone(), member.name.clone());
-
-                if let Err(err) = result {
-                    //reporter().Report(err);
-                }
+                validate(opt_type, &mut member.value, attributes, name);
             }
         }
 
-        // return checkpoint.NoNewErrors();
-        true
+        if let ast::Declaration::Bits { decl } = &decl {
+            for (_, member) in decl.borrow().iter_members() {
+                let mut member = member.borrow_mut();
+
+                let attributes = member.attributes.clone();
+                let name = member.name.clone();
+                let opt_type = decl.borrow().subtype_ctor.r#type.clone();
+                // assert(member.value != nullptr, "member value is null");
+
+                validate(opt_type, &mut member.value, attributes, name);
+            }
+        }
+
+        return checkpoint.no_new_errors();
     }
 
-    fn validate_enum_members_and_calc_unknown_value<MemberType>(
+    fn validate_enum_members_and_calc_unknown_value<T>(
         &self,
         decl: Rc<RefCell<ast::Enum>>,
-        out_unknown_value: &mut MemberType,
+        out_unknown_value: &mut T,
     ) -> bool
     where
-        MemberType: num::Bounded + From<ConstantValue> + Copy + Ord,
+        T: num::Bounded + From<ConstantValue> + Copy + Ord,
     {
         let enum_decl = decl.borrow();
-        let default_unknown_value = <MemberType as num::Bounded>::max_value();
-        let explicit_unknown_value: Option<MemberType> = None;
+        let default_unknown_value = <T as num::Bounded>::max_value();
+        let explicit_unknown_value: Option<T> = None;
 
         for member in enum_decl.members.iter() {
             let mut member = member.borrow_mut();
@@ -237,12 +284,9 @@ where
             //}
         }
 
-        let result = self.validate_members::<MemberType>(
-            ast::Declaration::Enum { decl: decl.clone() },
-            &mut |value, attrs, id| Ok(()),
-        );
+        let validator = &mut |value, attrs, id| Ok(());
 
-        if !result {
+        if !self.validate_members::<T>(ast::Declaration::Enum { decl: decl.clone() }, validator) {
             return false;
         }
 
@@ -350,7 +394,7 @@ where
     }
 
     fn compile_table(&self, decl: Rc<RefCell<ast::Table>>) {
-        let table_declaration  = decl.borrow();
+        let table_declaration = decl.borrow();
     }
 
     fn compile_union(&self, decl: Rc<RefCell<ast::Union>>) {
@@ -421,77 +465,112 @@ where
         self.compile_type_constructor(&mut alias_declaration.partial_type_ctor);
     }
 
-    fn validate_bits_members_and_calc_mask<T>(&self, decl: Rc<RefCell<ast::Bits>>, mask: &u64) -> bool {
-        false
+    fn validate_bits_members_and_calc_mask<'a, T>(&self, bits_decl: Rc<RefCell<ast::Bits>>, out_mask: &mut T) -> bool
+    where
+        T: From<ConstantValue>
+            + Copy
+            + PartialEq
+            + Ord
+            + PartialOrd
+            + Rem<Output = T>
+            + Shr<Output = T>
+            + From<u8>
+            + std::ops::Sub<Output = T>
+            + BitAnd<Output = T>
+            + BitOrAssign
+            + 'static,
+    {
+        //assert!(std::is_unsigned<MemberType>::value && !std::is_same<MemberType, bool>::value,
+        //        "bits members must be an unsigned integral type");
+        // Each bits member must be a power of two.
+        let mask: Rc<RefCell<T>> = Rc::new(RefCell::new(0.into()));
+        let mask_clone = mask.clone();
+
+        let validator =
+            &mut move |member: T, attrs: ast::AttributeList, span: ast::Span| -> Result<(), DiagnosticsError> {
+                if !is_power_of_two(member) {
+                    return Err(DiagnosticsError::new("ErrBitsMemberMustBePowerOfTwo", span));
+                }
+
+                // Use a mutable reference inside the closure
+                mask_clone.borrow_mut().bitor_assign(member);
+
+                return Ok(());
+            };
+
+        if !self.validate_members::<T>(ast::Declaration::Bits { decl: bits_decl }, validator) {
+            return false;
+        }
+
+        *out_mask = *mask.borrow();
+        return true;
     }
 
     fn compile_bits(&self, decl: Rc<RefCell<ast::Bits>>) {
-        let mut bits_declaration = decl.borrow_mut();
+        {
+            let bits_declaration = decl.borrow();
 
-        self.compile_attribute_list(&bits_declaration.attributes);
-        for member in bits_declaration.members.iter() {
-            let member = member.borrow();
-            self.compile_attribute_list(&member.attributes);
+            self.compile_attribute_list(&bits_declaration.attributes);
+            for member in bits_declaration.members.iter() {
+                let member = member.borrow();
+                self.compile_attribute_list(&member.attributes);
+            }
         }
 
-        self.compile_type_constructor(&mut bits_declaration.subtype_ctor);
-        if !bits_declaration.subtype_ctor.r#type.is_none() {
-            return;
-        }
+        let subtype = {
+            let mut bits_declaration = decl.borrow_mut();
 
-        if !matches!(bits_declaration.subtype_ctor.r#type, Some(ast::Type::Primitive(_))) {
-            panic!("ErrBitsTypeMustBeUnsignedIntegralPrimitive");
-            //reporter()->Fail(ErrBitsTypeMustBeUnsignedIntegralPrimitive,
-            //                bits_declaration->name.span().value(), bits_declaration->subtype_ctor->type);
-            return;
-        }
+            self.compile_type_constructor(&mut bits_declaration.subtype_ctor);
+            if bits_declaration.subtype_ctor.r#type.is_none() {
+                return;
+            }
+
+            if !matches!(bits_declaration.subtype_ctor.r#type, Some(ast::Type::Primitive(_))) {
+                panic!("ErrBitsTypeMustBeUnsignedIntegralPrimitive");
+                //reporter()->Fail(ErrBitsTypeMustBeUnsignedIntegralPrimitive,
+                //                bits_declaration->name.span().value(), bits_declaration->subtype_ctor->type);
+                return;
+            }
+
+            bits_declaration.subtype_ctor.r#type.as_ref().unwrap().clone()
+        };
 
         // Validate constants.
-
-        if let ast::Type::Primitive(primitive_type) = bits_declaration.subtype_ctor.r#type.as_ref().unwrap() {
+        if let ast::Type::Primitive(primitive_type) = subtype {
             match primitive_type.subtype {
                 PrimitiveSubtype::Uint8 => {
-                    let mask = 0;
-                    if !self.validate_bits_members_and_calc_mask::<u8>(decl.clone(), &mask) {
-                            return;
+                    let mut mask = 0;
+                    if !self.validate_bits_members_and_calc_mask::<u8>(decl.clone(), &mut mask) {
+                        return;
                     }
-                        
-                    bits_declaration.mask = mask;
-                },
+
+                    decl.borrow_mut().mask = mask as u64;
+                }
                 PrimitiveSubtype::Uint16 => {
-                    let mask = 0;
-                    if !self.validate_bits_members_and_calc_mask::<u16>(decl.clone(), &mask) {
+                    let mut mask = 0 as u16;
+                    if !self.validate_bits_members_and_calc_mask::<u16>(decl.clone(), &mut mask) {
                         return;
                     }
-                        
-                    bits_declaration.mask = mask;
-                },
+
+                    decl.borrow_mut().mask = mask as u64;
+                }
                 PrimitiveSubtype::Uint32 => {
-                    let mask= 0;
-                    if !self.validate_bits_members_and_calc_mask::<u32>(decl.clone(), &mask) {
+                    let mut mask = 0;
+                    if !self.validate_bits_members_and_calc_mask::<u32>(decl.clone(), &mut mask) {
                         return;
                     }
-                        
-                    bits_declaration.mask = mask;
-                },
+
+                    decl.borrow_mut().mask = mask as u64;
+                }
                 PrimitiveSubtype::Uint64 => {
-                    let mask= 0;
-                    if !self.validate_bits_members_and_calc_mask::<u64>(decl.clone(), &mask) {
-                        return; 
+                    let mut mask = 0;
+                    if !self.validate_bits_members_and_calc_mask::<u64>(decl.clone(), &mut mask) {
+                        return;
                     }
-                        
-                    bits_declaration.mask = mask;
-                },
-                PrimitiveSubtype::Bool |
-                PrimitiveSubtype::Int8 |
-                PrimitiveSubtype::Int16 |
-                PrimitiveSubtype::Int32 |
-                PrimitiveSubtype::Int64 |
-                //PrimitiveSubtype::ZxUchar:
-                //PrimitiveSubtype::ZxUsize64:
-                //PrimitiveSubtype::ZxUintptr64:
-                PrimitiveSubtype::Float32 |
-                PrimitiveSubtype::Float64 => {
+
+                    decl.borrow_mut().mask = mask;
+                }
+                _ => {
                     panic!("ErrBitsTypeMustBeUnsignedIntegralPrimitive");
                     //reporter()->Fail(ErrBitsTypeMustBeUnsignedIntegralPrimitive,
                     //            bits_declaration->name.span().value(), bits_declaration->subtype_ctor->type);
@@ -513,6 +592,7 @@ where
         //}
 
         for property in resource_declaration.properties.iter_mut() {
+            let mut property = property.borrow_mut();
             self.compile_attribute_list(&property.attributes);
             self.compile_type_constructor(&mut property.type_ctor);
         }
@@ -554,9 +634,11 @@ where
 
             if member.maybe_default_value.is_some() {
                 if !self.type_can_be_const(member.type_ctor.r#type.as_ref().unwrap()) {
+                    panic!("ErrInvalidStructMemberType");
                     //reporter().Fail(ErrInvalidStructMemberType, struct_declaration.name.span().value(),
                     //                NameIdentifier(member.name), default_value_type);
                 } else if !self.resolve_constant(&mut member.maybe_default_value.as_mut().unwrap(), r#type) {
+                    panic!("ErrCouldNotResolveMemberDefault");
                     //reporter().Fail(ErrCouldNotResolveMemberDefault, member.name, NameIdentifier(member.name));
                 }
             }
@@ -649,8 +731,6 @@ where
     }
 
     fn resolve_constant(&self, constant: &mut ast::Constant, opt_type: Option<ast::Type>) -> bool {
-        log::warn!("resolve_const {:?} {}", constant,  constant.compiled());
-
         if constant.compiled() {
             return constant.is_resolved();
         }
@@ -660,11 +740,11 @@ where
             ast::Constant::BinaryOperator(constant) => {
                 let binary_operator_constant = constant;
 
-                if !self.resolve_constant(binary_operator_constant.lhs.as_mut(), opt_type.clone()) {
+                if !self.resolve_constant(binary_operator_constant.rhs.as_mut(), opt_type.clone()) {
                     return false;
                 }
 
-                if !self.resolve_constant(binary_operator_constant.rhs.as_mut(), opt_type.clone()) {
+                if !self.resolve_constant(binary_operator_constant.lhs.as_mut(), opt_type.clone()) {
                     return false;
                 }
 
@@ -687,15 +767,15 @@ where
     fn underlying_type(&self, typ: &ast::Type) -> Option<ast::Type> {
         if let ast::Type::Identifier(identifier_type) = typ {
             self.compile_decl(&mut identifier_type.decl.clone());
-            
+
             match &identifier_type.decl {
                 ast::Declaration::Bits { decl } => {
                     return decl.borrow().subtype_ctor.r#type.clone();
                 }
-                ast::Declaration::Enum { decl} => {
+                ast::Declaration::Enum { decl } => {
                     return decl.borrow().subtype_ctor.r#type.clone();
                 }
-                _ => Some(typ.clone())
+                _ => Some(typ.clone()),
             }
         } else {
             return Some(typ.clone());
@@ -713,53 +793,71 @@ where
         assert!(opt_type.is_some(), "type inference not implemented for or operator");
 
         let r#type = self.underlying_type(&opt_type.unwrap());
-        
+
         if r#type.is_none() {
             return false;
         }
 
         let r#type = r#type.unwrap();
 
-        if let ast::Type::Primitive(_) = r#type{
+        if let ast::Type::Primitive(prim_type) = &r#type {
+            let mut left_operand_u64 = ConstantValue::Bool(false);
+            let mut right_operand_u64 = ConstantValue::Bool(false);
+
+            if !left_operand.convert(ast::ConstantValueKind::Uint64, &mut left_operand_u64) {
+                return false;
+            }
+
+            if !right_operand.convert(ast::ConstantValueKind::Uint64, &mut right_operand_u64) {
+                return false;
+            }
+
+            let result = left_operand_u64 | right_operand_u64;
+            let mut converted_result = ConstantValue::Bool(false);
+            if !result.convert(
+                self.constant_value_primitive_kind(prim_type.subtype),
+                &mut converted_result,
+            ) {
+                return false;
+            }
+
+            // TODO: resolve it to correct value
+            constant.resolve_to(converted_result, r#type);
+            true
+        } else {
             panic!("ErrOrOperatorOnNonPrimitiveValue");
             // return reporter().Fail(ErrOrOperatorOnNonPrimitiveValue, constant.span);
         }
-
-        let mut left_operand_u64 = ConstantValue::Bool(false);
-        let mut right_operand_u64= ConstantValue::Bool(false);
-
-        if !left_operand.convert(ast::ConstantValueKind::Uint64, &mut left_operand_u64) {
-            return false;
-        }
-
-        if !right_operand.convert(ast::ConstantValueKind::Uint64, &mut right_operand_u64) {
-            return false;
-        }
-
-        //NumericConstantValue<uint64_t> result = *static_cast<NumericConstantValue<uint64_t>*>(left_operand_u64.get()) | *static_cast<NumericConstantValue<uint64_t>*>(right_operand_u64.get());
-        //std::unique_ptr<ConstantValue> converted_result;
-        //if (!result.Convert(ConstantValuePrimitiveKind(static_cast<const PrimitiveType*>(type)->subtype), &converted_result)) {
-        //    return false;
-        //}
-
-        // TODO: resolve it to correct value
-        constant.resolve_to(ConstantValue::Bool(false), r#type);
-        true
     }
 
     fn constant_value_primitive_kind(&self, subtype: ast::PrimitiveSubtype) -> ast::ConstantValueKind {
         match subtype {
-            PrimitiveSubtype::Bool => todo!(),
-            PrimitiveSubtype::Int8 => todo!(),
-            PrimitiveSubtype::Int16 => todo!(),
-            PrimitiveSubtype::Int32 => todo!(),
-            PrimitiveSubtype::Int64 => todo!(),
-            PrimitiveSubtype::Uint8 => todo!(),
-            PrimitiveSubtype::Uint16 => todo!(),
-            PrimitiveSubtype::Uint32 => todo!(),
-            PrimitiveSubtype::Uint64 => todo!(),
-            PrimitiveSubtype::Float32 => todo!(),
-            PrimitiveSubtype::Float64 => todo!(),
+            PrimitiveSubtype::Bool => ast::ConstantValueKind::Bool,
+            PrimitiveSubtype::Int8 => ast::ConstantValueKind::Int8,
+            PrimitiveSubtype::Int16 => ast::ConstantValueKind::Int16,
+            PrimitiveSubtype::Int32 => ast::ConstantValueKind::Int32,
+            PrimitiveSubtype::Int64 => ast::ConstantValueKind::Int64,
+            PrimitiveSubtype::Uint8 => ast::ConstantValueKind::Uint8,
+            PrimitiveSubtype::Uint16 => ast::ConstantValueKind::Uint16,
+            PrimitiveSubtype::Uint32 => ast::ConstantValueKind::Uint32,
+            PrimitiveSubtype::Uint64 => ast::ConstantValueKind::Uint64,
+            PrimitiveSubtype::Float32 => ast::ConstantValueKind::Float32,
+            PrimitiveSubtype::Float64 => ast::ConstantValueKind::Float64,
+        }
+    }
+
+    pub fn resolve_as_optional(&self, constant: &ast::Constant) -> bool {
+        if let ast::Constant::Identifier(identifier_constant) = constant {
+            let element = identifier_constant.reference.resolved().unwrap().element();
+
+            if let ast::Element::Builtin { inner } = element {
+                let builtin = inner.borrow();
+                builtin.id == ast::BuiltinIdentity::Optional
+            } else {
+                false
+            }
+        } else {
+            false
         }
     }
 
@@ -776,7 +874,6 @@ where
         }
 
         let reference = &identifier_constant.reference;
-        log::warn!("const ref: {:?}", reference);
         let resolved = reference.resolved().unwrap();
 
         let mut parent = resolved.element_or_parent_decl();
@@ -786,7 +883,7 @@ where
         let mut const_type: Option<ast::Type> = None;
         let mut const_val: Option<ast::ConstantValue> = None;
 
-        match target {
+        match target.clone() {
             ast::Element::Builtin { .. } => {
                 // TODO(https://fxbug.dev/99665): In some cases we want to return a more specific
                 // error message from here, but right now we can't due to the way
@@ -809,7 +906,7 @@ where
 
                     const_type = parent.subtype_ctor.r#type.clone();
                     let member = inner.borrow();
-                    
+
                     if !member.value.is_resolved() {
                         return false;
                     }
@@ -825,7 +922,7 @@ where
 
                     const_type = parent.subtype_ctor.r#type.clone();
                     let member = inner.borrow();
-                    
+
                     if !member.value.is_resolved() {
                         return false;
                     }
@@ -839,40 +936,45 @@ where
                 panic!("ErrExpectedValueButGotType {:?}", reference.resolved().unwrap().name());
                 // return reporter().Fail(ErrExpectedValueButGotType, reference.span(), reference.resolved().name());
                 return false;
-            },
+            }
         }
 
-        assert!(const_val.is_none(), "did not set const_val");
-        assert!(const_type.is_none(), "did not set const_type");
+        assert!(const_val.is_some(), "did not set const_val");
+        assert!(const_type.is_some(), "did not set const_type");
         let const_val = const_val.unwrap();
         let const_type = const_type.unwrap();
 
         let mut resolved_val: ConstantValue = ConstantValue::Bool(false);
-        let r#type = if opt_type.is_some() { opt_type.unwrap() } else { const_type.clone() };
-        
+        let r#type = if opt_type.is_some() {
+            opt_type.unwrap()
+        } else {
+            const_type.clone()
+        };
 
-        fn fail_cannot_convert() -> bool{
+        fn fail_cannot_convert() -> bool {
             panic!("ErrTypeCannotBeConvertedToType");
             // return reporter().Fail(ErrTypeCannotBeConvertedToType, reference.span(), identifier_constant, const_type, type);
             false
         }
-  
 
         match &r#type {
             ast::Type::String(_) => {
                 if !self.type_is_convertible_to(&const_type, &r#type) {
                     return fail_cannot_convert();
                 }
-                    
+
                 if !const_val.convert(ast::ConstantValueKind::String, &mut resolved_val) {
                     return fail_cannot_convert();
                 }
-            },
+            }
             ast::Type::Primitive(primitive_type) => {
-                if !const_val.convert(self.constant_value_primitive_kind(primitive_type.subtype), &mut resolved_val) {
+                if !const_val.convert(
+                    self.constant_value_primitive_kind(primitive_type.subtype),
+                    &mut resolved_val,
+                ) {
                     return fail_cannot_convert();
                 }
-            },
+            }
             ast::Type::Identifier(identifier_type) => {
                 let primitive_type: Rc<ast::PrimitiveType>;
 
@@ -882,7 +984,7 @@ where
                         if enum_decl.subtype_ctor.r#type.is_none() {
                             return false;
                         }
-                        
+
                         if let ast::Type::Primitive(typ) = enum_decl.subtype_ctor.r#type.as_ref().unwrap() {
                             primitive_type = typ.clone();
                         } else {
@@ -895,16 +997,16 @@ where
                             return false;
                         }
 
-                         if let ast::Type::Primitive(typ) = bits_decl.subtype_ctor.r#type.as_ref().unwrap() {
+                        if let ast::Type::Primitive(typ) = bits_decl.subtype_ctor.r#type.as_ref().unwrap() {
                             primitive_type = typ.clone();
                         } else {
                             panic!("non primitive type")
                         }
                     }
-                    _ => panic!("identifier not of const-able type.")
+                    _ => panic!("identifier not of const-able type."),
                 }
 
-                fn fail_with_mismatched_type(type_name: &ast::Name)-> bool {
+                fn fail_with_mismatched_type(type_name: &ast::Name) -> bool {
                     panic!("ErrMismatchedNameTypeAssignment");
                     false
                     //return reporter()->Fail(ErrMismatchedNameTypeAssignment, identifier_constant->span,
@@ -917,19 +1019,21 @@ where
                             return fail_with_mismatched_type(&const_type.name());
                         }
                     }
-                    ast::Declaration::Bits{ .. } |
-                    ast::Declaration::Enum{ .. } => {
+                    ast::Declaration::Bits { .. } | ast::Declaration::Enum { .. } => {
                         if parent.name() != identifier_type.decl.name() {
                             return fail_with_mismatched_type(&parent.name());
                         }
                     }
-                    _=> panic!("identifier not of const-able type.")
+                    _ => panic!("identifier not of const-able type."),
                 }
 
-                if !const_val.convert(self.constant_value_primitive_kind(primitive_type.subtype), &mut resolved_val) {
-                    return fail_cannot_convert()
-                }        
-            },
+                if !const_val.convert(
+                    self.constant_value_primitive_kind(primitive_type.subtype),
+                    &mut resolved_val,
+                ) {
+                    return fail_cannot_convert();
+                }
+            }
             _ => panic!("identifier not of const-able type."),
         }
 
@@ -937,16 +1041,17 @@ where
         true
     }
 
-    fn infer_type(&self, literal: &mut ast::LiteralConstant) -> ast::Type { 
+    fn infer_type(&self, literal: &mut ast::LiteralConstant) -> ast::Type {
         match &literal.literal {
             ast::Literal::StringValue(string_literal, span) => {
                 let inferred_size = string_literal.len(); // TODO: string_literal_length(span.data);
                 return ast::Type::String(self.typespace().get_string_type(inferred_size));
             }
             ast::Literal::NumericValue(_, _) => ast::Type::UntypedNumeric(self.typespace().get_untyped_numeric_type()),
-            ast::Literal::BoolValue(_, _) => ast::Type::Primitive(self.typespace().get_primitive_type(ast::PrimitiveSubtype::Bool))
-            //case RawLiteral::Kind::kDocComment:
-            //    return typespace()->GetUnboundedStringType();
+            ast::Literal::BoolValue(_, _) => {
+                ast::Type::Primitive(self.typespace().get_primitive_type(ast::PrimitiveSubtype::Bool))
+            } //case RawLiteral::Kind::kDocComment:
+              //    return typespace()->GetUnboundedStringType();
         }
     }
 
@@ -960,8 +1065,7 @@ where
         let r#type = if opt_type.is_some() {
             opt_type.unwrap()
         } else {
-            todo!("inferred_type");
-            // inferred_type
+            inferred_type.clone()
         };
 
         if !self.type_is_convertible_to(&inferred_type, &r#type) {
@@ -1014,39 +1118,11 @@ where
                         _ => panic!("should not have any other primitive type reachable"),
                     }
                 } else {
-                    panic!("should have a primitive type")
+                    panic!("should have a primitive type {:?}", r#type)
                 }
             }
         }
     }
-
-    /*fn infer_type(&self, constant: &mut ast::Constant) -> Rc<ast::Type> {
-        match constant {
-            Constant::Literal(c) =>{
-                let literal = c.literal;
-                match literal {
-                    ast::Literal::StringValue(l, span) => {
-                        let string_literal = l;
-                        let inferred_size = string_literal_length(span.data);
-                        return typespace().GetStringType(inferred_size);
-                    }
-                    ast::Literal::NumericValue => self.typespace().get_untyped_numeric_type(),
-                    ast::Literal::BoolValue => self.typespace().get_primitiveType(ast::PrimitiveSubtype::Bool),
-                    ast::Literal::DocComment => self.typespace().get_unbounded_string_type()
-                }
-                return nullptr;
-            }
-
-            Constant::Identifier(_) => {
-                if !self.resolve_constant(constant, None) {
-                    return None;
-                }
-
-                constant.type
-            }
-            _ => unimplemented!("type inference not implemented for binops")
-        }
-    }*/
 
     fn resolve_literal_constant_kind_numeric_literal(
         &self,
@@ -1056,8 +1132,6 @@ where
     ) -> bool {
         let span = literal_constant.literal.span();
         let string_data = span.data.clone();
-
-        log::warn!("resolve_literal_constant: {} {:?}", span.data.clone(), subtype);
 
         let result: Result<()> = try {
             let is_hex = span.data.strip_prefix("0x");

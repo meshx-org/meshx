@@ -7,6 +7,8 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ResourceProperty {
+    pub(crate) name: Span,
+
     /// The attributes of this resource property.
     pub(crate) attributes: AttributeList,
 
@@ -47,17 +49,39 @@ pub struct Resource {
 
     // Set during construction.
     pub(crate) subtype_ctor: TypeConstructor,
-    pub(crate) properties: Vec<ResourceProperty>,
+    pub(crate) properties: Vec<Rc<RefCell<ResourceProperty>>>,
 
     // Set during compilation
     pub(crate) compiled: bool,
     pub(crate) compiling: bool,
-    pub(crate) recursive: bool
+    pub(crate) recursive: bool,
 }
 
 impl Resource {
-    pub(crate) fn lookup_property(&self, name: &str) -> Option<ResourceProperty> {
+    pub(crate) fn lookup_property(&self, name: &str) -> Option<Rc<RefCell<ResourceProperty>>> {
+        for property_original in self.properties.iter() {
+            let property = property_original.borrow();
+
+            if property.name.data == name {
+                return Some(property_original.clone());
+            }
+        }
+
         None
+    }
+}
+
+/// An opaque identifier for a field in an AST model. Use the
+/// `model[field_id]` syntax to resolve the id to an `ast::Field`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ResourcePropertyId(pub(super) u32);
+
+impl Resource {
+    pub fn iter_properties(&self) -> impl ExactSizeIterator<Item = (ResourcePropertyId, &Rc<RefCell<ResourceProperty>>)> + Clone {
+        self.properties
+            .iter()
+            .enumerate()
+            .map(|(idx, field)| (ResourcePropertyId(idx as u32), field))
     }
 }
 

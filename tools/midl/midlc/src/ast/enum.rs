@@ -49,7 +49,7 @@ pub struct EnumMember {
     ///          ^^^
     /// }
     /// ```
-    pub(crate) attributes: Vec<Attribute>,
+    pub(crate) attributes: AttributeList,
 
     /// The documentation for this struct member.
     ///

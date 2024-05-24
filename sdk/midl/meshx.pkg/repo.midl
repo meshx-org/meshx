@@ -14,13 +14,13 @@ closed protocol RepositoryManager {
     /// Adds a repository. This will overwrite the repository if it already exists.
     ///
     /// + request `repo` a repository to add to the resolver.
-    /// * error a zx_status value indicating failure. One of the following:
+    /// * error a fx_status value indicating failure. One of the following:
     ///     * `FX_ERR_ACCESS_DENIED` if editing repositories is permanently disabled.
     ///     * `ZX_ERR_ALREADY_EXISTS` if the repository already exists.
     ///     * `ZX_ERR_INVALID_ARGS` if the repository is malformed.
     strict Add(struct {
         repo RepositoryConfig;
-    }) -> () error zx.Status;
+    }) -> () error fx.Status;
 
     /// Removes a repository.
     ///
@@ -28,27 +28,27 @@ closed protocol RepositoryManager {
     /// but in-flight downloads may not be interrupted.
     ///
     /// + request `repo_url` the URL of the repository we want to remove.
-    /// * error a zx_status value indicating failure. One of the following:
+    /// * error a fx_status value indicating failure. One of the following:
     ///     * `FX_ERR_ACCESS_DENIED` if editing repositories is permanently disabled or the
     ///       `repo_url` matches a static repository.
     ///     * `ZX_ERR_INVALID_ARGS` if the `repo_url` is malformed.
     ///     * `ZX_ERR_NOT_FOUND` if the repository does not exist.
     strict Remove(struct {
         repo_url string;
-    }) -> () error zx.Status;
+    }) -> () error fx.Status;
 
     /// Adds a mirror to a repository. This will overwrite the mirror if it already exists.
     ///
     /// + request `repo_url` the URL of the repository to add the mirror to.
     /// + request `mirror` the mirror config used to add the mirror.
-    /// * error a zx_status value indicating failure. One of the following:
+    /// * error a fx_status value indicating failure. One of the following:
     ///     * `FX_ERR_ALREADY_EXISTS` if the mirror for this repository already exists.
     ///     * `FX_ERR_INVALID_ARGS` if the `repo_url` or the `mirror` is malformed.
     ///     * `FX_ERR_NOT_FOUND` if the repository does not exist.
     strict AddMirror(struct {
         repo_url string;
         mirror MirrorConfig;
-    }) -> () error zx.Status;
+    }) -> () error fx.Status;
 
     /// Removes a mirror from a repository.
     ///
@@ -57,13 +57,13 @@ closed protocol RepositoryManager {
     ///
     /// + request `repo_url` the URL of the mirror's repository.
     /// + request `mirror_url` the URL of the mirror we want to remove.
-    /// * error a zx_status value indicating failure. One of the following:
+    /// * error a fx_status value indicating failure. One of the following:
     ///     * `FX_ERR_INVALID_ARGS` if the `repo_url` or the `mirror_url` is malformed.
     ///     * `FX_ERR_NOT_FOUND` if the repository or mirror does not exist.
     strict RemoveMirror(struct {
         repo_url string;
         mirror_url string;
-    }) -> () error zx.Status;
+    }) -> () error fx.Status;
 
     /// Returns an iterator over all repositories.
     ///

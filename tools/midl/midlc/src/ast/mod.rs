@@ -33,7 +33,10 @@ pub use alias::Alias;
 pub use attributes::{Attribute, AttributeArg, AttributeList};
 pub use bits::{Bits, BitsMember};
 pub use comment::Comment;
-pub use constraints::{HandleConstraints, NullabilityTrait, TransportSideConstraints, VectorConstraints};
+pub use constraints::{
+    ConstraintKind, HandleConstraints, MergeConstraints, NullabilityTrait, ProtocolTrait, ResolveAndMerge,
+    TransportSideConstraints, VectorConstraints,
+};
 pub use identifier::{CompoundIdentifier, Identifier};
 pub use name::{name_flat_name, Name, NameProvenance, NamingContext};
 pub use properties::{Nullability, Resourceness, Strictness};
@@ -362,7 +365,11 @@ impl Declaration {
             Declaration::Const { .. } => {}
             Declaration::Builtin { .. } => {}
             Declaration::Alias { .. } => {}
-            Declaration::Resource { .. } => {}
+            Declaration::Resource { decl } => {
+                for (_, member) in decl.borrow().iter_properties() {
+                    visitor(Element::ResourceProperty { inner: member.clone() });
+                }
+            }
             Declaration::NewType => todo!(),
             Declaration::Overlay => todo!(),
         };
@@ -695,7 +702,11 @@ impl Library {
 
     // want to traverse all elements which are simialar to declarations in this library
     pub fn traverse_elements(&self, visitor: &mut dyn FnMut(Element)) {
-        for (_, decl) in self.declarations.borrow().all.iter() {
+        let all = self.declarations.borrow().all.len();
+        let mut s = 0;
+
+        for (_, decl) in self.declarations.borrow().all.flat_iter() {
+            s += 1;
             visitor(decl.clone().into());
             decl.for_each_member(visitor);
         }

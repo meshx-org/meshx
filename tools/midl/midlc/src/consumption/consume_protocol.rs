@@ -30,15 +30,6 @@ fn consume_parameter_list(
         match current.as_rule() {
             Rule::PARENT_OPEN | Rule::PARENT_CLOSE => {}
             Rule::type_constructor => {
-                println!(
-                    "to_name:   {:?} {:?}",
-                    ctx.library.arbitrary_name_span.borrow().as_ref().unwrap().data,
-                    name_context
-                        .clone()
-                        .to_name(ctx.library.clone(), ast::Span::empty())
-                        .decl_name()
-                );
-
                 maybe_type_ctor = Some(consume_type_constructor(current, name_context, ctx));
             }
             _ => consume_catch_all(&current, "parameter list"),

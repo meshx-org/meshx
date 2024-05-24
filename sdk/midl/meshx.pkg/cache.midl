@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 library meshx.pkg;
 
-using meshx.fxfs;
+using meshx.fs;
 using meshx.io;
 using fx;
 

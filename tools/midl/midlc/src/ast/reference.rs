@@ -113,7 +113,7 @@ impl ReferenceKey {
 /// resolves to fx.ObjType.CHANNEL.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Contextual {
-    name: Span,
+    pub name: Span,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -178,6 +178,15 @@ impl Reference {
         self.span.is_none()
     }
 
+    pub(crate) fn is_failed(&self) -> bool {
+        let state = self.state.borrow();
+        
+        match *state {
+            ReferenceState::Failed => true,
+            _ => false,
+        }
+    }
+
     pub(crate) fn resolve_to(&self, target: Target) {
         {
             let state = self.state.borrow();
@@ -207,6 +216,13 @@ impl Reference {
     pub fn resolved(&self) -> Option<Target> {
         match *self.state.borrow() {
             ReferenceState::Resolved(ref target) => Some(target.clone()),
+            _ => None,
+        }
+    }
+
+    pub fn contextual(&self) -> Option<Contextual> {
+        match *self.state.borrow() {
+            ReferenceState::Contextual(ref target) => Some(target.clone()),
             _ => None,
         }
     }

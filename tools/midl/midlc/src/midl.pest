@@ -70,7 +70,7 @@ resource_declaration = {
     ~ ";"
 }
 
-resource_properties = { 
+resource_properties = _{ 
 	"properties" 
     ~ BLOCK_OPEN 
     ~ (resource_property | comment_block | empty_lines | BLOCK_LEVEL_CATCH_ALL)+
@@ -163,7 +163,7 @@ layout               = _{ inline_layout | compound_identifier }
 
 type_constraints     =  { "<" ~ type_constraint_list ~ ">" | type_constraint }
 type_constraint_list = _{ type_constraint ~ ("," ~ type_constraint ~ WHITESPACE* )*  }
-type_constraint      =  { constant }
+type_constraint      = _{ constant }
 
 layout_parameters     =  { "<" ~ layout_parameter_list ~ ">" | layout_parameter }
 layout_parameter_list = _{ layout_parameter ~ ("," ~ layout_parameter ~ WHITESPACE* )*  }
@@ -222,7 +222,7 @@ ordinal                 =  { numeric_literal }
 // ######################################
 // shared building blocks
 // ######################################
-identifier               = @{ ("_" | ASCII_ALPHANUMERIC)+ }
+identifier               = @{ ("_" | ASCII_ALPHA ~ ASCII_ALPHANUMERIC*)+ }
 compound_identifier      =  { identifier ~ ( "." ~ identifier )* }
 
 // the any part is to not crash on comments next to an open block, see test `parse_comments_without_crasing_or_loosing_info`

@@ -5,6 +5,8 @@
 #![feature(try_blocks)]
 #![feature(iter_next_chunk)]
 #![feature(extend_one)]
+#![feature(closure_lifetime_binder)]
+#![feature(type_alias_impl_trait)]
 
 #[macro_use]
 extern crate pest_derive;
@@ -146,6 +148,7 @@ fn compile(
 
 fn main() -> std::io::Result<()> {
     env_logger::init();
+    // unsafe { backtrace_on_stack_overflow::enable() };
 
     let matches = cli().get_matches();
 

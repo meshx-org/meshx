@@ -2,7 +2,7 @@
 // Copyright 2020 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-library fuchsia.url;
+library meshx.url;
 
 /// There is no maximum URL length defined by RFC 3986, but this length should
 /// be long enough to accommodate most non-data: URLs.

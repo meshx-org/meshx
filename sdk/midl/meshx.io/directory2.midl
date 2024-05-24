@@ -229,11 +229,6 @@ closed protocol Directory2 {
                 6: create_attributes MutableNodeAttributes;
             };
         };
-
-        /// The server end of a channel created for the new connection. The
-        /// caller may proceed to send messages on the corresponding client end
-        /// right away.
-        object_request fx.Handle:CHANNEL;
     });
 
     /// Removes a child node from the this directory's list of entries.

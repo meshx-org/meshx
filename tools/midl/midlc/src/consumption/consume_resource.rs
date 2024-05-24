@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::consume_type::consume_type_constructor;
@@ -7,17 +8,17 @@ use super::{helpers::Pair, Rule};
 use crate::ast;
 use crate::compiler::ParsingContext;
 use crate::consumption::consume_attribute::consume_attribute_list;
-use crate::consumption::identifier_type_for_decl;
+use crate::consumption::{consume_identifier, identifier_type_for_decl};
 use crate::diagnotics::DiagnosticsError;
 
-pub(super) fn consume_resource_properties(
+pub(super) fn consume_resource_property(
     token: Pair<'_>,
     name_context: Rc<ast::NamingContext>,
     ctx: &mut ParsingContext<'_>,
 ) -> ast::ResourceProperty {
-    debug_assert!(token.as_rule() == Rule::resource_properties);
+    debug_assert!(token.as_rule() == Rule::resource_property);
 
-    let mut name: Option<ast::Name> = None;
+    let mut name = None;
     let mut type_ctor: Option<ast::TypeConstructor> = None;
 
     for current in token.into_inner() {
@@ -27,22 +28,20 @@ pub(super) fn consume_resource_properties(
                 // todo!()
             }
             Rule::identifier => {
-                let name_span = current.as_span();
-                let name_span = ast::Span::from_pest(name_span, ctx.source_id);
-
-                name = Some(ast::Name::create_sourced(ctx.library.clone(), name_span));
+                name = Some(consume_identifier(&current, ctx));
             }
             Rule::type_constructor => {
                 let member_name = name.clone().unwrap();
-                let name_context = name_context.clone().enter_member(member_name.span().unwrap());
+                let name_context = name_context.clone().enter_member(member_name);
 
                 type_ctor = Some(consume_type_constructor(current, &name_context, ctx));
             }
-            _ => consume_catch_all(&current, "resource"),
+            _ => consume_catch_all(&current, "resource property"),
         }
     }
 
     ast::ResourceProperty {
+        name: name.unwrap(),
         attributes: ast::AttributeList(vec![]),
         type_ctor: type_ctor.unwrap(),
     }
@@ -62,7 +61,7 @@ pub(super) fn consume_resource_declaration(
 
     let mut subtype_ctor: Option<ast::TypeConstructor> = None;
     let mut attributes: Option<ast::AttributeList> = None;
-    let mut properties: Vec<ast::ResourceProperty> = vec![];
+    let mut properties = vec![];
 
     for current in parts {
         match current.as_rule() {
@@ -86,9 +85,11 @@ pub(super) fn consume_resource_declaration(
                     ctx,
                 ));
             }
-            Rule::resource_properties => {
+            Rule::resource_property => {
                 let name_context = name_context.as_ref().unwrap().clone();
-                // consume_resource_properties(current, name_context, ctx);
+                let prop = consume_resource_property(current, name_context, ctx);
+
+                properties.push(Rc::new(RefCell::new(prop)))
             }
             _ => consume_catch_all(&current, "resource"),
         }

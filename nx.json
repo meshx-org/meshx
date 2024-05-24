@@ -1,5 +1,5 @@
 {
-    "useDaemonProcess": true,
+    "useDaemonProcess": false,
     "extends": "nx/presets/npm.json",
     "plugins": ["@meshx-org/nx-midl"],
     "pluginsConfig": {

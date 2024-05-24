@@ -49,6 +49,7 @@ export const createNodes: CreateNodes<PluginOptions> = [
 
         projects[root] = {
             root: root,
+            name: root,
             sourceRoot: root,
             projectType: "library",
             implicitDependencies: ["tools/nx-midl"],
@@ -65,26 +66,28 @@ export const createNodes: CreateNodes<PluginOptions> = [
                     },
                 },
             },
-            tags: ["midl"],
+            tags: ["midlc"],
         }
 
         for (const binding of config.bindings) {
             projects[`dist/${root}/${binding}`] = {
                 root: `dist/${root}/${binding}`,
+                name: `dist/${root}/${binding}`,
                 projectType: "library",
                 implicitDependencies: ["tools/nx-midl", root],
                 targets: {
                     build: {
                         dependsOn: ["^build"],
-                        inputs: [`{workspaceRoot}/dist/${root}/ir.json`],
+                        executor: "./dist/tools/nx-midl:midlgen",
                         outputs: [],
-                        executor: "nx:run-commands",
+                        inputs: [`{workspaceRoot}/dist/${root}/ir.json`],
                         options: {
-                            command: "echo generate rust",
+                            binding: "rust",
+                            outDir: `dist/${root}`,
                         },
                     },
                 },
-                tags: ["midl"],
+                tags: [],
             }
         }
 

@@ -3,9 +3,9 @@ use derivative::Derivative;
 use crate::diagnotics::Diagnostics;
 
 use super::{
-    constraints::IdentifierConstraints, Alias, Const, Constant, ConstantValue, Declaration, Element, HandleConstraints,
-    Identifier, LiteralConstant, Name, Nullability, NullabilityTrait, Reference, Resource, Span,
-    TransportSideConstraints, VectorConstraints,
+    constraints::IdentifierConstraints, Alias, Const, Constant, ConstantValue, ConstraintKind, Declaration, Element,
+    HandleConstraints, Identifier, LiteralConstant, MergeConstraints, Name, Nullability, NullabilityTrait, Reference,
+    ResolveAndMerge, Resource, Span, TransportSideConstraints, VectorConstraints,
 };
 use std::{cell::RefCell, rc::Rc, str::FromStr};
 
@@ -92,11 +92,10 @@ impl IdentifierLayoutParameter {
 
         match resolved.unwrap().element() {
             Element::Const { .. } => {}
-            // Element::BitsMember => {}
-            // Element::EnumMember(_) => {
-            //    self.as_constant =  IdentifierConstant (source_signature(), reference, span);
-            //
-            // }
+            Element::BitsMember { .. } => {}
+            Element::EnumMember { .. } => {
+                // self.as_constant = IdentifierConstant (source_signature(), reference, span);
+            }
             _ => {
                 self.as_type_ctor.replace(Some(TypeConstructor {
                     layout: self.reference.clone(),
@@ -104,7 +103,10 @@ impl IdentifierLayoutParameter {
                         items: vec![],
                         span: None,
                     },
-                    constraints: LayoutConstraints {},
+                    constraints: LayoutConstraints {
+                        items: vec![],
+                        span: Some(Span::empty()),
+                    },
                     r#type: None,
                 }));
             }
@@ -177,7 +179,12 @@ pub struct LayoutParameterList {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct LayoutConstraints;
+pub struct LayoutConstraints {
+    /// The location of this constraints list in the text representation.
+    pub span: Option<Span>,
+
+    pub items: Vec<Constant>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TypeConstructor {
@@ -323,7 +330,7 @@ impl StringType {
 #[derivative(PartialEq, Eq, PartialOrd, Ord)]
 pub struct TransportSideType {
     #[derivative(PartialEq = "ignore", Ord = "ignore", PartialOrd = "ignore")]
-    pub constraints: TransportSideConstraints,
+    pub constraints: Box<TransportSideConstraints>,
 
     pub name: Name,
     pub end: TransportSide,
@@ -336,26 +343,36 @@ impl TransportSideType {
             name,
             end,
             protocol_transport: transport.to_owned(),
-            constraints: TransportSideConstraints::default(),
+            constraints: Box::new(TransportSideConstraints::default()),
         }
     }
 
     pub fn apply_constraints(
-        &self,
+        &mut self,
         resolver: &crate::compiler::TypeResolver<'_, '_>,
         diagnostics: Rc<Diagnostics>,
         constraints: &LayoutConstraints,
         layout: &Reference,
     ) -> Result<Type, bool> {
-        // TODO: Constraints c;
-        // if (!ResolveAndMergeConstraints(resolver, reporter, constraints.span, layout.resolved().name(),
-        //                                 nullptr, constraints.items, &c, out_params)) {
-        //     return false;
-        // }
+        let mut c = TransportSideConstraints::default();
+        
+        if !self.constraints.resolve_and_merge_constraints(
+            resolver,
+            diagnostics,
+            constraints.span.clone(),
+            &layout.resolved().unwrap().name(),
+            None,
+            &constraints.items,
+            &mut c,
+            /*out_params,*/
+        ) {
+            return Err(false);
+        }
 
-        // if (!c.HasConstraint<ConstraintKind::kProtocol>()) {
-        //    return reporter.Fail(ErrProtocolConstraintRequired, layout.span(), layout.resolved().name());
-        //}
+        if !c.has_constraint(ConstraintKind::Protocol) {
+            panic!("ErrProtocolConstraintRequired {:?}", constraints.span.clone());
+            //    return reporter.Fail(ErrProtocolConstraintRequired, layout.span(), layout.resolved().name());
+        }
 
         // let transport_attribute = c.protocol_decl.attributes.Get("transport");
         // std::string_view transport("Channel");
@@ -369,7 +386,12 @@ impl TransportSideType {
         //    transport = quoted_transport.substr(1, quoted_transport.size() - 2);
         //}
 
-        Ok(Type::TransportSide(self.clone()))
+        Ok(Type::TransportSide(TransportSideType {
+            constraints: Box::new(c),
+            name: self.name.clone(),
+            end: self.end,
+            protocol_transport: self.protocol_transport.clone(),
+        }))
     }
 }
 
@@ -567,10 +589,10 @@ impl Type {
             // All boxes are implicitly nullable.
             Type::Box(_) => true,
             Type::Internal(_) => false,
-            Type::String(string) => string.constraints.nullabilty() == Nullability::Nullable,
+            Type::String(string) => string.constraints.nullability() == Nullability::Nullable,
             Type::Identifier(_) => false,
             Type::RequestType { nullable, subtype } => *nullable,
-            Type::TransportSide(_) => todo!(),
+            Type::TransportSide(transport) => transport.constraints.nullability() == Nullability::Nullable,
             Type::Handle(handle) => handle.constraints.nullability() == Nullability::Nullable,
             Type::UntypedNumeric(_) => false,
         }

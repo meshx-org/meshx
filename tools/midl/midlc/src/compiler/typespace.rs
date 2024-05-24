@@ -365,7 +365,7 @@ impl<'a, 'r, 'd> TypeCreator<'a, 'r, 'd> {
             return None;
         }
 
-        let r#type = ast::TransportSideType::new(self.layout.resolved().unwrap().name(), end, CHANNEL_TRANSPORT);
+        let mut r#type = ast::TransportSideType::new(self.layout.resolved().unwrap().name(), end, CHANNEL_TRANSPORT);
         let constrained_type = r#type
             .apply_constraints(
                 self.resolver,
@@ -398,7 +398,7 @@ impl<'a, 'r, 'd> TypeCreator<'a, 'r, 'd> {
     }
 
     fn create(&self) -> Option<ast::Type> {
-        log::warn!("lay: {:?}", self.layout);
+        println!("lay: {:?}", self.layout);
         let target = self.layout.resolved().unwrap().element().as_decl().unwrap();
 
         match target {
@@ -415,6 +415,7 @@ impl<'a, 'r, 'd> TypeCreator<'a, 'r, 'd> {
                 // Handled below.
             },
             ast::Declaration::Const{..} | ast::Declaration::Protocol{..} /* |ast::Declaration::Service */=> {
+                println!("ErrExpectedType");
                 //TODO: self.typespace.diagnostics.push_error(ErrExpectedType, layout_.span());
                 return None;
             }

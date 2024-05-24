@@ -52,9 +52,10 @@ pub fn consume_catch_all(token: &Pair<'_>, kind: &str) {
     match token.as_rule() {
         Rule::empty_lines | Rule::trailing_comment | Rule::comment_block => {}
         x => unreachable!(
-            "Encountered impossible {} during parsing: {:?} {:?}",
+            "Encountered impossible {} during parsing: {:?} {:?} {:?}",
             kind,
             &x,
+            token.as_str(),
             token.clone().tokens()
         ),
     }
