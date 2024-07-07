@@ -1,0 +1,40 @@
+[package]
+authors.workspace = true
+categories = ["web-programming::http-client", "caching", "network-programming"]
+description = "Controlplane controller runtime"
+edition.workspace = true
+keywords = ["meshx", "runtime", "reflector", "watcher", "controller"]
+license.workspace = true
+name = "controlplane_runtime"
+readme.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[features]
+jsonpatch = ["json-patch"]
+
+[lints]
+rust.unsafe_code = "forbid"
+
+[dependencies]
+ahash.workspace = true
+async-stream.workspace = true
+async-trait.workspace = true
+backoff.workspace = true
+chrono.workspace = true
+hashbrown.workspace=true
+controlplane_api = {path = "../controlplane_api"}
+controlplane_client = {path = "../controlplane_client", features = ["jsonpatch"]}
+derivative.workspace = true
+futures = {workspace = true, features = ["async-await"]}
+json-patch = {workspace = true, optional = true}
+parking_lot.workspace = true
+serde.workspace = true
+pin-project.workspace=true
+serde_json.workspace = true
+smallvec.workspace = true
+thiserror.workspace = true
+tokio = {workspace = true, features = ["time"]}
+tokio-util = {workspace = true, features = ["time"]}
+tracing.workspace = true

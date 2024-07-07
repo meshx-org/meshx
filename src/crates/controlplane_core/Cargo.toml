@@ -1,0 +1,39 @@
+[package]
+name = "controlplane_core"
+description = "Controlplane shared types, traits and client-less behavior"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+keywords = ["meshx", "apimachinery"]
+categories = ["api-bindings", "encoding", "parser-implementations"]
+
+[lints]
+workspace = true
+
+[features]
+schema = ["schemars"]
+jsonpatch = ["json-patch"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+controlplane_api={path = "../controlplane_api"}
+json-patch = { workspace = true, optional = true }
+schemars = { workspace = true, optional = true }
+http.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+form_urlencoded.workspace=true
+serde_json.workspace=true
+serde_yml.workspace=true
+serde.workspace=true
+go-parse-duration.workspace=true
+lazy_static.workspace=true
+[dev-dependencies]
+assert-json-diff.workspace = true
+
+[lib]
+doctest = false

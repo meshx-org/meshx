@@ -1,0 +1,43 @@
+[package]
+edition = "2021"
+name = "controlplane"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+async-trait.workspace=true
+controlplane_core={path = "../../crates/controlplane_core"}
+controlplane_api={path = "../../crates/controlplane_api"}
+tracing.workspace=true
+metrics = { version = "0.22", default-features = false }
+metrics-exporter-prometheus = { version = "0.13", default-features = false }
+http-body-util="0.1.1"
+bytes="1.6"
+http-body="1.0"
+tower-http={version="0.5.2",features = ["map-response-body"]}
+axum-streams={version="0.14.2", features = ["json", "text"]}
+futures.workspace=true
+go-parse-duration.workspace=true
+form_urlencoded.workspace=true
+http.workspace=true
+thiserror.workspace=true
+pot.workspace=true
+schemars.workspace=true
+rkyv.workspace=true
+etcd-client.workspace=true
+tracing-subscriber.workspace=true
+serde.workspace=true
+serde_json.workspace=true
+hyper.workspace=true
+axum.workspace=true
+tower.workspace=true
+tokio.workspace=true
+env_logger.workspace = true
+tokio-util="0.7.11"
+
+[dev-dependencies]
+futures = { workspace = true, features = ["async-await"] }
+tokio = { workspace = true, features = ["full"] }
+schemars.workspace = true
+tokio-test.workspace = true
+tower-test.workspace = true

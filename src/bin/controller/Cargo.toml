@@ -1,0 +1,50 @@
+[package]
+edition = "2021"
+name = "controller"
+version = "0.1.0"
+
+[[bin]]
+doc = false
+name = "controller"
+path = "src/main.rs"
+
+[[bin]]
+doc = false
+name = "crdgen"
+path = "src/crdgen.rs"
+
+[lib]
+name = "controller"
+path = "src/lib.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+serde_yml.workspace=true
+anyhow.workspace = true
+chrono = "0.4.38"
+controlplane_api = {path = "../../crates/controlplane_api"}
+controlplane_client = {path = "../../crates/controlplane_client"}
+controlplane_core = {path = "../../crates/controlplane_core", features = ["schema"]}
+controlplane_derive = {path = "../../crates/controlplane_derive"}
+controlplane_runtime = {path = "../../crates/controlplane_runtime", features = ["jsonpatch"]}
+futures.workspace = true
+opentelemetry = {version = "0.23.0", features = ["trace"]}
+opentelemetry-otlp = {version = "0.16.0", features = ["tokio"], optional = true}
+prometheus = "0.13.4"
+serde.workspace=true
+schemars.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tonic = {version = "0.11", optional = true}
+tracing-opentelemetry = "0.24.0"
+tracing-subscriber.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+futures = {workspace = true, features = ["async-await"]}
+tokio = {workspace = true, features = ["full"]}
+
+[features]
+default = []
+telemetry = ["tonic", "opentelemetry-otlp"]

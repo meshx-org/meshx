@@ -1,0 +1,29 @@
+[package]
+name = "controlplane_derive"
+description = "Custom derives for the kube kubernetes crates"
+version.workspace = true
+authors.workspace = true
+repository.workspace = true
+readme.workspace = true
+license.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+keywords = ["meshx", "macro", "customresource", "crd"]
+categories = ["api-bindings", "encoding"]
+
+[dependencies]
+syn.workspace=true
+serde_json.workspace=true
+proc-macro2.workspace=true
+quote.workspace=true
+darling.workspace=true
+
+[lints]
+workspace = true
+
+[lib]
+proc-macro = true
+
+[dev-dependencies]
+serde = { workspace = true, features = ["derive"] }
+serde_yml.workspace = true
