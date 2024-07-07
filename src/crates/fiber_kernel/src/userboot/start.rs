@@ -5,6 +5,9 @@ use fiber_rust as fx;
 use fiber_rust::HandleBased;
 use fx::Handle;
 use memoffset::offset_of;
+use zerocopy::AsBytes;
+use zerocopy::FromBytes;
+use zerocopy::FromZeroes;
 
 use crate::userboot::userboot::CHILD_HANDLE_COUNT;
 use crate::userboot::userboot::PROC_SELF;
@@ -15,15 +18,18 @@ use super::userboot::fx_proc_args_t;
 use super::userboot::FX_PROCARGS_PROTOCOL;
 use super::userboot::FX_PROCARGS_VERSION;
 use super::userboot::HANDLE_COUNT;
+use super::userboot::PROCESS_ARGS_MAX_BYTES;
 use super::userboot::ROOT_JOB;
 
-type Log = u32;
 const SVC_NAME_INDEX: u32 = 0;
 
 fn handle_termination() {}
 
 const fn handle_info_table() -> [HandleInfo; CHILD_HANDLE_COUNT] {
-    let mut info: [HandleInfo; CHILD_HANDLE_COUNT] = [HandleInfo::default(); CHILD_HANDLE_COUNT];
+    let mut info: [HandleInfo; CHILD_HANDLE_COUNT] = [HandleInfo {
+        htype: todo!(),
+        arg: todo!(),
+    }; CHILD_HANDLE_COUNT];
 
     info[PROC_SELF] = HandleInfo::new(HandleType::ProcessSelf, 0);
     info[ROOT_JOB] = HandleInfo::new(HandleType::DefaultJob, 0);
@@ -32,12 +38,13 @@ const fn handle_info_table() -> [HandleInfo; CHILD_HANDLE_COUNT] {
 }
 
 // This is the processargs message the child will receive.
-#[derive(Debug, Default)]
+#[repr(C)]
+#[derive(Debug, AsBytes, FromZeroes, FromBytes)]
 struct ChildMessageLayout {
     header: fx_proc_args_t,
-    args: Vec<String>,
+    args: [char; PROCESS_ARGS_MAX_BYTES],
     info: [HandleInfo; CHILD_HANDLE_COUNT],
-    names: Vec<String>, // cpp20::to_array("/svc");
+    names: [char; 5], // cpp20::to_array("/svc");
 }
 
 fn create_child_message() -> ChildMessageLayout {
@@ -56,7 +63,12 @@ fn create_child_message() -> ChildMessageLayout {
         environ_num: todo!(),
     };
 
-    let mut child_message = ChildMessageLayout::default();
+    let mut child_message = ChildMessageLayout {
+        header,
+        args: todo!(),
+        info: todo!(),
+        names: todo!(),
+    };
 
     child_message.header = header;
     child_message.info = handle_info_table();
@@ -78,8 +90,9 @@ struct ChildContext {
     handles: Vec<Handle>,
 }
 
-fn create_child_context(name: &str, handles: Vec<Handle>) -> ChildContext {
-    let root_job = fx::Job::from_handle(handles[ROOT_JOB]);
+fn create_child_context(name: &str, mut handles: Vec<Handle>) -> ChildContext {
+    let root_job_handle = handles.remove(ROOT_JOB);
+    let root_job = fx::Job::from_handle(root_job_handle);
 
     let status = root_job.create_child_process(name);
     if status.is_err() {
@@ -132,16 +145,28 @@ fn set_child_handles() {}
 fn set_stash_handle() {}
 
 struct ProgramInfo;
+
+impl ProgramInfo {
+    fn filename(&self) -> &str {
+        "test"
+    }
+}
+
 struct BootFS;
 
-fn start_child_process(log: Log, elf_entry: &ProgramInfo, child_message: &ChildMessageLayout, child: & ChildContext,
-                       bootfs: &BootFS,  handle_count: u32) -> fx::Channel {
+fn start_child_process(
+    elf_entry: &ProgramInfo,
+    child_message: &ChildMessageLayout,
+    child: &mut ChildContext,
+    bootfs: &BootFS,
+    handle_count: usize,
+) {
     // let stack_size = ZIRCON_DEFAULT_STACK_SIZE;
 
     let (to_child, bootstrap) = fx::Channel::create();
     // check(log, status, "fx_channel_create failed for child stack");
 
-    // zx::channel loader_svc;
+    //let loader_svc: zx::Channel;
 
     // Examine the bootfs image and find the requested file in it.
     // This will handle a PT_INTERP by doing a second lookup in bootfs.
@@ -154,7 +179,7 @@ fn start_child_process(log: Log, elf_entry: &ProgramInfo, child_message: &ChildM
     // zx::vmo stack_vmo;
     // status = zx::vmo::create(stack_size, 0, &stack_vmo);
     // check(log, status, "zx_vmo_create failed for child stack");
-  
+
     // stack_vmo.set_property(ZX_PROP_NAME, kStackVmoName, sizeof(kStackVmoName) - 1);
     // zx_vaddr_t stack_base;
     // status = child.vmar.map(ZX_VM_PERM_READ | ZX_VM_PERM_WRITE, 0, stack_vmo, 0, stack_size, &stack_base);
@@ -168,29 +193,26 @@ fn start_child_process(log: Log, elf_entry: &ProgramInfo, child_message: &ChildM
     // check(log, child.reserved_vmar.destroy(), "zx_vmar_destroy failed on reservation VMAR handle");
     // child.reserved_vmar.reset();
 
-    // Now send the bootstrap message.  This transfers away all the handles
+    // Now send the bootstrap message. This transfers away all the handles
     // we have left except the process and thread themselves.
-    let status = to_child.write(0, &child_message, sizeof(child_message), child.handles.data(), static_cast<uint32_t>(handle_count));
+    let status = to_child.write(child_message.as_bytes(), child.handles.as_mut_slice());
     if status.is_err() {
         log::error!("fx_channel_write to child failed");
     }
-   
+
     // Start the process going.
-    status = child.process.start(child.thread, entry, sp, bootstrap, vdso_base);
+    let status = child.process.start(0, bootstrap.into_handle());
     if status.is_err() {
         log::error!("fx_process_start failed");
     }
-    
+
     //child.thread.reset();
 
-    return loader_svc;
+    //loader_svc
 }
 
 fn parse_next_process_arguments() {}
 
-fn duplicate_or_die(log: Log) -> Log {
-    log
-}
 fn wait_for_process_exit() {}
 
 fn extract_handles(bootstrap: fx::Channel) -> Vec<fx::Handle> {
@@ -220,13 +242,13 @@ fn extract_handles(bootstrap: fx::Channel) -> Vec<fx::Handle> {
 // 5. Start the child process running.
 // 6. Optionally, wait for it to exit and then shut down.
 fn bootstrap(channel: fx::Channel) {
-    println!("Hello, world from user space!, {:?}", channel);
+    log::info!("Hello, world from user space!, {:?}", channel);
 
     // We pass all the same handles the kernel gives us along to the child,
     // except replacing our own process/root-VMAR handles with its, and
     // passing along the three extra handles (BOOTFS, thread-self, and a debuglog
     // handle tied to stdout).
-    let handles = extract_handles(channel);
+    let mut handles = extract_handles(channel);
 
     // fx::debuglog log;
     // let status = fx::DebugLog::create(*fx::unowned_resource{handles[kRootResource]}, 0, &log);
@@ -235,7 +257,7 @@ fn bootstrap(channel: fx::Channel) {
     // zx::vmar vmar_self{handles[kVmarRootSelf]};
     // handles[kVmarRootSelf] = sys::FX_HANDLE_INVALID;
 
-    let proc = handles[PROC_SELF];
+    let proc = &handles[PROC_SELF];
     handles[PROC_SELF] = fx::Handle::invalid();
 
     let (svc_stash_server, svc_stash_client) = fx::Channel::create();
@@ -243,16 +265,16 @@ fn bootstrap(channel: fx::Channel) {
 
     {
         // let borrowed_bootfs = bootfs_vmo.borrow();
-        // let bootfs = BootFS {
+        let bootfs = BootFS {
         //     vmar: vmar_self.borrow(),
         //     bootfs_vmo,
         //     vmex,
         //     log: duplicate_or_die(log),
-        // };
+        };
 
-        let launch_process = |elf_entry, svc_stash: Option<fx::Channel>| {
+        let launch_process = |elf_entry: &ProgramInfo, svc_stash: Option<fx::Channel>| {
+            let mut child = create_child_context(elf_entry.filename(), handles);
             let child_message = create_child_message();
-            let child = create_child_context(elf_entry.filename(), handles);
             let handle_count = CHILD_HANDLE_COUNT - 1;
 
             // stash_svc(log, svc_stash_client, elf_entry.filename(), child.svc_server);
@@ -275,15 +297,15 @@ fn bootstrap(channel: fx::Channel) {
             // );
 
             // Map in the bootfs so we can look for files in it.
-            let loader_svc = start_child_process(elf_entry, child_message, child, bootfs, handle_count);
+            let loader_svc = start_child_process(elf_entry, &child_message, &mut child, &bootfs, handle_count);
             log::info!("process {} started.", elf_entry.filename());
 
             // Now become the loader service for as long as that's needed.
-            // TODO: 
-            if loader_svc.is_some() {
-                // let ldsvc = LoaderService::new(duplicate_or_die(log), &bootfs, elf_entry.root);
-                // ldsvc.serve(loader_svc);
-            }
+            // TODO:
+            //if loader_svc.is_some() {
+            // let ldsvc = LoaderService::new(duplicate_or_die(log), &bootfs, elf_entry.root);
+            // ldsvc.serve(loader_svc);
+            //}
 
             child
         };

@@ -1,25 +1,26 @@
 [package]
+edition = "2021"
 name = "fiber_kernel"
 version = "0.1.0"
-edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-fiber_sys = {version = "0.1.0", path = "../fiber_sys"}
 fiber_rust = {version = "0.1.0", path = "../fiber_rust"}
+fiber_sys = {version = "0.1.0", path = "../fiber_sys"}
+zerocopy = {version = "0.7", features = ["derive"]}
 
-tokio = {version = "1.24.1", features = ["rt-multi-thread", "macros"]}
-rand="0.8.4"
-log="0.4.17"
-smol="1.2.5"
-static_assertions = "1.1"
-once_cell="1.17.1"
-typed-arena="2.0.1"
 generational-arena = "0.2"
 id-arena = "2.2.1"
-tracing = "0.1"
-thiserror = "1.0.30"
-num-traits = "0.2"
-num-derive = "0.4"
+log = "0.4.17"
 memoffset = "0.9"
+num-derive = "0.4"
+num-traits = "0.2"
+once_cell = "1.17.1"
+rand = "0.8.4"
+smol = "1.2.5"
+static_assertions = "1.1"
+thiserror = "1.0.30"
+tokio = {version = "1.24.1", features = ["rt-multi-thread", "macros"]}
+tracing = "0.1"
+typed-arena = "2.0.1"

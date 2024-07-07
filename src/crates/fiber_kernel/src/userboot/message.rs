@@ -1,6 +1,11 @@
 use num_traits::cast::FromPrimitive;
 use num_derive::FromPrimitive;
 use thiserror::Error;
+use zerocopy::AsBytes;
+use zerocopy::FromBytes;
+use zerocopy::FromZeroes;
+
+ 
 
 /// Handle types as defined by the processargs protocol.
 ///
@@ -11,13 +16,12 @@ use thiserror::Error;
 ///
 /// [processargs.h]: https://fuchsia.googlesource.com/fuchsia/+/HEAD/zircon/system/public/zircon/processargs.h
 #[repr(u8)]
-#[derive(FromPrimitive, Default, Copy, Clone, Debug, Eq, PartialEq)]
-#[non_exhaustive]
+#[derive(FromPrimitive, Copy, Clone, Debug, Eq, PartialEq, AsBytes)]
 pub enum HandleType {
+    None = 0,
     /// Handle to our own process.
     ///
     /// Equivalent to PA_PROC_SELF.
-    #[default]
     ProcessSelf = 0x01,
 
     /// Handle to the initial thread of our own process.
@@ -158,14 +162,17 @@ pub enum HandleType {
     ///
     /// Equivalent to PA_USER2.
     User2 = 0xF2,
+
+    Last ,
 }
 
 /// Metadata information for a handle in a processargs message. Contains a handle type and an
 /// unsigned 16-bit value, whose meaning is handle type dependent.
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
+#[repr(packed)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, AsBytes, FromZeroes, FromBytes)]
 pub struct HandleInfo {
-    htype: HandleType,
-    arg: u16,
+    pub htype: HandleType,
+    pub arg: u16,
 }
 
 impl HandleInfo {

@@ -1670,6 +1670,7 @@ dependencies = [
  "tokio",
  "tracing",
  "typed-arena",
+ "zerocopy 0.7.34",
 ]
 
 [[package]]
@@ -5650,6 +5651,7 @@ version = "0.7.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae87e3fcd617500e5d106f0380cf7b77f3c6092aae37191433159dda23cfb087"
 dependencies = [
+ "byteorder",
  "zerocopy-derive 0.7.34",
 ]
 

@@ -5,10 +5,16 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT
 
+use zerocopy::AsBytes;
+use zerocopy::FromBytes;
+use zerocopy::FromZeroes;
+
 pub(crate) const FX_PROCARGS_PROTOCOL: u32 = 0x4150585d; // MXPA
 pub(crate) const FX_PROCARGS_VERSION: u32 = 0x0001000;
 
-#[derive(Debug, Default)]
+#[repr(C)]
+#[derive(Debug, Default, FromBytes, FromZeroes, AsBytes)]
+#[allow(non_camel_case_types)]
 pub(crate) struct fx_proc_args_t {
     // Protocol and version identifiers to allow for
     // different process start message protocols and
@@ -46,11 +52,18 @@ pub(crate) struct fx_proc_args_t {
     pub names_num: u32,
 }
 
+/// These describe userboot itself.
 pub(crate) const PROC_SELF: usize = 0;
+
+/// Essential job and resource handles.
 pub(crate) const ROOT_JOB: usize = 1;
 
 pub(crate) const HANDLE_COUNT: usize = 3;
 pub(crate) const CHILD_HANDLE_COUNT: usize = HANDLE_COUNT + 5;
+
+/// Max number of bytes allowed for arguments to the userboot.next binary. This is an arbitrary
+/// value.
+pub(crate) const PROCESS_ARGS_MAX_BYTES: usize = 128;
 
 /*fn extract_handles(channel: fx::Channel) -> [sys::fx_handle_t; HANDLE_COUNT] {
     return [0; HANDLE_COUNT];

@@ -1,8 +1,11 @@
+#![allow(unused)]
+#![feature(trivial_bounds)]
+// Copyright 2023 MeshX Contributors. All rights reserved.
+
 #![feature(trait_upcasting)]
 
-// Copyright 2023 MeshX Contributors. All rights reserved.
 pub mod koid;
-// pub mod userboot;
+pub mod userboot;
 
 mod object;
 mod process_context;
@@ -473,11 +476,8 @@ impl Kernel {
             .unwrap();
 
         rt.block_on(async {
-            // userboot::userboot_init(self);
-
+            userboot::userboot_init(self);
             log::info!("Now wait until the root job is childless.");
-
-            println!("Hello world");
         })
     }
 

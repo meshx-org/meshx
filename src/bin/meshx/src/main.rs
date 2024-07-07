@@ -30,11 +30,11 @@ fn main() -> Result<(), fx_status::Status> {
 
     // TODO: register the component manager process
 
-    unsafe {
-        let lib = Library::new("libcomponent_dummy.dylib").unwrap();
-        let func: libloading::Symbol<unsafe extern fn() -> u32> = lib.get(b"_start").unwrap();
-        println!("{:?}", func());
-    }
+    //unsafe {
+    //    let lib = Library::new("libcomponent_dummy.dylib").unwrap();
+    //    let func: libloading::Symbol<unsafe extern fn() -> u32> = lib.get(b"_start").unwrap();
+    //    println!("{:?}", func());
+    //}
 
     kernel.init();
 
