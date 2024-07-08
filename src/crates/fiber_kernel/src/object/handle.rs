@@ -15,9 +15,11 @@ use std::sync::Weak;
 use crate::object::Dispatcher;
 
 use fiber_sys::{fx_koid_t, fx_rights_t};
+use generational_arena::Index;
 use static_assertions::const_assert;
 
 use super::GenericDispatcher;
+use super::HANDLE_TABLE_ARENA;
 
 // HandleOwner wraps a Handle in an Arc that has shared
 // ownership of the Handle and deletes it whenever it falls out of scope.
@@ -69,8 +71,10 @@ pub(crate) struct Handle {
     pub(super) base_value: u32,
 }
 
-fn index_to_handle(index: usize) -> Weak<Handle> {
-    Weak::new()
+fn index_to_handle(index: u32) -> Weak<Handle> {
+    let handle = HANDLE_TABLE_ARENA.get_2(index).unwrap();
+
+    Arc::downgrade(&handle)
 }
 
 fn handle_value_to_index(value: u32) -> u32 {
@@ -103,7 +107,8 @@ impl Handle {
     /// Maps an integer obtained by Handle::base_value() back to a Handle.
     pub(super) fn from_u32(value: u32) -> Option<Weak<Self>> {
         let index = handle_value_to_index(value);
-        let handle_ref = index_to_handle(index as usize);
+        println!("{:?} {:?}", value, index);
+        let handle_ref = index_to_handle(index);
 
         let handle = handle_ref.upgrade().unwrap();
 
@@ -127,8 +132,19 @@ impl Handle {
         Arc::new(Handle::new(dispatcher, rights, 0))
     }
 
-    pub(crate) fn make<T>(handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner {
-        Arc::new(Handle::new(handle.dispatcher(), rights, 0))
+    pub(crate) fn make<T>(kernel_handle: KernelHandle<T>, rights: fx_rights_t) -> HandleOwner {
+        let mut base_value = 0;
+        let addr = HANDLE_TABLE_ARENA.alloc_2(kernel_handle.dispatcher(), "new", &mut base_value, rights);
+
+        let arena = &HANDLE_TABLE_ARENA;
+        let handle = arena.get_2(addr).unwrap();
+
+        //kcounter_add(handle_count_made, 1);
+        //kcounter_add(handle_count_live, 1);
+
+        //return HandleOwner(new (addr) Handle(kernel_handle.release(), rights, base_value));
+        //Arc::new(Handle::new(handle.dispatcher(), rights, 0))
+        handle
     }
 
     pub(crate) fn dup(source: Arc<Handle>, rights: fx_rights_t) -> HandleOwner {

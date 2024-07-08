@@ -86,9 +86,9 @@ pub trait System: std::fmt::Debug {
         options: u32,
         bytes: *mut u8,
         handles: *mut fx_handle_t,
-        num_bytes: u32,
+        num_bytes: usize,
         num_handles: u32,
-        actual_bytes: *mut u32,
+        actual_bytes: *mut usize,
         actual_handles: *mut u32,
     ) -> fx_status_t;
     fn sys_channel_read_etc(
@@ -319,9 +319,9 @@ pub fn fx_channel_read(
     options: u32,
     bytes: *mut u8,
     handles: *mut fx_handle_t,
-    num_bytes: u32,
+    num_bytes: usize,
     num_handles: u32,
-    actual_bytes: *mut u32,
+    actual_bytes: *mut usize,
     actual_handles: *mut u32,
 ) -> fx_status_t {
     let sys = SYSTEM.get().expect("SYSTEM is not initialized");

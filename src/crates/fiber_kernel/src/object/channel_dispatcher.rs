@@ -1,8 +1,9 @@
+use std::collections::VecDeque;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{any::Any, sync::RwLock};
 
-use fiber_sys as sys;
+use fiber_sys::{self as sys, fx_status_t};
 
 use super::{
     BaseDispatcher, Dispatcher, GenericDispatcher, KernelHandle, MessagePacketPtr, PeerHolder, PeeredDispatcher,
@@ -82,7 +83,7 @@ impl MessageWaiter {
 #[derive(Debug)]
 struct ChannelGuardedState {
     waiters: Vec<MessageWaiter>,
-    messages: Vec<MessagePacketPtr>,
+    messages: VecDeque<MessagePacketPtr>,
     max_message_count: u32,
 
     txid: u32, // TA_GUARDED(get_lock()) = 0;
@@ -140,7 +141,7 @@ impl PeeredDispatcher for ChannelDispatcher {
         let mut peered_state = self.peered_base.guarded.lock().unwrap();
 
         debug_assert!(peered_state.peer.is_none());
-        debug_assert!(peered_state.peer_koid == Some(sys::FX_KOID_INVALID));
+        debug_assert!(peered_state.peer_koid.is_none());
 
         peered_state.peer_koid = Some(peer.get_koid());
         peered_state.peer = Some(peer);
@@ -199,7 +200,7 @@ impl ChannelDispatcher {
             owner: sys::FX_KOID_INVALID,
             guarded: RwLock::new(ChannelGuardedState {
                 waiters: Vec::new(),
-                messages: Vec::new(),
+                messages: VecDeque::new(),
                 max_message_count: 0,
                 txid: 0,
                 peer_has_closed: false,
@@ -256,7 +257,7 @@ impl ChannelDispatcher {
         //canary_.Assert();
 
         // Once we've acquired the channel_lock_ we're going to make a copy of the previously active
-        // signals and raise the READABLE signal before dropping the lock.  After we've dropped the lock,
+        // signals and raise the READABLE signal before dropping the lock. After we've dropped the lock,
         // we'll notify observers using the previously active signals plus READABLE.
         //
         // There are several things to note about this sequence:
@@ -275,8 +276,7 @@ impl ChannelDispatcher {
 
         {
             let mut lock = self.guarded.write().unwrap();
-
-            lock.messages.push(msg);
+            lock.messages.push_back(msg);
             previous_signals = self.base().raise_signals_locked(sys::FX_CHANNEL_READABLE);
             let size = lock.messages.len() as u32;
             if size > lock.max_message_count {
@@ -317,5 +317,56 @@ impl ChannelDispatcher {
         }
 
         Err(msg)
+    }
+
+    // This method should never acquire |get_lock()|.  See the comment at |channel_lock_| for details.
+    pub fn read(
+        &self,
+        owner: sys::fx_koid_t,
+        msg_size: &mut usize,
+        msg_handle_count: &mut u32,
+        msg: &mut MessagePacketPtr,
+        may_discard: bool,
+    ) -> sys::fx_status_t {
+        //canary_.Assert();
+
+        let max_size = *msg_size;
+        let max_handle_count = *msg_handle_count;
+
+        let mut guard = self.guarded.write().unwrap();
+
+        if (owner != self.owner) {
+            return sys::FX_ERR_BAD_HANDLE;
+        }
+
+        if (guard.messages.is_empty()) {
+            return if guard.peer_has_closed {
+                sys::FX_ERR_PEER_CLOSED
+            } else {
+                sys::FX_ERR_SHOULD_WAIT
+            };
+        }
+
+        let front = guard.messages.front().unwrap();
+
+        *msg_size = front.data_size();
+        *msg_handle_count = front.num_handles();
+
+        let mut status: sys::fx_status_t = sys::FX_OK;
+
+        if (*msg_size > max_size || *msg_handle_count > max_handle_count) {
+            if (!may_discard) {
+                return sys::FX_ERR_BUFFER_TOO_SMALL;
+            }
+            status = sys::FX_ERR_BUFFER_TOO_SMALL;
+        }
+
+        *msg = guard.messages.pop_front().unwrap();
+        if (guard.messages.is_empty()) {
+            todo!()
+            // ClearSignals(ZX_CHANNEL_READABLE);
+        }
+
+        status
     }
 }

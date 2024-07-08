@@ -24,11 +24,11 @@ fn get_job_handle(kernel: &Kernel) -> HandleOwner {
 pub fn userboot_init(kernel: &Kernel) {
     // Prepare the bootstrap message packet. This allocates space for its
     // handles, which we'll fill in as we create things.
-    let result = MessagePacket::create(std::ptr::null(), 0, userboot::HANDLE_COUNT as u16);
+    let result = MessagePacket::create(std::ptr::null(), 0, userboot::HANDLE_COUNT as u32);
     assert!(result.is_ok());
     let msg = result.unwrap();
 
-    debug_assert!(msg.num_handles() == userboot::HANDLE_COUNT as u16);
+    debug_assert!(msg.num_handles() == userboot::HANDLE_COUNT as u32);
 
     log::debug!("userboot_init: msg={:?}", msg);
 

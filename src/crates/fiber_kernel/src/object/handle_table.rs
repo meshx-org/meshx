@@ -1,9 +1,9 @@
 use std::collections::VecDeque;
 use std::mem::size_of;
-use std::sync::RwLock;
 use std::sync::{Arc, Weak};
+use std::sync::{Mutex, RwLock};
 
-use fiber_sys as sys;
+use fiber_sys::{self as sys, fx_rights_t};
 use generational_arena::{Arena, Index};
 use once_cell::unsync::Lazy;
 use rand::Rng;
@@ -16,42 +16,56 @@ use crate::object::{
 };
 
 pub(crate) struct HandleTableArena {
-    pub arena: Arena<Arc<Handle>>,
+    handles: Mutex<Vec<Option<Arc<Handle>>>>,
+    free_list: Mutex<VecDeque<u32>>,
+
+    pub arena: Mutex<Vec<Arc<Handle>>>,
 }
 
 impl HandleTableArena {
     pub(crate) fn handle_to_index(&self, handle: *const Handle) -> u32 {
         // return handle - self.arena.base()
-
         return handle as u32;
     }
 
     // Returns a new |base_value| based on the value stored in the free
     // arena slot pointed to by |addr|. The new value will be different
     // from the last |base_value| used by this slot.
-    pub(crate) fn get_new_base_value(&self, addr: *const ()) -> u32 {
+    pub(crate) fn get_new_base_value(&self, addr: *const Handle) -> u32 {
         // Get the index of this slot within the arena.
         let handle_index = self.handle_to_index(addr as *const Handle);
 
         // Check the free memory for a stashed base_value.
-        let v = unsafe { (*(addr as *const Handle)).base_value };
+        let old = unsafe { (*addr).base_value };
 
-        new_handle_value(handle_index, v)
+        new_handle_value(handle_index, old)
     }
+
+    //pub fn get(&self, idx: u32) -> Arc<Handle> {
+    //    self.arena.lock().unwrap()[idx as usize].clone()
+    //}
 
     /// Allocate space for a Handle from the arena, but don't instantiate the
     /// object.  |base_value| gets the value for Handle::base_value_.  |what|
     /// says whether this is allocation or duplication, for the error message.
-    pub(crate) fn alloc(&mut self, dispatcher: &Arc<dyn Dispatcher>, what: &str) -> Index {
-        // Attempt to allocate a handle.
-        let idx = self.arena.insert(Arc::new(Handle {
-            handle_table_id: sys::FX_KOID_INVALID.into(),
-            dispatcher: todo!(),
-            handle_rights: todo!(),
-            base_value: todo!(),
-        }));
+    pub(crate) fn alloc(
+        &self,
+        dispatcher: GenericDispatcher,
+        what: &str,
+        base_value: &mut u32,
+        handle_rights: fx_rights_t,
+    ) -> u32 {
+        let mut locked = self.arena.lock().unwrap();
 
-        let outstanding_handles = self.arena.len();
+        // Attempt to allocate a handle.
+        let addr = Arc::new(Handle {
+            handle_table_id: sys::FX_KOID_INVALID.into(),
+            dispatcher: dispatcher.clone(),
+            handle_rights,
+            base_value: 0,
+        });
+
+        let outstanding_handles = locked.len();
 
         //if (unlikely(addr == nullptr)) {
         //    kcounter_add(handle_count_alloc_failed, 1);
@@ -60,7 +74,7 @@ impl HandleTableArena {
         //}
 
         // Emit a warning if too many handles have been created and we haven't recently logged
-        //if (unlikely(outstanding_handles > kHighHandleCount) && handle_count_high_log_.Ready()) {
+        // if (unlikely(outstanding_handles > kHighHandleCount) && handle_count_high_log_.Ready()) {
         //    printf("WARNING: High handle count: %zu / %zu handles\n", outstanding_handles,
         //            kHighHandleCount);
         //}
@@ -69,14 +83,52 @@ impl HandleTableArena {
 
         // checking the process_id_ and dispatcher is really about trying to catch cases where this
         // Handle might somehow already be in use.
-        //debug_assert!((addr).process_id().eq(&sys::FX_KOID_INVALID) == true);
+        // debug_assert!((addr).process_id().eq(&sys::FX_KOID_INVALID) == true);
         //debug_assert!((addr).dispatcher() == nullptr);
 
-        // NOTE: we don't have a cocept to return bases here so instead we return the index
-        // *base_value = GetNewBaseValue(addr);
+        *base_value = self.get_new_base_value(addr.as_ref());
         // return addr;
 
-        idx
+        // NOTE: we don't have a cocept to return bases here so instead we return the index
+        0
+    }
+
+    // Allocates a new handle and returns its index
+    pub fn alloc_2(
+        &self,
+        dispatcher: GenericDispatcher,
+        what: &str,
+        base_value: &mut u32,
+        handle_rights: fx_rights_t,
+    ) -> u32 {
+        // Attempt to allocate a handle.
+        let addr = Arc::new(Handle {
+            handle_table_id: sys::FX_KOID_INVALID.into(),
+            dispatcher: dispatcher.clone(),
+            handle_rights,
+            base_value: 0,
+        });
+
+        let mut handles = self.handles.lock().unwrap();
+        let mut free_list = self.free_list.lock().unwrap();
+
+        if let Some(index) = free_list.pop_front() {
+            handles[index as usize] = Some(addr);
+            index
+        } else {
+            let index = handles.len() as u32;
+            handles.push(Some(addr));
+            index
+        }
+    }
+
+    // Retrieves a handle by index, if it exists
+    pub fn get_2(&self, index: u32) -> Option<Arc<Handle>> {
+        self.handles
+            .lock()
+            .unwrap()
+            .get(index as usize)
+            .and_then(|opt| opt.clone())
     }
 
     pub(crate) fn delete(&self, handle: *const Handle) {
@@ -93,9 +145,9 @@ impl HandleTableArena {
         debug_assert!(handle.handle_table_id() == sys::FX_KOID_INVALID);
 
         // TODO:
-        //if (dispatcher.is_waitable()) {
-        //    dispatcher.cancel(handle);
-        //}
+        if (dispatcher.is_waitable()) {
+            // dispatcher.cancel(handle);
+        }
 
         // The destructor should not do anything interesting but call it for completeness.
         std::mem::forget(handle);
@@ -107,9 +159,9 @@ impl HandleTableArena {
         // self.arena.remove(handle);
 
         // TODO: we need downcast for this
-        //if (zero_handles) {
-        //    dispatcher.on_zero_handles();
-        //}
+        if (zero_handles) {
+            dispatcher.on_zero_handles();
+        }
 
         // If |disp| is the last reference (which is likely) then the dispatcher object
         // gets destroyed at the exit of this function.
@@ -117,9 +169,13 @@ impl HandleTableArena {
     }
 }
 
-pub(crate) const HANDLE_TABLE_ARENA: Lazy<HandleTableArena> = Lazy::new(|| HandleTableArena {
-    arena: Arena::with_capacity(size_of::<Handle>() * MAX_HANDLE_COUNT as usize),
-});
+lazy_static::lazy_static! {
+    pub(crate) static ref HANDLE_TABLE_ARENA: HandleTableArena = HandleTableArena {
+        handles: Mutex::new(Vec::new()),
+        free_list: Mutex::new(VecDeque::new()),
+        arena: Mutex::new(Vec::with_capacity(size_of::<Handle>() * MAX_HANDLE_COUNT as usize)),
+    };
+}
 
 // |index| is the literal index into the table. |old_value| is the
 // |index mixed with the per-handle-lifetime state.
@@ -164,6 +220,7 @@ fn map_value_to_handle(value: sys::fx_handle_t, mixer: u32) -> Option<Weak<Handl
 
     let handle_id = ((value as u32) ^ mixer) >> HANDLE_RESERVED_BITS;
 
+    println!("{:?} {:?} {:?}", value, handle_id, mixer);
     Handle::from_u32(handle_id)
 }
 
@@ -210,6 +267,10 @@ impl HandleTable {
                 handles: VecDeque::new(),
             }),
         }
+    }
+
+    pub fn get_koid(&self) -> sys::fx_koid_t {
+        self.koid
     }
 
     // Maps a |handle| to an integer which can be given to usermode as a

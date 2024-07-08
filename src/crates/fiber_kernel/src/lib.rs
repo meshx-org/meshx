@@ -1,7 +1,6 @@
 #![allow(unused)]
 #![feature(trivial_bounds)]
 // Copyright 2023 MeshX Contributors. All rights reserved.
-
 #![feature(trait_upcasting)]
 
 pub mod koid;
@@ -10,14 +9,14 @@ pub mod userboot;
 mod object;
 mod process_context;
 
-use object::{HandleOwner, PortDispatcher};
+use object::{ChannelDispatcher, HandleOwner, MessagePacket, PortDispatcher};
 use std::{
     fmt,
     sync::{Arc, Mutex},
 };
 use tracing::instrument;
 
-use fiber_sys as sys;
+use fiber_sys::{self as sys, FX_RIGHT_READ};
 
 use crate::object::{
     GenericDispatcher, Handle, JobDispatcher, JobPolicy, KernelHandle, ProcessDispatcher, RootJobObserver,
@@ -318,13 +317,43 @@ impl fiber_sys::System for Kernel {
         options: u32,
         bytes: *mut u8,
         handles: *mut sys::fx_handle_t,
-        num_bytes: u32,
-        num_handles: u32,
-        actual_bytes: *mut u32,
+        mut num_bytes: usize,
+        mut num_handles: u32,
+        actual_bytes: *mut usize,
         actual_handles: *mut u32,
     ) -> sys::fx_status_t {
         let up = ProcessDispatcher::get_current();
 
+        let result = up
+            .process
+            .handle_table()
+            .get_dispatcher_with_rights(&up.process, handle, FX_RIGHT_READ);
+
+        if let Err(status) = result {
+            return status;
+        }
+
+        let dispatcher = result.unwrap();
+
+        println!("{:?}", dispatcher);
+
+        let channel = dispatcher.as_channel_dispatcher().unwrap();
+
+        // Currently MAY_DISCARD is the only allowable option.
+        //if (options & !FX_CHANNEL_READ_MAY_DISCARD) {
+        //    return FX_ERR_NOT_SUPPORTED;
+        //}
+
+        let mut msg = Box::from(MessagePacket::default());
+        let result = channel.read(
+            up.process.handle_table().get_koid(),
+            &mut num_bytes,
+            &mut num_handles,
+            &mut msg,
+            false,
+        );
+
+        todo!();
         sys::FX_OK
     }
 

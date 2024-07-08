@@ -25,10 +25,10 @@ const fn payload_offset(num_handles: u32) -> u32 {
     return HANDLES_OFFSET + num_handles * std::mem::size_of::<*const Handle>() as u32;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct MessagePacket {
     data_size: usize,
-    num_handles: u16,
+    num_handles: u32,
     owns_handles: bool,
     data: Vec<u8>,
     handles: Vec<Option<Weak<Handle>>>,
@@ -39,7 +39,7 @@ impl MessagePacket {
     // Create method to create a MessagePacket.  This, in turn, guarantees that
     // when a user creates a MessagePacket, they end up with the proper
     // MessagePacket::UPtr type for managing the message packet's life cycle.
-    fn new(data: Vec<u8>, data_size: usize, num_handles: u16, handles: Vec<Option<Weak<Handle>>>) -> Self {
+    fn new(data: Vec<u8>, data_size: usize, num_handles: u32, handles: Vec<Option<Weak<Handle>>>) -> Self {
         MessagePacket {
             data,
             handles,
@@ -54,12 +54,12 @@ impl MessagePacket {
     // Note: This method does not write the payload into the MessagePacket.
     //
     // Returns FX_OK on success.
-    fn create_common(data_size: usize, num_handles: u16) -> Result<MessagePacketPtr, sys::fx_status_t> {
-        if data_size as u32 > MAX_MESSAGE_SIZE || num_handles as u32 > MAX_MESSAGE_HANDLES {
+    fn create_common(data_size: usize, num_handles: u32) -> Result<MessagePacketPtr, sys::fx_status_t> {
+        if data_size as u32 > MAX_MESSAGE_SIZE || num_handles > MAX_MESSAGE_HANDLES {
             return Err(sys::FX_ERR_OUT_OF_RANGE);
         }
 
-        let payload_offset = payload_offset(num_handles as u32);
+        let payload_offset = payload_offset(num_handles);
 
         // MessagePackets lives *inside* a list of buffers. The first buffer holds the MessagePacket
         // object, followed by its handles (if any), and finally the payload data.
@@ -82,7 +82,7 @@ impl MessagePacket {
     pub(crate) fn create(
         data: *const u8,
         data_size: usize,
-        num_handles: u16,
+        num_handles: u32,
     ) -> Result<MessagePacketPtr, sys::fx_status_t> {
         let result = MessagePacket::create_common(data_size, num_handles);
 
@@ -109,7 +109,7 @@ impl MessagePacket {
         self.data_size
     }
 
-    pub(crate) fn num_handles(&self) -> u16 {
+    pub(crate) fn num_handles(&self) -> u32 {
         return self.num_handles;
     }
 

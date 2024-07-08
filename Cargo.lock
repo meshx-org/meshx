@@ -1658,6 +1658,7 @@ dependencies = [
  "fiber_sys",
  "generational-arena",
  "id-arena",
+ "lazy_static",
  "log",
  "memoffset 0.9.0",
  "num-derive 0.4.1",

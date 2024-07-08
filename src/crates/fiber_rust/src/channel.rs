@@ -75,25 +75,23 @@ impl Channel {
         bytes: &mut [u8],
         handles: &mut [MaybeUninit<Handle>],
     ) -> Result<(Result<(), Status>, usize, usize), (usize, usize)> {
-        unsafe {
-            let raw_handle = self.raw_handle();
-            let mut actual_bytes = 0;
-            let mut actual_handles = 0;
-            let status = ok(sys::fx_channel_read(
-                raw_handle,
-                0,
-                bytes.as_mut_ptr(),
-                handles.as_mut_ptr() as *mut _,
-                bytes.len() as u32,
-                handles.len() as u32,
-                &mut actual_bytes,
-                &mut actual_handles,
-            ));
-            if status == Err(Status::BUFFER_TOO_SMALL) {
-                Err((actual_bytes as usize, actual_handles as usize))
-            } else {
-                Ok((status, actual_bytes as usize, actual_handles as usize))
-            }
+        let raw_handle = self.raw_handle();
+        let mut actual_bytes = 0;
+        let mut actual_handles = 0;
+        let status = ok(sys::fx_channel_read(
+            raw_handle,
+            0,
+            bytes.as_mut_ptr(),
+            handles.as_mut_ptr() as *mut _,
+            bytes.len(),
+            handles.len() as u32,
+            &mut actual_bytes,
+            &mut actual_handles,
+        ));
+        if status == Err(Status::BUFFER_TOO_SMALL) {
+            Err((actual_bytes as usize, actual_handles as usize))
+        } else {
+            Ok((status, actual_bytes as usize, actual_handles as usize))
         }
     }
 

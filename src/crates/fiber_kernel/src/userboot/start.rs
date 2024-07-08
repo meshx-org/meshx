@@ -223,6 +223,8 @@ fn extract_handles(bootstrap: fx::Channel) -> Vec<fx::Handle> {
     let mut buff = fx::MessageBuf::new();
     let status = bootstrap.read(&mut buff);
 
+    println!("{:?}", buff);
+
     if status.is_err() {
         log::error!("cannot read bootstrap message");
     }
@@ -257,8 +259,10 @@ fn bootstrap(channel: fx::Channel) {
     // zx::vmar vmar_self{handles[kVmarRootSelf]};
     // handles[kVmarRootSelf] = sys::FX_HANDLE_INVALID;
 
-    let proc = &handles[PROC_SELF];
     handles[PROC_SELF] = fx::Handle::invalid();
+    println!("{:?}", handles);
+    let proc = &handles[PROC_SELF];
+
 
     let (svc_stash_server, svc_stash_client) = fx::Channel::create();
     // TODO: check(log, status, "Failed to create svc stash channel.");
