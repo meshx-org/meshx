@@ -1,5 +1,5 @@
 {
-    "name": "@meshx-org/midl",
+    "name": "@meshx-org/midlx",
     "version": "0.0.1",
     "dependencies": {
         "@meshx-org/fiber": "*",

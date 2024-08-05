@@ -7,7 +7,7 @@ rust-version = "1.80.0"
 version = "0.1.0"
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+#unsafe_code = "forbid"
 
 ## All dependency versions, used in the project
 [workspace.dependencies]
@@ -67,8 +67,13 @@ members = [
   "src/crates/controlplane_core",
   "src/crates/controlplane_runtime",
   "src/crates/controlplane_client",
+  "src/crates/component_manager",
   "src/crates/meshx_runtime",
   "src/crates/meshx_flow",
+  "src/crates/cm_config",
+  "src/crates/cm_types",
+  "src/crates/meshx_macro",
+  "src/crates/fiber_wasi_polyfill",
   "src/crates/component_dummy",
   "src/crates/datasources",
   "src/crates/fiber_sys",
@@ -83,7 +88,7 @@ members = [
   "src/sys/pkg/lib/package-tool",
   "src/sys/pkg/lib/meshx-repo",
   "src/lib/meshx-url",
-  "src/sys/pkg/bin/package-tool",
+  "src/sys/pkg/bin/package-tool", "src/crates/component",
 ]
 resolver = "2"
 

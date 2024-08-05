@@ -1,0 +1,1 @@
+export type UnionFactory<T> = (index: number, data: object) => T

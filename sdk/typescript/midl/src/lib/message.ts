@@ -11,7 +11,7 @@ import {
     FX_RIGHT_WAIT,
     Status,
 } from "@meshx-org/fiber-types"
-import { HandleDisposition, HandleInfo, ReadEtcResult } from "@meshx-org/fiber"
+import { HandleDisposition, HandleInfo, ReadEtcResult } from "@meshx-org/fiber-ts"
 import { align, Decoder, Encoder } from "./codec"
 import { FidlError, FidlErrorCode } from "./errors"
 import { WireFormat } from "./wireformat"

@@ -1,0 +1,8 @@
+packages:
+  # all packages in direct subdirs of packages/
+  - 'experiments/*'
+  # all packages in subdirs of components/
+  - 'src/typescript/**'
+  - 'tools/**'
+  # exclude packages that are inside test directories
+  - '!**/test/**'

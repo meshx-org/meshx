@@ -1,7 +1,10 @@
 import {
+    FX_DEFAULT_CHANNEL_RIGHTS,
     FX_ERR_WRONG_TYPE,
+    fx_handle_t,
     FX_KOID_INVALID,
     fx_koid_t,
+    fx_obj_type_t,
     fx_rights_t,
     fx_signals_t,
     fx_status_t,
@@ -11,8 +14,8 @@ import invariant from "tiny-invariant"
 import * as koid from "../../koid"
 
 export abstract class Dispatcher {
-    private _koid: fx_koid_t
-    private _handle_count: number
+    #koid: fx_koid_t
+    #handle_count: number
 
     // |_signals| is the set of currently active signals.
     //
@@ -54,35 +57,38 @@ export abstract class Dispatcher {
     //
     // In the example above, T1's ASSERT may fire if PollSignals or ClearSignals were to use relaxed
     // memory order for accessing _signals.
-    private _signals: fx_signals_t
+    #signals: fx_signals_t
 
     // At construction, the object is asserting |signals|.
     protected constructor(signals: fx_signals_t) {
-        this._signals = signals
-        this._handle_count = 0
-        this._koid = koid.generate()
+        this.#signals = signals
+        this.#handle_count = 0
+        this.#koid = koid.generate()
 
         // kcounter_add(dispatcher_create_count, 1);
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
+    on_zero_handles() {}
+
     static default_rights(): fx_rights_t {
-        return 0
+        return FX_DEFAULT_CHANNEL_RIGHTS
     }
 
     get_koid() {
-        return this._koid
+        return this.#koid
     }
 
     increment_handle_count(): void {
         // As this function does not return anything actionable, not even something implicit like "you
         // now have the lock", there are no correct assumptions the caller can make about orderings
         // of this increment and any other memory access. As such it can just be relaxed.
-        this._handle_count += 1
+        this.#handle_count += 1
     }
 
     // Returns true exactly when the handle count goes to zero.
     decrement_handle_count(): boolean {
-        if (--this._handle_count === 1) {
+        if (--this.#handle_count === 1) {
             // The decrement operation above synchronizes with the fence below.  This ensures that changes
             // to the object prior to its handle count reaching 0 will be visible to the thread that
             // ultimately drops the count to 0.  This is similar to what's done in
@@ -100,7 +106,7 @@ export abstract class Dispatcher {
         // run an object destructor without acquiring any locks. As a handle count is not a refcount
         // and a low handle count does not imply any ownership of the dispatcher (which has its own
         // refcount), this can just be relaxed.
-        return this._handle_count
+        return this.#handle_count
     }
 
     // get_name() will return a null-terminated name of ZX_MAX_NAME_LEN - 1 or fewer
@@ -129,9 +135,16 @@ export abstract class Dispatcher {
     get_related_koid(): fx_koid_t {
         return FX_KOID_INVALID
     }
+
+    // Clear the signals specified by |signals|.
+    clear_signals(signals: fx_signals_t): void {
+        this.#signals = ~this.#signals
+    }
+
+    abstract get_type(): fx_obj_type_t
 }
 
-export class SoloDispatcher extends Dispatcher {
+export abstract class SoloDispatcher extends Dispatcher {
     //static default_rights(): fx_rights_t {
     //    return def_rights
     //}
@@ -172,30 +185,30 @@ export class SoloDispatcher extends Dispatcher {
 // members, and that PeeredDispatcher would have custom refcounting.
 export class PeerHolder<T> {}
 
-export class PeeredDispatcher<T extends Dispatcher> extends Dispatcher {
-    private _holder: PeerHolder<T>
-    private _peer: Ref<T> | null
-    private _peer_koid: fx_koid_t
+export abstract class PeeredDispatcher<T extends Dispatcher> extends Dispatcher {
+    #holder: PeerHolder<T>
+    #peer: T | null
+    #peer_koid: fx_koid_t
 
     constructor(holder: PeerHolder<T>, signals: fx_signals_t = 0) {
         super(signals)
 
-        this._holder = holder
-        this._peer = null
-        this._peer_koid = FX_KOID_INVALID
+        this.#holder = holder
+        this.#peer = null
+        this.#peer_koid = FX_KOID_INVALID
     }
 
     public peer_koid(): fx_koid_t | null {
-        return this._peer_koid
+        return this.#peer_koid
     }
 
-    public peer(): Ref<T> | null {
-        return this._peer
+    public get peer(): T | null {
+        return this.#peer
     }
 
     override get_related_koid(): fx_koid_t {
-        invariant(this._peer_koid !== null)
-        return this._peer_koid!
+        invariant(this.#peer_koid !== null)
+        return this.#peer_koid!
     }
 
     // Initialize this dispatcher's peer field.
@@ -204,11 +217,11 @@ export class PeeredDispatcher<T extends Dispatcher> extends Dispatcher {
     // initialization, prior to any other thread obtaining a reference to the object.  These
     // constraints allow for an optimization where fields are accessed without acquiring the lock,
     // hence the TA_NO_THREAD_SAFETY_ANALYSIS annotation.
-    init_peer(peer: Ref<T>): void {
+    init_peer(peer: T): void {
         //assert(!peer_);
-        invariant(this._peer_koid === FX_KOID_INVALID)
-        this._peer = peer
-        this._peer_koid = this._peer.value.get_koid()
+        invariant(this.#peer_koid === FX_KOID_INVALID)
+        this.#peer = peer
+        this.#peer_koid = this.#peer.get_koid()
     }
 
     // is_waitable(): boolean {

@@ -3,6 +3,7 @@
     "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "sourceRoot": "src/typescript/component-manager/src",
     "projectType": "library",
+    "tags": ["lang:ts"],
     "targets": {
         "build": {
             "executor": "@nx/js:tsc",
@@ -16,13 +17,7 @@
         },
         "lint": {
             "executor": "@nx/eslint:lint",
-            "outputs": ["{options.outputFile}"],
-            "options": {
-                "lintFilePatterns": [
-                    "src/typescript/component-manager/**/*.ts",
-                    "src/typescript/component-manager/package.json"
-                ]
-            }
+            "outputs": ["{options.outputFile}"]
         },
         "test": {
             "executor": "@nx/vite:test",
@@ -32,6 +27,5 @@
                 "reportsDirectory": "../../../coverage/src/typescript/component-manager"
             }
         }
-    },
-    "tags": ["lang:ts"]
+    }
 }

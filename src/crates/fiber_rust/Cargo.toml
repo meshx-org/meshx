@@ -12,3 +12,11 @@ fiber_types = {version = "0.1.0", path = "../fiber_types"}
 fiber_status = {version = "0.1.0", path = "../fiber_status"}
 log = "0.4.17"
 thiserror = "1.0.32"
+
+[profile.release]
+panic = 'abort'
+codegen-units = 1
+debug = false
+lto = true
+opt-level = 'z'
+strip = "debuginfo"

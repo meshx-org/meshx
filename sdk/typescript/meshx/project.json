@@ -2,7 +2,7 @@
     "name": "sdk/typescript/meshx",
     "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "projectType": "library",
-    "implicitDependencies": ["fiber_kernel"],
+    "sourceRoot": "sdk/typescript/meshx/src",
     "targets": {
         "build": {
             "executor": "@nx/js:tsc",
@@ -33,10 +33,7 @@
         },
         "lint": {
             "executor": "@nx/eslint:lint",
-            "outputs": ["{options.outputFile}"],
-            "options": {
-                "lintFilePatterns": ["sdk/typescript/meshx/**/*.ts"]
-            }
+            "outputs": ["{options.outputFile}"]
         },
         "publish": {
             "executor": "nx:run-commands",
@@ -45,7 +42,5 @@
             },
             "dependsOn": ["build"]
         }
-    },
-    "tags": [],
-    "sourceRoot": "sdk/typescript/meshx/src"
+    }
 }

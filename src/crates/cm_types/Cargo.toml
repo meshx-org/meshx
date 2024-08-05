@@ -1,0 +1,9 @@
+[package]
+edition = "2021"
+name = "cm_types"
+version = "0.1.0"
+
+[dependencies]
+lazy_static="1.5"
+url="2.5"
+thiserror="1.0"

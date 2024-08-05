@@ -1,0 +1,66 @@
+{
+    "name": "p2p-relay",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "experiments/p2p-relay/src",
+    "projectType": "application",
+    "tags": [],
+    "targets": {
+        "build": {
+            "executor": "@nx/esbuild:esbuild",
+            "outputs": ["{options.outputPath}"],
+            "defaultConfiguration": "production",
+            "options": {
+                "platform": "node",
+                "outputPath": "experiments/p2p-relay/dist",
+                "format": ["esm"],
+                "bundle": false,
+                "main": "experiments/p2p-relay/src/main.ts",
+                "tsConfig": "experiments/p2p-relay/tsconfig.app.json",
+                "assets": ["experiments/p2p-relay/src/assets"],
+                "generatePackageJson": true,
+                "esbuildOptions": {
+                    "sourcemap": true,
+                    "outExtension": {
+                        ".js": ".js"
+                    }
+                }
+            },
+            "configurations": {
+                "development": {},
+                "production": {
+                    "esbuildOptions": {
+                        "sourcemap": false,
+                        "outExtension": {
+                            ".js": ".js"
+                        }
+                    }
+                }
+            }
+        },
+        "serve": {
+            "executor": "@nx/js:node",
+            "defaultConfiguration": "development",
+            "options": {
+                "buildTarget": "p2p-relay:build"
+            },
+            "configurations": {
+                "development": {
+                    "buildTarget": "p2p-relay:build:development"
+                },
+                "production": {
+                    "buildTarget": "p2p-relay:build:production"
+                }
+            }
+        },
+        "lint": {
+            "executor": "@nx/eslint:lint"
+        },
+        "test": {
+            "executor": "@nx/jest:jest",
+            "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+            "options": {
+                "jestConfig": "experiments/p2p-relay/jest.config.ts"
+            }
+        }
+    }
+}

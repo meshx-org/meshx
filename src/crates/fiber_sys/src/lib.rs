@@ -10,7 +10,9 @@ pub use fiber_types::*;
 use once_cell::sync::OnceCell;
 
 #[cfg(target_arch = "wasm32")]
+#[link(wasm_import_module = "fiber")]
 extern "C" {
+    pub fn fx_debug(data: *const i8, len: usize);
     // Handle calls
     pub fn fx_handle_close(handle: fx_handle_t) -> fx_status_t;
     pub fn fx_handle_duplicate(handle: fx_handle_t, rights: fx_rights_t, out: *const fx_handle_t) -> fx_status_t;
@@ -18,8 +20,34 @@ extern "C" {
     // Object calls
     pub fn fx_object_get_info(handle: fx_handle_t, topic: u32, buffer: *const u8, buffer_size: usize) -> fx_status_t;
     pub fn fx_object_signal_peer(handle: fx_handle_t, clear_mask: u32, set_mask: u32) -> fx_status_t;
+    pub fn fx_object_signal(handle: fx_handle_t, clear_mask: fx_signals_t, set_mask: fx_signals_t) -> fx_status_t;
+    pub fn fx_object_wait_one(
+        handle: fx_handle_t,
+        waitfor: fx_signals_t,
+        deadline: fx_time_t,
+        observed: *mut fx_signals_t,
+    ) -> fx_status_t;
+    pub fn fx_object_wait_async(
+        handle: fx_handle_t,
+        port_handle: fx_handle_t,
+        key: u64,
+        signals: fx_signals_t,
+        options: u32,
+    ) -> fx_status_t;
+    // Task Syscalls
+    pub fn fx_task_kill(task: fx_handle_t) -> fx_status_t;
+    // Job Syscalls
+    pub fn fx_job_create(parent_job: fx_handle_t, options: u32, out: *const fx_handle_t) -> fx_status_t;
+    pub fn fx_job_set_critical(handle: fx_handle_t, options: u32, process: fx_handle_t) -> fx_status_t;
+    pub fn fx_job_set_policy(
+        handle: fx_handle_t,
+        options: u32,
+        topic: u32,
+        policy: *const u8,
+        policy_size: u32,
+    ) -> fx_status_t;
     // Process calls
-    fn fx_process_create(
+    pub fn fx_process_create(
         job: fx_handle_t,
         name: *const u8,
         name_size: usize,
@@ -29,26 +57,64 @@ extern "C" {
     ) -> fx_status_t;
     pub fn fx_process_start(handle: fx_handle_t, entry: fx_vaddr_t, arg1: fx_handle_t) -> fx_status_t;
     pub fn fx_process_exit(retcode: i64) -> fx_status_t;
-    // DataObject
-    pub fn fx_do_create(size: u64, options: u32, out: *mut fx_handle_t) -> fx_status_t;
-    pub fn fx_do_create_child(
-        handle: fx_handle_t,
-        options: u32,
-        offset: u64,
-        size: u64,
-        out: *mut fx_handle_t,
-    ) -> fx_status_t;
-    pub fn fx_do_get_size(handle: fx_handle_t, size: *mut u64) -> fx_status_t;
-    pub fn fx_do_set_size(handle: fx_handle_t, size: u64) -> fx_status_t;
-    // DataView calls
-    pub fn fx_dv_read(handle: fx_handle_t, buffer: *mut u8, offset: u64, buffer_size: usize) -> fx_status_t;
-    pub fn fx_dv_write(handle: fx_handle_t, buffer: *const u8, offset: u64, buffer_size: usize) -> fx_status_t;
+    // Port syscalls
+    pub fn fx_port_create(opts: u32, handle: *mut fx_handle_t) -> fx_status_t;
+    pub fn fx_port_cancel(handle: fx_handle_t, source: fx_handle_t, key: u64) -> fx_status_t;
+    pub fn fx_port_wait(handle: fx_handle_t, deadline: i64, packet: *mut fx_port_packet_t) -> fx_status_t;
+    pub fn fx_port_queue(handle: fx_handle_t, packet: *const fx_port_packet_t) -> fx_status_t;
     // Channel syscalls
     pub fn fx_channel_create(options: u32, out0: *mut fx_handle_t, out1: *mut fx_handle_t) -> fx_status_t;
+    pub fn fx_channel_read(
+        handle: fx_handle_t,
+        options: u32,
+        bytes: *mut u8,
+        handles: *mut u32,
+        num_bytes: u32,
+        num_handles: u32,
+        actual_bytes: *mut u32,
+        actual_handles: *mut u32,
+    ) -> fx_status_t;
+    pub fn fx_channel_write(
+        handle: fx_handle_t,
+        options: u32,
+        bytes: *const u8,
+        num_bytes: u32,
+        handles: *const u32,
+        num_handles: u32,
+    ) -> fx_status_t;
+    pub fn fx_channel_read_etc(
+        handle: fx_handle_t,
+        options: u32,
+        bytes: *mut u8,
+        handles: *mut fx_handle_info_t,
+        num_bytes: u32,
+        num_handles: u32,
+        actual_bytes: *mut u32,
+        actual_handles: *mut u32,
+    ) -> fx_status_t;
+    pub fn fx_channel_write_etc(
+        handle: fx_handle_t,
+        options: u32,
+        bytes: *const u8,
+        num_bytes: u32,
+        handles: *const fx_handle_disposition_t,
+        num_handles: u32,
+    ) -> fx_status_t;
+    pub fn fx_channel_call_etc(
+        handle: fx_handle_t,
+        options: u32,
+        deadline: fx_time_t,
+        args: *const fx_channel_call_etc_args_t,
+        actual_bytes: *const u32,
+        actual_handles: *const u32,
+    ) -> fx_status_t;
+    pub fn fx_ticks_get() -> fx_ticks_t;
+    pub fn fx_clock_get_monotonic() -> fx_time_t;
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 pub trait System: std::fmt::Debug {
+    fn sys_debug(&self, data: *mut u8, len: usize) -> bool;
     // Handle operations
     fn sys_handle_close(&self, handle: fx_handle_t) -> fx_status_t;
     fn sys_handle_duplicate(&self, handle: fx_handle_t, rights: fx_rights_t, out: *const fx_handle_t) -> fx_status_t;
@@ -86,9 +152,9 @@ pub trait System: std::fmt::Debug {
         options: u32,
         bytes: *mut u8,
         handles: *mut fx_handle_t,
-        num_bytes: usize,
+        num_bytes: u32,
         num_handles: u32,
-        actual_bytes: *mut usize,
+        actual_bytes: *mut u32,
         actual_handles: *mut u32,
     ) -> fx_status_t;
     fn sys_channel_read_etc(
@@ -211,6 +277,12 @@ pub fn fx_object_wait_one(
 }
 
 #[cfg(all(not(test), not(target_arch = "wasm32")))]
+pub fn fx_debug(data: *mut u8, len: usize) -> bool {
+    let sys = SYSTEM.get().expect("SYSTEM is not initialized");
+    sys.sys_debug(data, len)
+}
+
+#[cfg(all(not(test), not(target_arch = "wasm32")))]
 pub fn fx_object_signal(handle: fx_handle_t, clear_mask: u32, set_mask: u32) -> fx_status_t {
     let sys = SYSTEM.get().expect("SYSTEM is not initialized");
     sys.sys_object_signal(handle, clear_mask, set_mask)
@@ -319,9 +391,9 @@ pub fn fx_channel_read(
     options: u32,
     bytes: *mut u8,
     handles: *mut fx_handle_t,
-    num_bytes: usize,
+    num_bytes: u32,
     num_handles: u32,
-    actual_bytes: *mut usize,
+    actual_bytes: *mut u32,
     actual_handles: *mut u32,
 ) -> fx_status_t {
     let sys = SYSTEM.get().expect("SYSTEM is not initialized");
@@ -402,8 +474,8 @@ pub fn fx_channel_call_etc(
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 pub fn fx_vmo_create(size: u64, options: u32, out: *mut fx_handle_t) -> fx_status_t {
-   print!("fx_vmo_create");
-   0
+    print!("fx_vmo_create");
+    0
 }
 
 #[cfg(all(not(test), not(target_arch = "wasm32")))]

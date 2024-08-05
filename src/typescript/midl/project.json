@@ -1,0 +1,33 @@
+{
+    "name": "src/typescript/midl",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "src/typescript/midl/src",
+    "projectType": "library",
+    "tags": ["lang:ts"],
+    "targets": {
+        "build": {
+            "executor": "@nx/js:tsc",
+            "outputs": ["{options.outputPath}"],
+            "options": {
+                "outputPath": "src/typescript/midl/dist",
+                "main": "src/typescript/midl/src/index.ts",
+                "tsConfig": "src/typescript/midl/tsconfig.lib.json",
+                "assets": [],
+                "updateBuildableProjectDepsInPackageJson": true
+            }
+        },
+        "lint": {
+            "executor": "@nx/eslint:lint",
+            "outputs": ["{options.outputFile}"]
+        },
+        "test": {
+            "executor": "@nx/vite:test",
+            "outputs": ["{workspaceRoot}/coverage/src/typescript/midl"],
+            "options": {
+                "config": "src/typescript/midl/vite.config.ts",
+                "passWithNoTests": false,
+                "reportsDirectory": "../../../coverage/src/typescript/midl"
+            }
+        }
+    }
+}

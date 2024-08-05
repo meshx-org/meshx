@@ -3,7 +3,7 @@ import { Handle } from "../object/handle"
 import { FX_KOID_INVALID, FX_OK } from "@meshx-org/fiber-types"
 import { ProcessDispatcher } from "../object/dispatchers/process-dispatcher"
 import { ChannelDispatcher } from "../object/dispatchers/channel-dispatcher"
-import { HANDLE_COUNT, ROOT_JOB, PROC_SELF, _start } from "./userboot"
+import { HANDLE_COUNT, ROOT_JOB, PROC_SELF } from "./userboot"
 import { MessagePacket } from "../object/message-packet"
 import { JobDispatcher } from "../object/dispatchers/job-dispatcher"
 import { HandleOwner } from '../object'
@@ -26,25 +26,31 @@ export function userboot_init(kernel: Kernel) {
 
     // Create the process.
     // let vmar_handle:  KernelHandle<VmAddressRegionDispatcher> ;
-    const result = ProcessDispatcher.create(kernel.get_root_job_dispatcher(), "userboot", 0)
+    const result = ProcessDispatcher.create_kernel(kernel.get_root_job_dispatcher(), "userboot", 0)
     if (!result.ok) throw new Error("panic")
     const [process_handle, process_rights] = result.value
 
     // It needs its own process and root VMAR handles.
-
-    const proc_handle_owner = Handle.make(process_handle, process_rights)
+    const proc_handle_owner = Handle.make_khandle(process_handle, process_rights)
     const process = proc_handle_owner.dispatcher() as ProcessDispatcher
 
     // let vmar = vmar_handle.dispatcher();
     // let vmar_handle_owner = Handle::make( vmar_handle, vmar_rights);
 
-    const handles = msg.handles()
+    const handles = msg.handles
 
     handles[PROC_SELF] = proc_handle_owner.handle
     // handles[userboot::VMAR_ROOT_SELF] = vmar_handle_owner.release();
 
     // It gets the root job handles.
     handles[ROOT_JOB] = get_job_handle(kernel).handle
+    handles[2] = { index_self() { return 0 } } as any
+    handles[3] = { index_self() { return 0 } } as any
+    handles[4] = { index_self() { return 0 } } as any
+    handles[5] = { index_self() { return 0 } } as any
+    handles[6] = { index_self() { return 0 } } as any
+    handles[7] = { index_self() { return 0 } } as any
+
     invariant(handles[ROOT_JOB] !== null)
 
     // TODO: revisit this
@@ -69,17 +75,15 @@ export function userboot_init(kernel: Kernel) {
     if (!result2.ok) throw new Error("panic")
     const [user_handle, channel_handle, channel_rights] = result2.value
 
-    console.debug(user_handle, channel_handle)
-
     const channel_dispatcher = channel_handle.dispatcher() as ChannelDispatcher
-
+   
     // Transfer it in.
     const status1 = channel_dispatcher.write(FX_KOID_INVALID, msg)
     invariant(status1 === FX_OK)
-
+    
     // Inject the user-side channel handle into the process.
-    const user_handle_owner = Handle.make(user_handle, channel_rights)
-    const hv = process.handle_table().map_handle_to_value(user_handle_owner)
+    const user_handle_owner = Handle.make_khandle(user_handle, channel_rights)
+    const hv = process.handle_table().map_handleowner_to_value(user_handle_owner)
     process.handle_table().add_handle(user_handle_owner)
 
     // TODO: do we even need threads?
@@ -98,7 +102,7 @@ export function userboot_init(kernel: Kernel) {
 
     // TODO: revisit this
     // Map in the userboot image along with the vDSO.
-    // KernelHandle<VmObjectDispatcher> userboot_vmo_kernel_handle;
+    // let userboot_vmo_kernel_handle: KernelHandle<VmObjectDispatcher>;
     // UserbootImage userboot(vdso, &userboot_vmo_kernel_handle);
     // let vdso_base = 0;
     // let entry = 0;
@@ -108,11 +112,11 @@ export function userboot_init(kernel: Kernel) {
     // Create a root job observer, restarting the system if the root job becomes childless.
     kernel.start_root_job_observer()
 
-    console.info(`userboot: entrypoint=${_start.name}`)
+    console.info(`userboot: calling kernel process=userboot`)
 
     // Start the process.
     const arg1 = hv
-    const status2 = process.start(_start, arg1, 0)
+    const status2 = process.start("userboot", arg1, 0)
     invariant(status2 === FX_OK)
 
     // TODO: counters

@@ -9,13 +9,13 @@ use super::packets::PacketReceiverMap;
 use super::time::Time;
 use super::{PacketReceiver, ReceiverRegistration};
 use crate::atomic_future::{AtomicFuture, AttemptPollResult};
-use crossbeam::queue::SegQueue;
+use crossbeam_queue::SegQueue;
 use fiber_rust::{self as fx};
 use futures::{
     future::{FutureObj, LocalFutureObj},
     task::{waker_ref, ArcWake},
 };
-use parking_lot::Mutex;
+use std::sync::Mutex;
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -110,7 +110,7 @@ impl Inner {
 
             if complete {
                 // Completed
-                self.active_tasks.lock().remove(&task.id);
+                self.active_tasks.lock().unwrap().remove(&task.id);
             }
         }
     }
@@ -127,7 +127,7 @@ impl Inner {
         let task = Task::new(next_id, future, self.clone());
         self.collector.task_created(next_id, task.source);
         let waker = task.waker();
-        self.active_tasks.lock().insert(next_id, task);
+        self.active_tasks.lock().unwrap().insert(next_id, task);
 
         ArcWake::wake_by_ref(&waker);
     }
@@ -170,7 +170,7 @@ impl Inner {
     }
 
     pub fn deliver_packet(&self, key: usize, packet: fx::Packet) {
-        let receiver = match self.receivers.lock().get(key) {
+        let receiver = match self.receivers.lock().unwrap().get(key) {
             // Clone the `Arc` so that we don't hold the lock
             // any longer than absolutely necessary.
             // The `receive_packet` impl may be arbitrarily complex.
@@ -255,7 +255,7 @@ impl Inner {
     /// https://github.com/tokio-rs/tokio/blob/b42f21ec3e212ace25331d0c13889a45769e6006/tokio/src/io/driver/mod.rs#L297
     pub fn on_parent_drop(&self) {
         // Drop all tasks
-        self.active_tasks.lock().clear();
+        self.active_tasks.lock().unwrap().clear();
 
         // Drop all of the uncompleted tasks
         while let Some(_) = self.ready_tasks.pop() {}
@@ -284,7 +284,7 @@ impl Inner {
         //
         // - fuchsia_async::unblock calls that move channels or FIDL objects to another thread.
         assert!(
-            self.receivers.lock().mapping.is_empty(),
+            self.receivers.lock().unwrap().mapping.is_empty(),
             "receivers must not outlive their executor"
         );
 
@@ -330,7 +330,7 @@ impl EHandle {
     where
         T: PacketReceiver,
     {
-        let key = self.inner.receivers.lock().insert(receiver.clone()) as u64;
+        let key = self.inner.receivers.lock().unwrap().insert(receiver.clone()) as u64;
 
         ReceiverRegistration {
             ehandle: self.clone(),
@@ -341,7 +341,7 @@ impl EHandle {
 
     pub(crate) fn deregister_receiver(&self, key: u64) {
         let key = key as usize;
-        let mut lock = self.inner.receivers.lock();
+        let mut lock = self.inner.receivers.lock().unwrap();
         if lock.contains(key) {
             lock.remove(key);
         } else {

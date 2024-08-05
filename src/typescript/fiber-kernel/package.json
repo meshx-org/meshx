@@ -16,6 +16,7 @@
         "url": "https://github.com/meshx-org/meshx/issues"
     },
     "dependencies": {
+        "@datastructures-js/linked-list": "6.1.3",
         "tiny-invariant": "1.3.1",
         "@meshx-org/fiber-sys": "0.3.1",
         "@meshx-org/fiber-types": "0.3.1",

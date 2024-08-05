@@ -126,6 +126,12 @@ impl EncodedCompoundIdentifier {
 #[derive(Debug)]
 pub struct LibraryIdentifier(Vec<Identifier>);
 
+impl LibraryIdentifier {
+    pub fn iter(&self) -> std::slice::Iter<'_, Identifier> {
+        self.0.iter()
+    }
+}
+
 impl From<EncodedLibraryIdentifier> for LibraryIdentifier {
     fn from(eci: EncodedLibraryIdentifier) -> Self {
         Self(eci.0.split(".").map(|v| Identifier(v.to_owned())).collect())
@@ -301,6 +307,21 @@ pub enum Type {
         internal_subtype: InternalSubtype,
         type_shape_v2: TypeShape,
     },
+}
+
+impl Type {
+    pub fn get_type_shape_v2(&self) -> Option<&TypeShape> {
+        match self {
+            Type::ArrayType { type_shape_v2, .. }
+            | Type::StringType { type_shape_v2, .. }
+            | Type::StringArray { type_shape_v2, .. }
+            | Type::ServerEnd { type_shape_v2, .. }
+            | Type::HandleType { type_shape_v2, .. }
+            | Type::IdentifierType { type_shape_v2, .. }
+            | Type::InternalType { type_shape_v2, .. } => Some(type_shape_v2),
+            _ => None,
+        }
+    }
 }
 
 fn default_string_array() -> Box<Type> {
@@ -606,7 +627,7 @@ impl Decl for Bits {
 #[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct UnionMember {
     pub name: Option<Identifier>,
-    pub reserved: bool,
+    //pub reserved: bool,
     pub ordinal: u64,
     #[serde(default)]
     pub max_out_of_line: i64,
@@ -614,12 +635,15 @@ pub struct UnionMember {
     pub r#type: Option<Type>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Union {
     pub name: EncodedCompoundIdentifier,
     pub location: Location,
 
     pub members: Vec<UnionMember>,
+
+    #[serde(rename = "strict")]
+    pub strict: bool,
 
     #[serde(rename = "resource")]
     pub resourceness: Resourceness,
@@ -692,7 +716,7 @@ pub enum Literal {
     #[serde(rename = "numeric")]
     NumericLiteral { value: String },
     #[serde(rename = "bool")]
-    BoolLiteral { value: bool },
+    BoolLiteral { value: String },
     #[default]
     #[serde(rename = "default")]
     DefaultLiteral,
@@ -732,7 +756,6 @@ pub struct Const {
     pub name: EncodedCompoundIdentifier,
     pub location: Location,
     pub r#type: Type,
-
     pub value: Constant,
 }
 
@@ -781,23 +804,72 @@ impl Decl for Enum {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum MethodKind {
+    #[serde(rename = "oneway")]
+    Oneway,
+    #[serde(rename = "twoway")]
+    Twoway,
+    #[serde(rename = "event")]
+    Event,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProtocolMethod {
+    pub kind: MethodKind,
     pub name: Identifier,
     pub ordinal: u64,
     pub has_response: bool,
     pub has_request: bool,
     pub has_error: bool,
+    pub deprecated: bool,
+    pub strict: bool,
 
-    pub maybe_request_payload: Option<Type>,
-    pub maybe_response_payload: Option<Type>,
+    #[serde(rename = "maybe_response_success_type")]
+    pub success_type: Option<Type>,
+    #[serde(rename = "maybe_response_err_type")]
+    pub error_type: Option<Type>,
+    #[serde(rename = "maybe_request_payload")]
+    pub request_payload: Option<Type>,
+    #[serde(rename = "maybe_response_payload")]
+    pub response_payload: Option<Type>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl ProtocolMethod {
+    pub fn has_result_union(&self) -> bool {
+        self.success_type.is_some()
+    }
+
+    pub fn has_framework_error(&self) -> bool {
+        false
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Protocol {
     pub location: Location,
     pub name: EncodedCompoundIdentifier,
     pub methods: Vec<ProtocolMethod>,
+}
+
+impl Protocol {
+    pub fn get_protocol_name(&self) -> String {
+        //let attr, ok = self.lookup_attribute("discoverable");
+        //if !ok {
+        //    return ""
+        //}
+        //let name string
+        //if let arg, ok = attr.LookupArgStandalone(); ok {
+        //    name = arg.ValueString()
+        //} else {
+        // TODO(fxbug.dev/102803): Construct this string in fidlc, not here.
+        let ci = self.name.parse();
+        let mut parts: Vec<&str> = ci.library.iter().map(|i| i.0.as_str()).collect();
+        parts.push(ci.name.0.as_str());
+        let name = parts.join(".");
+        //}
+        format!("{:?}", name)
+    }
 }
 
 impl Decl for Protocol {

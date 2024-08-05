@@ -1,4 +1,7 @@
-export { Job } from './handle/job'
-export { Process } from './handle/process'
-export { Channel } from './handle/channel'
-export { Handle } from './handle/handle'
+export * from "./handle/job"
+export * from "./handle/process"
+export * from "./handle/channel"
+export * from "./handle/socket"
+export * from "./handle/channel_reader"
+export * from "./handle/handle"
+export * from "./handle/types"

@@ -4,7 +4,6 @@
 
 use {
     core::cmp::{self, Ord, Ordering},
-    itertools,
     log::*,
     std::{convert::TryFrom, fmt, iter},
     thiserror::Error,
@@ -259,7 +258,7 @@ impl AbsoluteMoniker {
     // Serializes absolute moniker into its string format, omitting instance ids.
     //
     // This method is the inverse of `parse_string_without_instances()`.
-    pub fn to_string_without_instances(&self) -> String {
+    /*pub fn to_string_without_instances(&self) -> String {
         format!(
             "/{}",
             itertools::join(
@@ -269,7 +268,7 @@ impl AbsoluteMoniker {
                 "/"
             )
         )
-    }
+    }*/
 
     /// Given an absolute moniker realm `start`, and a relative moniker from `start` to an `end`
     /// realm, returns the absolute moniker of the `end` realm.
@@ -928,7 +927,7 @@ mod tests {
         Ok(())
     }
 
-    #[test]
+    /*#[test]
     fn absolute_moniker_to_string_without_instance_id() {
         assert_eq!("/", AbsoluteMoniker::root().to_string_without_instances());
 
@@ -945,7 +944,7 @@ mod tests {
             AbsoluteMoniker::new(vec![a.clone(), bb.clone(), a.clone(), bb.clone()])
                 .to_string_without_instances()
         );
-    }
+    }*/
 
     #[test]
     fn relative_monikers() {

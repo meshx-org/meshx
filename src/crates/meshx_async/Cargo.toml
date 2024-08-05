@@ -4,8 +4,16 @@ name = "meshx_async"
 version = "0.1.0"
 
 [dependencies]
-crossbeam = "0.8.1"
+crossbeam-queue = "0.3"
 fiber_rust = {path = "../fiber_rust"}
-futures = "0.3"
+futures = {version="0.3",default-features = false, features = ["std"]}
 parking_lot = "0.12.1"
 pin-utils = "0.1.0"
+
+[profile.release]
+panic = 'abort'
+codegen-units = 1
+debug = false
+lto = true
+opt-level = 'z'
+strip = "debuginfo"

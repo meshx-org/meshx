@@ -1,0 +1,5 @@
+Name: fiber_wasi_polyfill
+License: MIT
+License File: LICENSE
+Upstream Git: https://github.com/intel/libva
+Description: The Fiber WASI Polyfill library

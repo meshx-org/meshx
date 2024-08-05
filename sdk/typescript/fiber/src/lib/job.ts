@@ -1,12 +1,12 @@
 import { fx_job_create, fx_process_create } from "@meshx-org/fiber-sys"
-import { fx_handle_t, FX_INVALID_HANDLE, Ref, Status } from "@meshx-org/fiber-types"
+import { fx_handle_t, FX_HANDLE_INVALID, Ref, Status } from "@meshx-org/fiber-types"
 import { Handle } from "./handle"
 import { HandleWrapper } from "./handleWrapper"
 import { Process } from "./process"
 
 export class Job extends HandleWrapper {
     public static create(parent: Job, name: string): Job {
-        const job_handle: Ref<fx_handle_t> = new Ref(FX_INVALID_HANDLE)
+        const job_handle: Ref<fx_handle_t> = new Ref(FX_HANDLE_INVALID)
         const options = 0
 
         const status = fx_job_create(parent.handle!.raw, options, job_handle)
@@ -25,7 +25,7 @@ export class Job extends HandleWrapper {
     /// syscall.
     public createChildJob(): Job {
         const parent_job_raw = this.handle!.raw
-        const out = new Ref(FX_INVALID_HANDLE)
+        const out = new Ref(FX_HANDLE_INVALID)
         const options = 0
 
         const status = fx_job_create(parent_job_raw, options, out)
@@ -48,8 +48,8 @@ export class Job extends HandleWrapper {
         const name_size = name.length
 
         const options = 0
-        const process_out = new Ref(FX_INVALID_HANDLE)
-        const vmar_out = new Ref(FX_INVALID_HANDLE)
+        const process_out = new Ref(FX_HANDLE_INVALID)
+        const vmar_out = new Ref(FX_HANDLE_INVALID)
 
         const status = fx_process_create(parent_job_raw, enc.encode(name), name_size, options, process_out, vmar_out)
 

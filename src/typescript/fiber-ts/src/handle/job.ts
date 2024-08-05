@@ -1,20 +1,31 @@
 import { fx_job_create, fx_process_create } from "@meshx-org/fiber-sys"
-import { fx_handle_t, FX_INVALID_HANDLE, Ref, Status } from "@meshx-org/fiber-types"
+import { fx_handle_t, FX_HANDLE_INVALID, Ref, Status } from "@meshx-org/fiber-types"
 import { HandleWrapper } from "./handle-wrapper"
 import { Process } from "./process"
+import { Handle } from "./handle"
+
+export interface JobCreateResult {
+    status: Status
+    job?: Job
+}
 
 export class Job extends HandleWrapper {
-    public static create(parent: Job, name: string): Job {
-        const job_handle: Ref<fx_handle_t> = new Ref(FX_INVALID_HANDLE)
+    public static create(parent: Job, name: string): JobCreateResult {
+        const job_handle: Ref<fx_handle_t> = new Ref(FX_HANDLE_INVALID)
         const options = 0
 
-        const status = fx_job_create(parent.raw, options, job_handle)
+        const status = fx_job_create(parent.handle.raw, options, job_handle)
 
         if (status !== Status.OK) {
-            return new Job(FX_INVALID_HANDLE)
+            return {
+                status,
+            }
         }
 
-        return new Job(job_handle.value)
+        return {
+            status,
+            job: new Job(Handle.from_raw(job_handle.value)),
+        }
     }
 
     /// Create a new job as a child of the current job.
@@ -23,13 +34,13 @@ export class Job extends HandleWrapper {
     /// [fx_job_create](https://fuchsia.dev/fuchsia-src/reference/syscalls/job_create.md)
     /// syscall.
     public createChildJob(): Job {
-        const parent_job_raw = this.raw
-        const out = new Ref(FX_INVALID_HANDLE)
+        const parent_job_raw = this.handle.raw
+        const out_ref = new Ref(FX_HANDLE_INVALID)
         const options = 0
 
-        const status = fx_job_create(parent_job_raw, options, out)
+        const status = fx_job_create(parent_job_raw, options, out_ref)
 
-        return new Job(out.value)
+        return new Job(Handle.from_raw(out_ref.value))
     }
 
     /// Create a new process as a child of the current job.
@@ -41,11 +52,11 @@ export class Job extends HandleWrapper {
     /// [fx_process_create](https://fuchsia.dev/fuchsia-src/reference/syscalls/process_create.md)
     /// syscall.
     public createChildProcess(name: string): Process {
-        const parent_job_raw = this.raw
+        const parent_job_raw = this.handle.raw
 
         const options = 0
-        const process_out = new Ref(FX_INVALID_HANDLE)
-        const vmar_out = new Ref(FX_INVALID_HANDLE)
+        const process_out = new Ref(FX_HANDLE_INVALID)
+        const vmar_out = new Ref(FX_HANDLE_INVALID)
 
         const status = fx_process_create(parent_job_raw, name, options, process_out, vmar_out)
 

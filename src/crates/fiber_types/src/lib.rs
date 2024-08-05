@@ -5,6 +5,10 @@
 
 #![allow(non_camel_case_types)]
 
+mod processargs;
+
+pub use processargs::*;
+
 pub type fx_clock_t = u32;
 
 pub type fx_handle_t = u32;
@@ -82,8 +86,6 @@ pub const FX_TASK_RETCODE_OOM_KILL: i64 = -1025;
 pub const FX_TASK_RETCODE_POLICY_KILL: i64 = -1026;
 pub const FX_TASK_RETCODE_VDSO_KILL: i64 = -1027;
 pub const FX_TASK_RETCODE_EXCEPTION_KILL: i64 = -1028;
-
-pub const FX_HANDLE_FIXED_BITS_MASK: u32 = 0x80000000;
 
 macro_rules! multiconst {
     ($typename:ident, [$($(#[$attr:meta])* $rawname:ident = $value:expr;)*]) => {

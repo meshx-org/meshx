@@ -7,3 +7,4 @@
 
 **/*.hbs
 /.nx/cache
+/.nx/workspace-data

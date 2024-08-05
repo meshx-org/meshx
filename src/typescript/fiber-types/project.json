@@ -3,6 +3,7 @@
     "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "sourceRoot": "src/typescript/fiber-types/src",
     "projectType": "library",
+    "tags": ["lang:ts"],
     "targets": {
         "build": {
             "executor": "@nx/js:tsc",
@@ -24,15 +25,7 @@
         },
         "lint": {
             "executor": "@nx/eslint:lint",
-            "outputs": ["{options.outputFile}"],
-            "options": {
-                "lintFilePatterns": [
-                    "src/typescript/fiber-types/src/**/*.ts",
-                    "src/typescript/fiber-types/project.json",
-                    "src/typescript/fiber-types/package.json"
-                ]
-            }
+            "outputs": ["{options.outputFile}"]
         }
-    },
-    "tags": ["lang:ts"]
+    }
 }

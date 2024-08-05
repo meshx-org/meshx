@@ -1,9 +1,10 @@
-import { fx_koid_t, fx_rights_t } from "@meshx-org/fiber-types"
+import { fx_koid_t, fx_rights_t, u32 } from "@meshx-org/fiber-types"
 import { Dispatcher } from "./dispatchers/dispatcher"
 import invariant from "tiny-invariant"
 import { Ref } from "../std"
 import { gHandleTableArena } from "./handle-table-arena"
-import { HandleOwner } from './handle-owner'
+import { HandleOwner } from "./handle-owner"
+import { GenericDispatcher } from "./dispatchers"
 
 /**
  * A minimal wrapper around a Dispatcher which is owned by the kernel.
@@ -22,37 +23,58 @@ import { HandleOwner } from './handle-owner'
  * This class is thread-unsafe and must be externally synchronized if used
  * across multiple threads.
  */
-export class KernelHandle<T> {
-    private _dispatcher: Dispatcher | null
+export class KernelHandle<T extends Dispatcher> {
+    #dispatcher: T | null
 
-    constructor(dispather: Dispatcher) {
-        this._dispatcher = dispather
+    constructor(dispather: T) {
+        this.#dispatcher = dispather
     }
 
-    public dispatcher(): Dispatcher | null {
-        return this._dispatcher
+    public dispatcher(): T | null {
+        return this.#dispatcher
     }
 
-    public release(): Dispatcher {
-        const dispatcher = this._dispatcher!
-        this._dispatcher = null
+    public release(): T {
+        const dispatcher = this.#dispatcher!
+        this.#dispatcher = null
         return dispatcher
     }
 }
 
+function handleValueToIndex(value: u32) {
+    return value & HANDLE_INDEX_MASK
+}
+
+function conditional_select_nospec_eq(x: number, y: number, a: number, b: number): number {
+    return x == y ? a : b
+}
+
+// const gHandleTableArena : Handle[] = []
+
 /** A Handle is how a specific process refers to a specific Dispatcher. */
-export class Handle {
-    public _handle_table_id: bigint
-    public _dispatcher: Dispatcher
-    public _handle_rights: fx_rights_t
-    public _base_value: number
+export class Handle implements Disposable {
+    #handle_table_id: bigint
+    #dispatcher: Dispatcher
+    #rights: fx_rights_t
+    #index_self: number
 
     /** Called only by Make. */
-    private constructor(dispatcher: Dispatcher, rights: fx_rights_t, base_value: number) {
-        this._handle_table_id = 0n
-        this._handle_rights = rights
-        this._dispatcher = dispatcher
-        this._base_value = base_value
+    private constructor(dispatcher: Dispatcher, rights: fx_rights_t, index_self: number) {
+        this.#handle_table_id = 0n
+        this.#rights = rights
+        this.#dispatcher = dispatcher
+        this.#index_self = index_self
+    }
+
+    // Maps an integer obtained by Handle::base_value() back to a Handle.
+    public static from_u32(value: u32) {
+        const index = handleValueToIndex(value)
+
+        if (!gHandleTableArena._arena.get(index)) {
+            return null
+        }
+
+        return gHandleTableArena._arena.get(index)
     }
 
     // Called only by Dup.
@@ -61,22 +83,40 @@ export class Handle {
         return new Handle(dispatcher, rights, base_value)
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-empty-function
-    public destructor(): void {}
+    [Symbol.dispose](): void {
+        throw new Error("Method not implemented.")
+    }
 
-    public static make(kernel_handle: KernelHandle<Dispatcher>, rights: fx_rights_t): HandleOwner {
+    public static make_dispather(dispatcher: Dispatcher, rights: fx_rights_t): HandleOwner {
+        const base_value = new Ref(0)
+        const addr = gHandleTableArena.alloc(dispatcher, "new", base_value)
+        if (!addr) {
+            throw new Error("alloc failed")
+        }
+
+        const handle = new Handle(dispatcher, rights, base_value.value)
+        addr.data = handle
+
+        //kcounter_add(handle_count_made, 1);
+        //kcounter_add(handle_count_live, 1);
+        return new HandleOwner(addr.data)
+    }
+
+    // Handle should never be created by anything other than Make or Dup.
+    public static make_khandle(kernel_handle: KernelHandle<Dispatcher>, rights: fx_rights_t): HandleOwner {
         const base_value = new Ref(0)
         const addr = gHandleTableArena.alloc(kernel_handle.dispatcher()!, "new", base_value)
 
         if (!addr) {
-            throw "alloc failed"
+            throw new Error("alloc failed")
         }
+
+        const handle = new Handle(kernel_handle.release(), rights, base_value.value)
+        addr.data = handle
 
         //kcounter_add(handle_count_made, 1);
         //kcounter_add(handle_count_live, 1);
-        return new HandleOwner(new Handle(kernel_handle.release(), rights, base_value.value))
-
-        // return new Handle(handle.dispatcher(), rights, 0) // TODO: figure out how to do Arc here
+        return new HandleOwner(addr.data)
     }
 
     static dup(source: Handle, rights: fx_rights_t): HandleOwner {
@@ -84,12 +124,15 @@ export class Handle {
         const addr = gHandleTableArena.alloc(source.dispatcher(), "duplicate", base_value)
 
         if (!addr) {
-            throw "alloc failed"
+            throw new Error("alloc failed")
         }
+
+        const handle = Handle.create_dup(source, rights, base_value.value)
+        addr.data = handle
 
         //kcounter_add(handle_count_duped, 1);
         //kcounter_add(handle_count_live, 1);
-        return new HandleOwner(Handle.create_dup(source, rights, base_value.value))
+        return new HandleOwner(addr.data)
     }
 
     /**
@@ -97,26 +140,35 @@ export class Handle {
      *  pointer to this instance. ProcessDispatcher will XOR this with its
      *  handle_rand_ to create the fx_handle_t value that user space sees.
      */
-    public base_value(): number {
-        return this._base_value
+    public index_self(): number {
+        return this.#index_self
     }
 
     /** Returns the Dispatcher to which this instance points. */
     public dispatcher(): Dispatcher {
-        return this._dispatcher
+        return this.#dispatcher
     }
 
     /** Sets the value returned by handle_table_id(). */
     public set_handle_table_id(pid: fx_koid_t): void {
-        this._handle_table_id = pid
-        this._dispatcher.set_owner(pid)
+        this.#handle_table_id = pid
+        this.dispatcher().set_owner(pid)
     }
 
     /** Returns the handle table that owns this instance. Used to guarantee
      *  that a process may only access handles in its own handle table.
      */
     public handle_table_id(): fx_koid_t {
-        return this._handle_table_id
+        return this.#handle_table_id
+    }
+
+    public rights() {
+        return this.#rights
+    }
+
+    // Returns true if this handle has all of the desired rights bits set.
+    has_rights(desired: fx_rights_t): boolean {
+        return (this.#rights & desired) == desired;
     }
 }
 

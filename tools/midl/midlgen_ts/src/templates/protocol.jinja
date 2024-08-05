@@ -1,0 +1,250 @@
+{% macro protocolDeclaration(protocol) -%}
+export abstract class {{protocol.marker}} extends midl.Service {
+    static $serviceName: string = "{{protocol.debug_name}}";
+
+    get $serviceData(): midl.ServiceData<{{protocol.marker}}> | null {
+        return new {{protocol.marker}}Data();
+    }
+
+    // Events
+    {%- for method in protocol.methods %}
+    {%- if 'event' in method.ir.kind %}
+    abstract get {{method.name}}(): ReadableStream<{{method.response.midl_type}}> | null;
+    {%- endif %}
+    {%- endfor %}
+    // Oneway
+    {%- for method in protocol.methods %}
+    {%- if 'oneway' in method.ir.kind %}
+    abstract {{method.name}}(
+        {%- for params in method.request.parameters %}
+        {{params.name}}: {{params.param_type}}
+        {%- endfor %}
+    ): Promise<void>;
+    {%- endif %}
+    {%- endfor %}
+    // Twoway
+    {%- for method in protocol.methods %}
+    {%- if 'twoway' in method.ir.kind %}
+    abstract {{method.name}}(
+        {%- for params in method.request.parameters %}
+        {{params.name}}: {{params.param_type}}
+        {%- endfor %}
+    ): Promise<{{method.response.midl_type}}>;
+    {%- endif %}
+    {%- endfor %}
+}
+
+export class {{protocol.marker}}Binding extends midl.AsyncBinding<{{protocol.marker}}> {
+    constructor() {
+        super("{{protocol.marker}}");
+    }
+
+    override handleMessage($message: midl.IncomingMessage, $respond: midl.OutgoingMessageSink) {
+        switch ($message.ordinal) {
+            {%- for method in protocol.methods %}
+            case _{{protocol.marker}}_{{method.name}}_Ordinal: {
+                const $name = {{method.type_symbol}}.name;
+                midl.performWithExceptionHandling($name, () => {
+                    const $type = {{method.type_symbol}}.request!;
+                
+                    const _impl = this.impl!;
+
+                    const $future: Promise<midl.InterfaceRequest<{{protocol.marker}}>> = midl
+                        .decodeMessageWithCallback<Promise<midl.InterfaceRequest<{{protocol.marker}}>>>(
+                            $message,
+                            {{method.type_symbol}}.requestInlineSize(), 
+                            (decoder) => {
+                                return _impl.{{method.name}}(
+                                    $type.decode(decoder, midl.kMessageHeaderSize, 1),
+                                );
+                            }
+                    );
+
+                    {%- if 'twoway' in method.ir.kind %}
+                    $future.then(($response) => {
+                        const $encoder = new midl.Encoder();
+                        $encoder.encodeMessageHeader(_{{protocol.marker}}_{{method.name}}_Ordinal, $message.txid, midl.CallStrictness.strict);
+                        const $type = {{method.type_symbol}}.response;
+                        
+                        midl.encodeMessage(
+                            $encoder, 
+                            {{method.type_symbol}}.responseInlineSize(),
+                            $type,
+                            $response
+                        );
+
+                        $respond($encoder.message);
+                    }, ($err) => {
+                        midl.handleException($name, $err, close);
+                    });
+                    {%- endif %}
+                }, close);
+                    break;
+            }
+            {%- endfor %}
+            default: {
+                $message.closeHandles();
+                throw new midl.MidlError(`Unexpected message name for {{protocol.marker}}Binding`);
+            }
+        }
+    }
+}
+
+export class {{protocol.marker}}Data implements midl.ServiceData<{{protocol.marker}}> {
+    get $name(): string {
+        return {{protocol.marker}}.$serviceName;
+    }
+
+    get $binding(): midl.AsyncBinding<{{protocol.marker}}> {
+        return new {{protocol.marker}}Binding();
+    }
+}
+
+export class {{protocol.proxy}} extends midl.AsyncProxy<{{protocol.marker}}> implements {{protocol.marker}} {
+    constructor() {
+        super(new midl.AsyncProxyController<{{protocol.marker}}>(
+                "{{protocol.debug_name}}",
+                '{{protocol.proxy}}'
+            )
+        );
+        this.ctrl.onResponse = this._handleResponse;
+    }
+
+    get $serviceData(): midl.ServiceData<{{protocol.marker}}> {
+        return new {{protocol.marker}}Data();
+    }
+
+    {%- for method in protocol.methods %}
+    {%- if 'oneway' in method.ir.kind %}
+    async {{method.name}}(
+        {%- for params in method.request.parameters %}
+        {{params.name}}: {{params.param_type}}
+        {%- endfor %}
+    ): Promise<void> {
+        if (!this.ctrl.isBound) {
+            return Promise.reject(new midl.MidlStateException('Proxy<${ctrl.$interfaceName}> is closed.'));
+        }
+
+        const $encoder = new midl.Encoder();
+        
+        $encoder.encodeMessageHeader(
+            _{{protocol.marker}}_{{method.name}}_Ordinal, 
+            0, 
+            midl.CallStrictness.strict
+        );
+
+        const $type = {{method.type_symbol}}.request!;
+        
+        midl.encodeMessageWithCallback($encoder, {{method.type_symbol}}.requestInlineSize(), () => {
+            $type.encode($encoder, request, midl.kMessageHeaderSize, 1);
+        });
+
+        return Promise.resolve(this.ctrl.sendMessage($encoder.message));
+    }
+    {%- endif %}
+    {%- endfor %}
+
+    {%- for method in protocol.methods %}
+    {%- if 'twoway' in method.ir.kind %}
+    async {{method.name}}(
+        {%- for params in method.request.parameters %}
+        {{params.name}}: {{params.param_type}}
+        {%- endfor %}
+    ): Promise<{{method.response.midl_type}}> {
+        if (!this.ctrl.isBound) {
+            return Promise.reject(new midl.MidlStateException(`Proxy<${this.ctrl.$interfaceName}> is closed.`));
+        }
+
+        const $encoder = new midl.Encoder();
+        
+        $encoder.encodeMessageHeader(
+            _{{protocol.marker}}_{{method.name}}_Ordinal, 
+            0, 
+            midl.CallStrictness.strict
+        );
+
+        const $completer = new midl.Completer<{{method.response.midl_type}}>();
+        this.ctrl.sendMessageWithResponse($encoder.message, $completer);
+        return $completer.promise;
+    }
+    {%- endif %}
+    {%- endfor %}
+    
+    _handleEvent($message: midl.IncomingMessage): void {
+        switch ($message.ordinal) {
+            {%- for method in protocol.methods %}
+            {%- if 'event' in method.ir.kind %}
+            case _{{protocol.marker}}_{{method.name}}_Ordinal: {
+                const _name = {{method.type_symbol}}.name;
+                midl.performCtrlWithExceptionHandling(_name, this.ctrl, 'event', this._{{method.name}}StreamController.addError, () => {
+                    const $type =  {{method.type_symbol}}.response!;
+                 
+                    // ignore: prefer_const_declarations
+                    const $response = midl
+                        .decodeMessageWithCallback<{{method.response.midl_type}}>(
+                            $message,
+                            {{method.type_symbol}}.responseInlineSize(), 
+                            (decoder) => {
+                                return new {{method.response.midl_type}}(
+                                    $type.decode(decoder, midl.kMessageHeaderSize, 1),
+                                );
+                            }
+                        );
+
+                    this._{{method.name}}StreamController.add($response);
+                });
+                break;
+            }
+            {%- endif %}
+            {%- endfor %}
+            default: {
+                $message.closeHandles();
+                this.ctrl.proxyError(new midl.MidlError(`Unexpected message ordinal: ${$message.ordinal}`));
+                break;
+            }
+        }
+    }
+
+    _handleResponse($message: midl.IncomingMessage): void {
+        const $txid = $message.txid;
+        if ($txid === 0) {
+            this._handleEvent($message);
+            return;
+        }
+
+        const $completer: midl.Completer<any> | null = this.ctrl.getCompleter($txid);
+        if ($completer === null) {
+            $message.closeHandles();
+            return;
+        }
+
+        switch ($message.ordinal) {
+            default: {
+                this.ctrl.proxyError(new midl.MidlError(`Unexpected message ordinal: ${$message.ordinal}`));
+                break;
+            }
+        }
+    }
+
+    {%- for method in protocol.methods %}
+    {%- if 'event' in method.ir.kind %}
+    private readonly _{{method.name}}StreamController = new midl.BroadcastStreamController();
+    override get {{method.name}}() {
+        return this._{{method.name}}StreamController.stream;
+    }
+    {%- endif %}
+    {%- endfor %}
+}
+
+{%- for method in protocol.methods %}
+// methodA: (int a, int b)
+const _{{protocol.marker}}_{{method.name}}_Ordinal: bigint = {{method.ordinal}}n;
+const {{method.type_symbol}} = new midl.MethodType(
+    new midl.MemberType<number>(new midl.Int64Type(), 0),
+    null,
+    "{{protocol.marker}}.{{method.name}}",
+    16,
+    0,
+);
+{%- endfor %}
+{% endmacro -%}

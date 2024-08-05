@@ -1,0 +1,80 @@
+{% macro unionDeclaration(union) -%}
+enum {{ union.name }}Tag {
+    $unknown,
+    {% for member in union.members -%}
+    {{member.name}} = {{member.ordinal}},
+    {% endfor %}
+}
+
+const _{{ union.name }}_map: Map<number, {{ union.name }}Tag> = new Map<number, {{ union.name }}Tag>([
+    {% for member in union.members -%}
+    [{{member.ordinal}}, {{ union.name }}Tag.{{member.name}}],
+    {% endfor %}
+])
+
+export class {{ union.name }} extends midl.Union {
+    #ordinal: number
+    #data: any
+
+    constructor(ordinal: number, data: any) {
+        super()
+        this.#ordinal = ordinal
+        this.#data = data
+    }
+
+    {% for member in union.members %}
+    static with{{member.name}}(value: number): {{ union.name }} {
+        return new {{union.name}}({{member.ordinal}}, value)
+    }
+    {% endfor %}
+
+    static with$UnknownData(ordinal: number, data: midl.UnknownRawData): {{ union.name }} {
+        return new {{ union.name }}(ordinal, data)
+    }
+
+    get $tag(): {{union.name}}Tag {
+        return _{{union.name}}_map.get(this.#ordinal) ?? {{ union.name }}Tag.$unknown
+    }
+
+    {% for member in union.members %}
+    get {{member.name}}(): number | null {
+        if (this.#ordinal !== {{member.ordinal}}) return null
+        return this.#data as number
+    }
+    {% endfor %}
+
+    get $unknownData(): midl.UnknownRawData | null {
+        if (this.#ordinal === 1) {
+            return null
+        }
+        return this.#data as midl.UnknownRawData
+    }
+
+    override get $ordinal(): number {
+        return this.#ordinal
+    }
+
+    override get $data(): unknown {
+        return this.#data
+    }
+
+    public override valueOf() {
+        return this.#data
+    }
+
+    static ctor(ordinal: number, data: object): {{ union.name }} {
+        return new {{ union.name }}(ordinal, data)
+    }
+}
+
+const _{{ union.name }}Type = new midl.UnionType<{{ union.name }}>(
+    {
+        {% for member in union.members %}
+        {{- member.ordinal}}: {{ member.type.ctor }},
+        {% endfor %}
+    },
+    {{ union.name }}.ctor,
+    {% if union.ir.strict %}true{% else %}false{% endif %},
+    {% if union.ir.resourceness %}true{% else %}false{% endif %}
+)
+{% endmacro %}

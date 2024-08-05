@@ -1,9 +1,9 @@
-import { fx_handle_t, fx_signals_t, FX_INVALID_HANDLE } from "@meshx-org/fiber-types"
-import { fx_handle_close } from "@meshx-org/fiber-sys"
+import { fx_handle_t, fx_signals_t, FX_HANDLE_INVALID } from "@meshx-org/fiber-types"
+import { fx_handle_close, fx_handle_duplicate } from "@meshx-org/fiber-sys"
 import { AsyncWaitCallback, HandleWaiter } from "./handle_waiter"
 
 export class Handle {
-    private $handle: fx_handle_t = FX_INVALID_HANDLE
+    private $handle: fx_handle_t = FX_HANDLE_INVALID
     private waiters: HandleWaiter[] = []
 
     constructor(handle: fx_handle_t) {
@@ -11,7 +11,7 @@ export class Handle {
     }
 
     public static invalid(): Handle {
-        return new Handle(FX_INVALID_HANDLE)
+        return new Handle(FX_HANDLE_INVALID)
     }
 
     public get raw(): fx_handle_t {
@@ -19,18 +19,18 @@ export class Handle {
     }
 
     public get isValid(): boolean {
-        return this.$handle !== FX_INVALID_HANDLE
+        return this.$handle !== FX_HANDLE_INVALID
     }
 
     public close(): void {
         const status = fx_handle_close(this.$handle)
     }
 
-    /*public async duplicate(): Promise<Handle> {
-        const { status, handle: raw } = await fx_handle_duplicate(this.$handle)
+    public async duplicate(): Promise<Handle> {
+        const { status, handle: raw } = fx_handle_duplicate(this.$handle)
 
         return new Handle(raw!)
-    }*/
+    }
 
     // TODO: Implement
     public async replace(): Promise<Handle> {

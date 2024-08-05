@@ -18,29 +18,26 @@
         {
             "files": ["{package,project}.json"],
             "parser": "jsonc-eslint-parser",
-            "rules": {
-                /*"@nx/dependency-checks": [
-                    "error",
-                    {
-                        "ignoredDependencies": ["vite", "vite-tsconfig-paths"],
-                        "ignoredFiles": ["vite.config.ts"],
-                        "checkMissingDependencies": true,
-                        "checkObsoleteDependencies": true,
-                        "checkVersionMismatches": true
-                    }
-                ]*/
-            }
+            "rules": {}
         },
         {
             "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],
             "rules": {
- 
                 "import/no-unresolved": "off",
                 "import/no-cycle": [
                     "warn",
                     {
                         "maxDepth": 10,
                         "ignoreExternal": true
+                    }
+                ],
+                "no-unused-vars": "off",
+                "@typescript-eslint/no-unused-vars": [
+                    "warn", // or "error"
+                    {
+                        "argsIgnorePattern": "^_",
+                        "varsIgnorePattern": "^_",
+                        "caughtErrorsIgnorePattern": "^_"
                     }
                 ]
             }
@@ -49,13 +46,17 @@
             "files": ["*.ts", "*.tsx"],
             "extends": ["plugin:@nx/typescript"],
             "rules": {
-                
+                "@typescript-eslint/no-extra-semi": "error",
+                "no-extra-semi": "off"
             }
         },
         {
             "files": ["*.js", "*.jsx"],
             "extends": ["plugin:@nx/javascript"],
-            "rules": {}
+            "rules": {
+                "@typescript-eslint/no-extra-semi": "error",
+                "no-extra-semi": "off"
+            }
         }
     ]
 }

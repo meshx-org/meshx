@@ -85,10 +85,10 @@ impl Time {
     /// Get the current monotonic time.
     ///
     /// Wraps the
-    /// [zx_clock_get_monotonic](https://fuchsia.dev/fuchsia-src/reference/syscalls/clock_get_monotonic.md)
+    /// [fx_clock_get_monotonic](https://fuchsia.dev/fuchsia-src/reference/syscalls/clock_get_monotonic.md)
     /// syscall.
     pub fn get_monotonic() -> Time {
-        unsafe { Time(sys::fx_clock_get_monotonic()) }
+       unsafe { Time(sys::fx_clock_get_monotonic()) }
     }
 
     /// Returns the number of nanoseconds since the epoch contained by this `Time`.
@@ -208,5 +208,5 @@ impl ops::Neg for Duration {
 /// [fx_ticks_get](https://fuchsia.dev/fuchsia-src/reference/syscalls/ticks_get.md)
 /// syscall.
 pub fn ticks_get() -> i64 {
-    unsafe { sys::fx_ticks_get() }
+   unsafe { sys::fx_ticks_get() }
 }

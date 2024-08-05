@@ -1,0 +1,11 @@
+[target.wasm32-unknown-unknown.component]
+#rustc-cdylib-link-arg = ["--import-memory"]
+
+#rustflags =["-C", "link-args=--import-memory"]
+
+[unstable]
+#build-std = ["std", "panic_abort"]
+#build-std-features = ["panic_immediate_abort"]
+
+[build]
+rustflags = ["-C", "panic=abort"]

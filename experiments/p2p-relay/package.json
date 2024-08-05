@@ -1,0 +1,24 @@
+{
+    "name": "p2p-relay",
+    "version": "0.0.0",
+    "main": "src/main.js",
+    "type": "module",
+    "scripts": {},
+    "dependencies": {
+        "@libp2p/logger": "4.0.17",
+        "@chainsafe/libp2p-noise": "^15.1.0",
+        "@chainsafe/libp2p-yamux": "^6.0.2",
+        "@libp2p/bootstrap": "^10.1.2",
+        "@libp2p/websockets": "^8.1.2",
+        "@libp2p/tcp": "^9.1.2",
+        "@libp2p/identify": "^2.1.2",
+        "@libp2p/echo": "^1.1.2",
+        "@libp2p/crypto": "^4.1.6",
+        "@libp2p/peer-id": "^4.2.1",
+        "@libp2p/interface": "^1.6.1",
+        "@multiformats/multiaddr": "^12.3.0",
+        "@libp2p/circuit-relay-v2": "^1.1.2",
+        "@libp2p/webrtc": "^4.1.2",
+        "libp2p": "^1.8.1"
+    }
+}

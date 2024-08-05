@@ -1,0 +1,64 @@
+{% macro enumDeclaration(enum) %}
+export class {{ enum.name }} extends midl.Enum {
+    {%- for field in enum.members %}
+    public static readonly {{ field.name }} = new {{ enum.name }}({{ field.value}}{%- if not enum.strict %}, false{%- endif %})
+    {%- endfor %}
+    {%- if not enum.strict %}
+    public static readonly $unknown = new {{ enum.name }}(0xffffffff, true)
+    {% endif %}
+    
+    {%- if not enum.strict %}
+    readonly #isUnknown: boolean
+    {%- endif %}
+    static readonly #values = new Map<number, {{ enum.name }}>([
+        {%- for field in enum.members %}
+        [{{field.value}}, {{enum.name}}.{{field.name}}],
+        {%- endfor %}
+    ])
+    
+    public readonly value: number
+    public static readonly values: {{enum.name}}[] = [
+        {%- for field in enum.members %}
+        {{enum.name}}.{{field.name}},
+        {%- endfor %}
+    ]
+    public static readonly valuesMap: Record<string, {{enum.name}}> = {
+        {%- for field in enum.members %}
+        {{field.name}}: {{enum.name}}.{{field.name}},
+        {%- endfor %}
+    }
+
+    private constructor(value: number {%- if not enum.strict %}, isUnknown: boolean{%- endif %}) {
+        super();
+        this.value = value;
+        {%- if not enum.strict %}
+        this.#isUnknown = isUnknown;
+        {%- endif %}
+    }
+
+    public static override valueOf(name: string): {{enum.name}} | undefined {
+        return this.valuesMap[name];
+    }
+
+    public isUnknown(): boolean {
+        {%- if enum.strict %}
+        return false;
+        {%- else %}
+        return this.#isUnknown;
+        {%- endif %}
+    }
+
+    public static create(value: number): {{enum.name}} {
+        if (!this.#values.has(value)) {
+            {%- if enum.strict %}
+            throw new midl.MidlError("Invalid strict enum value: " + value, midl.ErrorCode.InvalidEnumValue)
+            {%- else %}
+            this.#values.set(value, new {{enum.name}}(value, true))
+            {%- endif %}
+        }
+        return this.#values.get(value)!
+    }
+}
+
+export const _{{enum.name}}Type = new midl.EnumType<{{enum.name}}>(new {{enum.underlying_type}}())
+{% endmacro enumDeclaration %}

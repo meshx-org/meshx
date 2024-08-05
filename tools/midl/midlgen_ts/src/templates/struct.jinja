@@ -1,0 +1,28 @@
+{% macro structDeclaration(struct) -%}
+export class {{struct.name}} implements midl.Struct {
+    {% for member in struct.members%}
+    {{- ""}}static #fieldType{{loop.index0}}: {{member.type.midl}} = {{member.type.ctor}};
+    {% endfor %}
+    constructor(
+        {% for member in struct.members %}
+        {{- ""}}public {{member.name}}: {{member.type.param}}, {{""-}}
+        {% endfor %}
+    ) {}
+
+    $encode(encoder: midl.Encoder, offset: number, depth: number): void {
+        {%- for member in struct.members %}
+        {{struct.name}}.#fieldType{{loop.index0}}.encode(encoder, this.{{member.name}}, offset + {{member.offset_v2}}, depth);
+        {%- endfor %}
+    }
+
+    static $decode(decoder: midl.Decoder, offset: number, depth: number) {
+        return new {{struct.name}}(
+            {%- for member in struct.members %}
+            {{struct.name}}.#fieldType{{loop.index0}}.decode(decoder, offset + {{member.offset_v2}}, depth),
+            {%- endfor %}
+        )
+    }
+}
+
+export const _{{struct.name}}Type = new midl.StructType<{{struct.name}}>({{struct.size_v2}}, {{struct.name}}.$decode)
+{% endmacro %}

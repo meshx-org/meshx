@@ -1,0 +1,57 @@
+{
+    "name": "fiber-host",
+    "$schema": "../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "fiber-host",
+    "projectType": "application",
+    "tags": [],
+    "targets": {
+        "build": {
+            "executor": "@nx/next:build",
+            "outputs": ["{options.outputPath}"],
+            "defaultConfiguration": "production",
+            "options": {
+                "outputPath": "dist/fiber-host"
+            },
+            "configurations": {
+                "development": {
+                    "outputPath": "fiber-host"
+                },
+                "production": {}
+            }
+        },
+        "serve": {
+            "executor": "@nx/next:server",
+            "defaultConfiguration": "development",
+            "options": {
+                "buildTarget": "fiber-host:build",
+                "dev": true
+            },
+            "configurations": {
+                "development": {
+                    "buildTarget": "fiber-host:build:development",
+                    "dev": true
+                },
+                "production": {
+                    "buildTarget": "fiber-host:build:production",
+                    "dev": false
+                }
+            }
+        },
+        "export": {
+            "executor": "@nx/next:export",
+            "options": {
+                "buildTarget": "fiber-host:build:production"
+            }
+        },
+        "test": {
+            "executor": "@nx/jest:jest",
+            "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+            "options": {
+                "jestConfig": "fiber-host/jest.config.ts"
+            }
+        },
+        "lint": {
+            "executor": "@nx/eslint:lint"
+        }
+    }
+}

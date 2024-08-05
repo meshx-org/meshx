@@ -3,6 +3,7 @@
     "$schema": "../../../node_modules/nx/schemas/project-schema.json",
     "sourceRoot": "src/typescript/fiber-sys/src",
     "projectType": "library",
+    "tags": ["lang:ts"],
     "targets": {
         "build": {
             "executor": "@nx/js:tsc",
@@ -17,14 +18,7 @@
         },
         "lint": {
             "executor": "@nx/eslint:lint",
-            "outputs": ["{options.outputFile}"],
-            "options": {
-                "lintFilePatterns": [
-                    "src/typescript/fiber-sys/src/**/*.ts",
-                    "src/typescript/fiber-sys/project.json",
-                    "src/typescript/fiber-sys/package.json"
-                ]
-            }
+            "outputs": ["{options.outputFile}"]
         },
         "test": {
             "executor": "@nx/vite:test",
@@ -34,6 +28,5 @@
                 "reportsDirectory": "../../../coverage/src/typescript/fiber-sys"
             }
         }
-    },
-    "tags": ["lang:ts"]
+    }
 }

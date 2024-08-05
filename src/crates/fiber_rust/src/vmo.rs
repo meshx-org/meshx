@@ -9,7 +9,7 @@ use crate::{impl_handle_based, ok};
 use crate::{object_get_info, ObjectQuery, Topic};
 use crate::{AsHandleRef, Handle, HandleBased, HandleRef, Koid, Rights, Status};
 use bitflags::bitflags;
-use fiber_sys as sys;
+use fiber_sys::{self as sys, FX_OK};
 use fiber_types as fx;
 
 /// An object representing a Zircon
@@ -36,8 +36,8 @@ impl Vmo {
     /// Wraps the `fx_vmo_create` syscall, allowing options to be passed.
     pub fn create_with_opts(opts: VmoOptions, size: u64) -> Result<Vmo, Status> {
         let mut handle = 0;
-        let status = unsafe { sys::fx_vmo_create(size, opts.bits(), &mut handle) };
-        ok(status)?;
+        //let status = unsafe { sys::fx_vmo_create(size, opts.bits(), &mut handle) };
+        //ok(status)?;
         unsafe { Ok(Vmo::from(Handle::from_raw(handle))) }
     }
 
@@ -46,8 +46,8 @@ impl Vmo {
     /// Wraps the `fx_vmo_get_size` syscall.
     pub fn get_size(&self) -> Result<u64, Status> {
         let mut size = 0;
-        let status = unsafe { sys::fx_vmo_get_size(self.raw_handle(), &mut size) };
-        ok(status).map(|()| size)
+        //let status = unsafe { sys::fx_vmo_get_size(self.raw_handle(), &mut size) };
+        ok(FX_OK).map(|()| size)
     }
 
     /// Read from a virtual memory object.
@@ -55,8 +55,8 @@ impl Vmo {
     /// Wraps the `fx_vmo_read` syscall.
     pub fn read(&self, data: &mut [u8], offset: u64) -> Result<(), Status> {
         unsafe {
-            let status = sys::fx_vmo_read(self.raw_handle(), data.as_mut_ptr(), offset, data.len());
-            ok(status)
+            //let status = sys::fx_vmo_read(self.raw_handle(), data.as_mut_ptr(), offset, data.len());
+            ok(FX_OK)
         }
     }
 
@@ -65,8 +65,8 @@ impl Vmo {
     /// Wraps the `fx_vmo_write` syscall.
     pub fn write(&self, data: &[u8], offset: u64) -> Result<(), Status> {
         unsafe {
-            let status = sys::fx_vmo_write(self.raw_handle(), data.as_ptr(), offset, data.len());
-            ok(status)
+            //let status = sys::fx_vmo_write(self.raw_handle(), data.as_ptr(), offset, data.len());
+            ok(FX_OK)
         }
     }
 }

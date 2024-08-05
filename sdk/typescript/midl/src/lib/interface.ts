@@ -5,7 +5,7 @@
 
 import { FidlError, FidlErrorCode } from "./errors"
 import { IncomingMessage, IncomingMessageSink, OutgoingMessage, OutgoingMessageSink } from "./message"
-import { Channel, ChannelPair, ChannelReader, ChannelReaderError } from "@meshx-org/fiber"
+import { Channel, ChannelPair, ChannelReader, ChannelReaderError } from "@meshx-org/fiber-ts"
 import { Status } from "@meshx-org/fiber-types"
 import { Completer } from "./completer"
 
@@ -159,6 +159,7 @@ export class InterfacePair<T> {
 
     constructor() {
         const pair = ChannelPair.create()
+        if (!pair) throw new Error()
         this.request = new InterfaceRequest<T>(pair.first)
         this.handle = new InterfaceHandle<T>(pair.second)
     }
@@ -228,12 +229,12 @@ export abstract class Binding<T> {
     wrap(impl: T): InterfaceHandle<T> | null {
         // TODO assert(!isBound)
         const pair = ChannelPair.create()
-        if (pair.status != Status.OK) {
+        if (!pair) {
             return null
         }
 
         this._impl = impl
-        this._reader.bind(pair.first!)
+        this._reader.bind(pair.first)
 
         const callback = this.onBind
         if (callback != null) {
@@ -276,7 +277,7 @@ export abstract class Binding<T> {
         this._impl = null
 
         const callback = this.onUnbind
-        if (callback != null) {
+        if (callback !== null) {
             callback()
         }
 
@@ -291,7 +292,7 @@ export abstract class Binding<T> {
             this._reader.close()
             this._impl = null
             const callback = this.onClose
-            if (callback != null) {
+            if (callback !== null) {
                 callback()
             }
         }
@@ -449,7 +450,8 @@ export class ProxyController<T> {
     request(): InterfaceRequest<T> {
         // TODO: assert(!isBound);
         const pair = ChannelPair.create()
-        // TODO: assert(pair.status == FX.OK);
+        if (!pair) throw new Error()
+
         this._reader.bind(pair.first)
         this._boundCompleter.complete(null)
 

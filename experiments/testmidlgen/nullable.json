@@ -424,7 +424,7 @@
             "members": [
                 {
                     "type": {
-                        "kind": "request",
+                        "kind": "server_end",
                         "subtype": "test.nullable/SimpleProtocol",
                         "nullable": true,
                         "protocol_transport": "Channel",

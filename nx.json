@@ -1,12 +1,12 @@
 {
-    "useDaemonProcess": false,
-    "extends": "nx/presets/npm.json",
-    "plugins": ["@meshx-org/nx-midl"],
     "pluginsConfig": {
         "@nx/js": {
             "analyzeSourceFiles": true
         }
     },
+    "plugins": ["mx-rust"],
+    "useDaemonProcess": false,
+    "extends": "nx/presets/npm.json",
     "targetDefaults": {
         "build": {
             "dependsOn": ["^build"],
@@ -22,6 +22,29 @@
         },
         "e2e": {
             "cache": true
+        },
+        "@nx/vite:test": {
+            "cache": true,
+            "inputs": ["default", "^default"]
+        },
+        "@nx/next:build": {
+            "cache": true,
+            "dependsOn": ["^build"],
+            "inputs": ["default", "^default"]
+        },
+        "@nx/js:tsc": {
+            "cache": true,
+            "dependsOn": ["^build"],
+            "inputs": ["default", "^default"]
+        }
+    },
+    "useInferencePlugins": false,
+    "generators": {
+        "@nx/next": {
+            "application": {
+                "style": "tailwind",
+                "linter": "eslint"
+            }
         }
     }
 }

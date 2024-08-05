@@ -5,16 +5,16 @@
         "target": "ES2020",
         "paths": {
             "@meshx-org/component-manager": ["src/typescript/component-manager/src/index.ts"],
-            "@meshx-org/fiber-kernel": ["dist/src/typescript/fiber-kernel/src/index.ts"],
+            "@meshx-org/fiber-kernel": ["src/typescript/fiber-kernel/src/index.ts"],
             "@meshx-org/fiber-sys": ["src/typescript/fiber-sys/src/index.ts"],
             "@meshx-org/fiber-ts": ["src/typescript/fiber-ts/src/index.ts"],
             "@meshx-org/fiber-types": ["src/typescript/fiber-types/src/index.ts"],
             "@meshx-org/meshx": ["sdk/typescript/meshx/src/index.ts"],
-            "@meshx-org/midl": ["sdk/typescript/midl/src/index.ts"],
-           
-            "@meshx-org/nx_rust": ["tools/nx_rust/src/index.ts"],
+            "@meshx-org/midl": ["src/typescript/midl/src/index.ts"],
             "@meshx-org/nx-midl": ["tools/nx-midl/src/index.ts"],
-            "@meshx-org/nx-pack": ["tools/nx-pack/src/index.ts"]
+            "@meshx-org/nx-pack": ["tools/nx-pack/src/index.ts"],
+            "@meshx-org/nx_rust": ["tools/nx_rust/src/index.ts"],
+            "mx-rust": ["tools/mx-rust/src/index.ts"]
         }
     }
 }

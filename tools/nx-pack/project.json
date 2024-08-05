@@ -3,6 +3,7 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "sourceRoot": "tools/nx-pack/src",
     "projectType": "library",
+    "tags": [],
     "implicitDependencies": ["src/sys/pkg/bin/package-tool"],
     "targets": {
         "build": {
@@ -40,10 +41,7 @@
         },
         "lint": {
             "executor": "@nx/eslint:lint",
-            "outputs": ["{options.outputFile}"],
-            "options": {
-                "lintFilePatterns": ["tools/nx-pack/**/*.ts", "tools/nx-pack/package.json"]
-            }
+            "outputs": ["{options.outputFile}"]
         },
         "test": {
             "executor": "@nx/jest:jest",
@@ -59,6 +57,5 @@
                 }
             }
         }
-    },
-    "tags": []
+    }
 }

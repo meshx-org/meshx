@@ -1,4 +1,4 @@
-import { fx_rights_t } from "@meshx-org/fiber-types"
+import { FX_DEFAULT_JOB_RIGHTS, FX_OBJ_TYPE_JOB, fx_obj_type_t, fx_rights_t } from "@meshx-org/fiber-types"
 import { SoloDispatcher } from "./dispatcher"
 import { ProcessDispatcher } from "./process-dispatcher"
 
@@ -34,27 +34,27 @@ type GuardedState = {
 export class JobDispatcher extends SoloDispatcher {
     // The user-friendly job name. For debug purposes only. That
     // is, there is no mechanism to mint a handle to a job via this name.
-    _name: string
-    _parent_job: JobDispatcher | null
-    _max_height: number
-    _policy: JobPolicy
-    _return_code: number
-    _kill_on_oom: boolean
-    _state: State
-    _guarded: GuardedState
+    #name: string
+    #parent_job: JobDispatcher | null
+    #max_height: number
+    #policy: JobPolicy
+    #return_code: number
+    #kill_on_oom: boolean
+    #state: State
+    #guarded: GuardedState
 
     private constructor(flags: number, parent: JobDispatcher | null, policy: JobPolicy) {
         super()
 
-        this._parent_job = parent
-        this._max_height = parent ? parent.max_height() - 1 : ROOT_JOB_MAX_HEIGHT
+        this.#parent_job = parent
+        this.#max_height = parent ? parent.max_height() - 1 : ROOT_JOB_MAX_HEIGHT
 
-        this._name = ""
-        this._state = State.READY
-        this._return_code = 0
-        this._kill_on_oom = false
-        this._policy = policy
-        this._guarded = { _jobs: [], _procs: [] }
+        this.#name = ""
+        this.#state = State.READY
+        this.#return_code = 0
+        this.#kill_on_oom = false
+        this.#policy = policy
+        this.#guarded = { _jobs: [], _procs: [] }
 
         // kcounter_add(dispatcher_job_create_count, 1);
     }
@@ -66,24 +66,24 @@ export class JobDispatcher extends SoloDispatcher {
     }
 
     parent(): JobDispatcher | null {
-        return this._parent_job
+        return this.#parent_job
     }
 
     public max_height(): number {
-        return this._max_height
+        return this.#max_height
     }
 
     get_policy(): JobPolicy {
         // Guard<Mutex> guard{ get_lock() };
-        return this._policy
+        return this.#policy
     }
 
     public add_child_job(job: JobDispatcher): boolean {
         //canary_.Assert();
         //Guard<Mutex> guard{get_lock()};
-        const guarded_state = this._guarded
+        const guarded_state = this.#guarded
 
-        if (this._state != State.READY) {
+        if (this.#state != State.READY) {
             return false
         }
 
@@ -106,9 +106,9 @@ export class JobDispatcher extends SoloDispatcher {
 
     public add_child_process(process: ProcessDispatcher): boolean {
         //canary_.Assert();
-        const guarded_state = this._guarded
+        const guarded_state = this.#guarded
 
-        if (this._state != State.READY) {
+        if (this.#state != State.READY) {
             return false
         }
 
@@ -119,6 +119,10 @@ export class JobDispatcher extends SoloDispatcher {
     }
 
     static override default_rights(): fx_rights_t {
-        return 0
+        return FX_DEFAULT_JOB_RIGHTS
+    }
+
+    override get_type(): fx_obj_type_t {
+        return FX_OBJ_TYPE_JOB
     }
 }

@@ -1,0 +1,9 @@
+[package]
+edition = "2021" 
+name = "cm_config" 
+version = "0.1.0" # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cm_types = {path = "../cm_types"}
+moniker = {path = "../moniker"}
+serde = {version = "1"}

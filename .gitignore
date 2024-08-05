@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+*.wasm
 
 # Test binary, built with `go test -c`
 *.test
@@ -53,3 +54,10 @@ testem.log
 Thumbs.db
 /target
 .nx/cache
+.nx/workspace-data
+
+midl_*
+
+# Next.js
+.next
+out

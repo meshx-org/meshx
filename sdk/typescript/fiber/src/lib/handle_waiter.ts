@@ -3,13 +3,12 @@
 import { fx_port_wait, fx_object_wait_async, fx_port_create } from "@meshx-org/fiber-sys"
 import {
     u64,
-    FX_INVALID_HANDLE,
+    FX_HANDLE_INVALID,
     fx_port_packet_t,
     fx_signals_t,
     FX_TIME_INFINITE,
     Ref,
     fx_handle_t,
-    Status,
 } from "@meshx-org/fiber-types"
 import { Handle } from "./handle"
 
@@ -18,7 +17,7 @@ export type AsyncWaitCallback = (status: number, pending: number) => void
 function checked_add_u64(current: u64, increment: u64, expect: string): u64 {
     const newValue = current + increment
 
-    if (newValue == 9_223_372_036_854_775_807n) {
+    if (newValue === 9_223_372_036_854_775_807n) {
         throw new RangeError(expect)
     }
 
@@ -62,7 +61,7 @@ interface ReceiverRegistration<T> {
 }
 
 class Executor {
-    public port: Ref<fx_handle_t> = new Ref(FX_INVALID_HANDLE)
+    public port: Ref<fx_handle_t> = new Ref(FX_HANDLE_INVALID)
     private receivers: PacketReceiverMap<PacketReceiver>
 
     constructor() {

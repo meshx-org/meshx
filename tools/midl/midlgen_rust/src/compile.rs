@@ -755,9 +755,9 @@ impl Compiler {
         for v in val.members {
             let ir = v.clone();
 
-            if v.reserved {
-                continue;
-            }
+            //if v.reserved {
+            //    continue;
+            //}
 
             members.push(types::UnionMember {
                 ir,

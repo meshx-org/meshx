@@ -1,0 +1,26 @@
+[package]
+name = "component"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+fiber_sys={path = "../fiber_sys"}
+fiber_types={path = "../fiber_types"}
+
+[lib]
+crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+opt-level = 'z'
+debug = false
+strip = true
+lto = true

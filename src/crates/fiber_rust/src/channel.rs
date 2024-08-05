@@ -78,16 +78,18 @@ impl Channel {
         let raw_handle = self.raw_handle();
         let mut actual_bytes = 0;
         let mut actual_handles = 0;
-        let status = ok(sys::fx_channel_read(
-            raw_handle,
-            0,
-            bytes.as_mut_ptr(),
-            handles.as_mut_ptr() as *mut _,
-            bytes.len(),
-            handles.len() as u32,
-            &mut actual_bytes,
-            &mut actual_handles,
-        ));
+        let status = ok(unsafe {
+            sys::fx_channel_read(
+                raw_handle,
+                0,
+                bytes.as_mut_ptr(),
+                handles.as_mut_ptr() as *mut _,
+                bytes.len() as u32,
+                handles.len() as u32,
+                &mut actual_bytes,
+                &mut actual_handles,
+            )
+        });
         if status == Err(Status::BUFFER_TOO_SMALL) {
             Err((actual_bytes as usize, actual_handles as usize))
         } else {
@@ -240,16 +242,16 @@ impl Channel {
     /// [zx_channel_write](https://fuchsia.dev/fuchsia-src/reference/syscalls/channel_write.md)
     /// syscall.
     pub fn write(&self, bytes: &[u8], handles: &mut [Handle]) -> Result<(), Status> {
-        let n_bytes = usize_into_u32(bytes.len()).map_err(|_| Status::OUT_OF_RANGE)?;
-        let n_handles = usize_into_u32(handles.len()).map_err(|_| Status::OUT_OF_RANGE)?;
+        let num_bytes = usize_into_u32(bytes.len()).map_err(|_| Status::OUT_OF_RANGE)?;
+        let num_handles = usize_into_u32(handles.len()).map_err(|_| Status::OUT_OF_RANGE)?;
         unsafe {
             let status = sys::fx_channel_write(
                 self.raw_handle(),
                 0,
                 bytes.as_ptr(),
-                n_bytes,
+                num_bytes,
                 handles.as_ptr() as *const sys::fx_handle_t,
-                n_handles,
+                num_handles,
             );
             // Handles are consumed by zx_channel_write so prevent the destructor from being called.
             for handle in handles {

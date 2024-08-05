@@ -1,0 +1,3 @@
+{% macro constDeclaration(const) -%}
+export const {{ const.name }}: {{ const.type }} = {{ const.value }};
+{%- endmacro %}

@@ -6,7 +6,7 @@ import {
     fx_channel_write_etc,
 } from "@meshx-org/fiber-sys"
 import {
-    FX_INVALID_HANDLE,
+    FX_HANDLE_INVALID,
     FX_CHANNEL_READ_MAY_DISCARD,
     FX_CHANNEL_MAX_MSG_BYTES,
     FX_CHANNEL_MAX_MSG_HANDLES,
@@ -203,9 +203,9 @@ export class Channel extends HandleWrapper {
 /// fx_channel_create() syscall used to create them.
 export class ChannelPair extends HandleWrapperPair<Channel> {
     static create(): ChannelPair {
-        const first = new Ref(FX_INVALID_HANDLE)
-        const second = new Ref(FX_INVALID_HANDLE)
-        const status = fx_channel_create(first, second)
+        const first = new Ref(FX_HANDLE_INVALID)
+        const second = new Ref(FX_HANDLE_INVALID)
+        const status = fx_channel_create(0, first, second)
 
         if (status === Status.OK) {
             const firstChannel = new Channel(new Handle(first.value))
