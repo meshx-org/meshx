@@ -2,7 +2,6 @@
     "name": "src/sys/pkg/bin/package-tool",
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "sourceRoot": "src/sys/pkg/bin/package-tool/src",
-    "root": "src/sys/pkg/bin/package-tool",
     "projectType": "application",
     "implicitDependencies": ["tools/nx_rust"],
     "targets": {

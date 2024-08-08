@@ -96,6 +96,8 @@ impl BuiltinEnvironmentBuilder {
 
     #[cfg(test)]
     pub fn add_resolver(mut self, scheme: String, resolver: Box<dyn Resolver + Send + Sync + 'static>) -> Self {
+        use crate::model::resolver::Resolver;
+
         self.resolvers.register(scheme, resolver);
         self
     }

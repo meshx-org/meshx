@@ -9,6 +9,11 @@
             "implementation": "./src/midlgen/index",
             "schema": "./src/midlgen/schema.json",
             "description": "Generates language bindings from a MIDL library IR"
+        },
+        "echo": {
+            "implementation": "./src/executors/echo/executor",
+            "schema": "./src/executors/echo/schema.json",
+            "description": "echo executor"
         }
     }
 }

@@ -1,4 +1,12 @@
-import { CreateNodesV2, ProjectConfiguration, CreateDependencies, validateDependency, RawProjectGraphDependency, StaticDependency, DependencyType } from "@nx/devkit";
+import {
+    CreateNodesV2,
+    ProjectConfiguration,
+    CreateDependencies,
+    validateDependency,
+    StaticDependency,
+    DependencyType,
+    ProjectGraphExternalNode,
+} from "@nx/devkit";
 import * as path from "path";
 import * as fs from "node:fs";
 import { load } from "js-toml";
@@ -10,17 +18,25 @@ type CargoToml = {
 
 function createLibProject(dir: string, cargoJson: CargoToml): ProjectConfiguration {
     return {
-        name: cargoJson.package.name,
-        sourceRoot: path.join(dir, "src"),
+        name: dir,
+       // sourceRoot: path.join(dir, "src"),
         root: dir,
         projectType: "library",
         tags: ["cargo", "lang:rs"],
         targets: {
+            'abcd2': {
+                                    executor: "nx-midl:echo",
+                                    options: {
+                                        command: "ls -a"
+                                    }
+                                },
             build: {
                 executor: "@nxrs/cargo:build",
                 options: {
                     toolchain: "nightly",
                     release: false,
+                    package: cargoJson.package.name,
+                    outDir: path.join('dist', dir)
                 },
                 configurations: {
                     production: {
@@ -46,17 +62,25 @@ function createLibProject(dir: string, cargoJson: CargoToml): ProjectConfigurati
 
 function createBinProject(dir: string, cargoJson: CargoToml): ProjectConfiguration {
     return {
-        name: cargoJson.package.name,
-        sourceRoot: path.join(dir, "src"),
+        name: dir,
+        //sourceRoot: path.join(dir, "src"),
         root: dir,
         projectType: "application",
         tags: ["cargo", "lang:rs"],
         targets: {
+            'abcd2': {
+                executor: "nx-midl:echo",
+                options: {
+                    command: "ls -a"
+                }
+            },
             build: {
                 executor: "@nxrs/cargo:build",
                 options: {
                     toolchain: "nightly",
                     release: false,
+                    package: cargoJson.package.name,
+                    outDir: path.join('dist', dir)
                 },
                 configurations: {
                     production: {
@@ -65,11 +89,10 @@ function createBinProject(dir: string, cargoJson: CargoToml): ProjectConfigurati
                 },
             },
             run: {
-                executor: "@nxrs/cargo:build",
+                executor: "nx:run-commands",
                 options: {
-                    toolchain: "nightly",
-                    release: false,
-                    run: true,
+                    command: `cargo +nightly run -p ${cargoJson.package.name}`,
+                    cwd: dir,
                 },
             },
             test: {
@@ -93,10 +116,20 @@ function createBinProject(dir: string, cargoJson: CargoToml): ProjectConfigurati
     };
 }
 
+type Dependency = {
+    git?: string;
+};
+
+export function isExternal(packageOrDep: number | Dependency, workspaceRoot: string) {
+    const isRegistry = typeof packageOrDep == "number";
+    const isGit = typeof packageOrDep != "number" && typeof packageOrDep.git !== "undefined";
+
+    return isRegistry || isGit;
+}
+
 export const createDependencies: CreateDependencies = (opts, ctx) => {
     const cargoTomlMap = new Map();
     const nxProjects = Object.values(ctx.projects);
-    console.log(nxProjects);
     const results: any[] = [];
 
     for (const project of nxProjects) {
@@ -140,7 +173,9 @@ export const createDependencies: CreateDependencies = (opts, ctx) => {
 export const createNodesV2: CreateNodesV2 = [
     /* This will look for all `index.ts` files that follow your file structure convention. */
     "**/*/Cargo.toml",
-    (indexPathList, _) => {
+    (indexPathList, conf, ctx) => {
+        console.log('createNodesV2', indexPathList)
+        
         const cargoJsons = indexPathList.map((indexPath) => {
             const cargoToml = fs.readFileSync(indexPath, "utf8");
             const cargoJson = load(cargoToml) as CargoToml;
@@ -154,6 +189,7 @@ export const createNodesV2: CreateNodesV2 = [
             const isLib = fs.existsSync(path.join(dir, "src", "lib.rs"));
             const isBin = fs.existsSync(path.join(dir, "src", "main.rs"));
 
+            const externalNodes: Record<string, ProjectGraphExternalNode> = {};
             const projects: Record<string, ProjectConfiguration> = {};
 
             if ("workspace" in cargoJson) {
@@ -166,11 +202,28 @@ export const createNodesV2: CreateNodesV2 = [
             }
 
             if (isLib) {
-                projects[cargoJson.package.name + "-lib"] = createLibProject(dir, cargoJson);
+                projects[dir] = createLibProject(dir, cargoJson);
             }
 
             if (isBin) {
-                projects[cargoJson.package.name + "-bin"] = createBinProject(dir, cargoJson);
+                projects[dir] = createBinProject(dir, cargoJson);
+            }
+
+            for (const [name, dep] of Object.entries(cargoJson.dependencies)) {
+                if (!isExternal(dep, ctx.workspaceRoot)) {
+                    const externalDepName = `cargo:${name}`;
+                    if (!externalNodes?.[externalDepName]) {
+                        externalNodes[externalDepName] = {
+                            type: "cargo" as any,
+                            name: externalDepName as any,
+                            data: {
+                                packageName: name,
+                                version: "0.0.0",
+                                //version: cargoPackageMap.get(name)?.version ?? "0.0.0",
+                            },
+                        };
+                    }
+                }
             }
 
             return [
@@ -178,19 +231,14 @@ export const createNodesV2: CreateNodesV2 = [
                  * It is shown in the project detail web view. */
                 indexPath,
                 {
+                    externalNodes,
                     projects,
                 },
             ];
         });
+
+        
+
+         
     },
 ];
-
-/**
- 
-                        ['test']: {
-                            name: projectName,
-                            sourceRoot: projectRoot,
-                            projectType: "library",
-                        },
-
- */

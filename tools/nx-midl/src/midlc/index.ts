@@ -1,4 +1,4 @@
-import { logger, readJsonFile, ExecutorContext } from "@nrwl/devkit"
+import { logger, readJsonFile, ExecutorContext } from "@nx/devkit"
 import { exec } from "child_process"
 import { sync } from "glob"
 import * as path from "path"

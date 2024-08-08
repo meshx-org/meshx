@@ -19,6 +19,7 @@ async-trait = "0.1.80"
 axum = {version = "0.7.5", features = ["macros"]}
 backoff = "0.4.0"
 chrono = "0.4.38"
+clap = {version = "4.5", features = ["derive"]}
 darling = "0.20.9"
 derivative = "2.2.0"
 env_logger = "0.11"
@@ -26,8 +27,8 @@ etcd-client = "0.13"
 form_urlencoded = "1.1"
 futures = "0.3.30"
 go-parse-duration = "0.1"
+hashbrown = "0.14.5"
 http = "1.1"
-hashbrown="0.14.5"
 hyper = "1.0"
 json-patch = "1.0"
 lazy_static = "1.4"
@@ -63,10 +64,10 @@ members = [
   "src/crates/fiber_rust",
   "src/crates/meshx_component",
   "src/crates/meshx_runtime",
-  "src/crates/controlplane_derive",
-  "src/crates/controlplane_core",
-  "src/crates/controlplane_runtime",
-  "src/crates/controlplane_client",
+  "experiments/controlplane_derive",
+  "experiments/controlplane_core",
+  "experiments/controlplane_runtime",
+  "experiments/controlplane_client",
   "src/crates/component_manager",
   "src/crates/meshx_runtime",
   "src/crates/meshx_flow",
@@ -81,6 +82,7 @@ members = [
   "src/crates/fiber_status",
   "src/crates/fiber_kernel",
   "experiments/wasm_host",
+  "tools/buildtool",
   "tools/midl/midlc",
   "tools/midl/midlgen",
   "tools/midl/midlgen_ts",
@@ -88,7 +90,8 @@ members = [
   "src/sys/pkg/lib/package-tool",
   "src/sys/pkg/lib/meshx-repo",
   "src/lib/meshx-url",
-  "src/sys/pkg/bin/package-tool", "src/crates/component",
+  "src/sys/pkg/bin/package-tool",
+  "src/crates/component",
 ]
 resolver = "2"
 

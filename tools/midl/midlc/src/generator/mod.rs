@@ -283,7 +283,7 @@ impl JSONGenerator {
         match value.literal {
             ast::Literal::NumericValue(value, _) => ir::Literal::NumericLiteral { value },
             ast::Literal::StringValue(value, _) => ir::Literal::StringLiteral { value },
-            ast::Literal::BoolValue(value, _) => ir::Literal::BoolLiteral { value },
+            ast::Literal::BoolValue(value, _) => ir::Literal::BoolLiteral { value: if value { String::from("true") } else { String::from("false") } },
         }
     }
 
@@ -329,7 +329,7 @@ impl JSONGenerator {
                 members.push(ir::UnionMember {
                     name: Some(self.generate_identifier(used.name.clone())),
                     r#type: Some(self.generate_type_and_from_alias(TypeKind::Concrete, used.type_ctor.clone())),
-                    reserved: false,
+                    //reserved: false,
                     ordinal: self.generate_ordinal64(member.ordinal.clone()),
                     max_out_of_line: 0,
                 })
@@ -337,7 +337,7 @@ impl JSONGenerator {
                 members.push(ir::UnionMember {
                     name: None,
                     r#type: None,
-                    reserved: true,
+                    //reserved: true,
                     ordinal: self.generate_ordinal64(member.ordinal.clone()),
                     max_out_of_line: 0,
                 })
@@ -346,6 +346,7 @@ impl JSONGenerator {
 
         ir::Union {
             members,
+            strict: true,
             name: self.generate_name(&value.name),
             location: self.generate_location(value.span),
             resourceness: Resourceness(false),
@@ -431,8 +432,13 @@ impl JSONGenerator {
                 has_response: false,
                 has_request: false,
                 has_error: false,
-                maybe_request_payload,
-                maybe_response_payload,
+                kind: todo!(),
+                deprecated: todo!(),
+                strict: todo!(),
+                success_type: todo!(),
+                error_type: todo!(),
+                request_payload: maybe_request_payload,
+                response_payload:maybe_response_payload,
             })
         }
 

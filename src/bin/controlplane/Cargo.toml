@@ -6,8 +6,8 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 async-trait.workspace=true
-controlplane_core={path = "../../crates/controlplane_core"}
-controlplane_api={path = "../../crates/controlplane_api"}
+controlplane_core={path = "../../../experiments/controlplane_core"}
+controlplane_api={path = "../../../experiments/controlplane_api"}
 tracing.workspace=true
 metrics = { version = "0.22", default-features = false }
 metrics-exporter-prometheus = { version = "0.13", default-features = false }

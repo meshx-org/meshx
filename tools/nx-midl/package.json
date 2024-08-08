@@ -2,5 +2,8 @@
     "name": "@meshx-org/nx-midl",
     "version": "0.0.1",
     "executors": "./executors.json",
-    "private": true
+    "private": true,
+    "dependencies": {
+        "@nx/devkit": "19.5.6"
+    }
 }

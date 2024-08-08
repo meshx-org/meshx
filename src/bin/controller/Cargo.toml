@@ -22,11 +22,11 @@ path = "src/lib.rs"
 serde_yml.workspace=true
 anyhow.workspace = true
 chrono = "0.4.38"
-controlplane_api = {path = "../../crates/controlplane_api"}
-controlplane_client = {path = "../../crates/controlplane_client"}
-controlplane_core = {path = "../../crates/controlplane_core", features = ["schema"]}
-controlplane_derive = {path = "../../crates/controlplane_derive"}
-controlplane_runtime = {path = "../../crates/controlplane_runtime", features = ["jsonpatch"]}
+controlplane_api = {path = "../../../experiments/controlplane_api"}
+controlplane_client = {path = "../../../experiments/controlplane_client"}
+controlplane_core = {path = "../../../experiments/controlplane_core", features = ["schema"]}
+controlplane_derive = {path = "../../../experiments/controlplane_derive"}
+controlplane_runtime = {path = "../../../experiments/controlplane_runtime", features = ["jsonpatch"]}
 futures.workspace = true
 opentelemetry = {version = "0.23.0", features = ["trace"]}
 opentelemetry-otlp = {version = "0.16.0", features = ["tokio"], optional = true}

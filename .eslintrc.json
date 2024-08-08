@@ -7,7 +7,7 @@
         "plugin:import/typescript"
     ],
     "ignorePatterns": ["**/*"],
-    "plugins": ["import"],
+    "plugins": ["import", "@nx"],
     "settings": {
         "import/extensions": [".js", ".jsx", ".ts", ".tsx"],
         "import/parsers": {

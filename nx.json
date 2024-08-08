@@ -4,13 +4,16 @@
             "analyzeSourceFiles": true
         }
     },
-    "plugins": ["mx-rust"],
+    "plugins": ["@meshx-org/mx-build", "mx-rust"],
     "useDaemonProcess": false,
     "extends": "nx/presets/npm.json",
     "targetDefaults": {
         "build": {
-            "dependsOn": ["^build"],
+            "dependsOn": ["^build", "build:*"],
             "cache": true
+        },
+        "build*": {
+            "inputs": ["{projectRoot}/BUILD.hcl"]
         },
         "lint": {
             "inputs": ["default", "{workspaceRoot}/.eslintrc.json"],
@@ -38,7 +41,7 @@
             "inputs": ["default", "^default"]
         }
     },
-    "useInferencePlugins": false,
+    "useInferencePlugins": true,
     "generators": {
         "@nx/next": {
             "application": {

@@ -4,10 +4,9 @@
     "private": true,
     "executors": "./executors.json",
     "devDependencies": {
-       
         "webpack": "^5.75.0"
     },
     "peerDependencies": {
-        "@nrwl/devkit": ">= 12.7.0"
+        "@nx/devkit": ">= 12.7.0"
     }
 }

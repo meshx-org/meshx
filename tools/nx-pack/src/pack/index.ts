@@ -1,4 +1,4 @@
-import { logger, ExecutorContext } from "@nrwl/devkit"
+import { logger, ExecutorContext } from "@nx/devkit"
 import * as path from "path"
 import { exec } from "child_process"
 import { promises as fs } from "fs"

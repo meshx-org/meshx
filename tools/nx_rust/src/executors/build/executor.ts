@@ -1,4 +1,4 @@
-import { logger, ExecutorContext } from "@nrwl/devkit"
+import { logger, ExecutorContext } from "@nx/devkit"
 import { resolve } from "path"
 
 /**

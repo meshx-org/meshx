@@ -2,7 +2,7 @@
 // Copyright 2018 The Fuchsia Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-library fuchsia.data;
+library meshx.data;
 
 // Maximum number of items in a dictionary's value.
 const MAX_NUM_VALUE_ITEMS uint32 = 1024;

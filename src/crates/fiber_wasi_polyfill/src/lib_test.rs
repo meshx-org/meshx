@@ -1,6 +1,7 @@
 use std::ptr::{null, null_mut};
 
 use crate::wasi;
+use crate::wasi::Fd;
 use crate::*;
 
 #[cfg(test)]
@@ -10,7 +11,7 @@ fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Vec<St
     let mut file_fd = 0;
 
     let res = unsafe {
-        __ic_custom_path_open(
+        __fx_custom_path_open(
             parent_fd as i32,
             0,
             new_file_name.as_ptr(),
@@ -36,7 +37,7 @@ fn create_test_file_with_content(parent_fd: Fd, file_name: &str, content: Vec<St
     let mut bytes_written: wasi::Size = 0;
 
     unsafe {
-        __ic_custom_fd_write(
+        __fx_custom_fd_write(
             file_fd,
             src.as_ptr(),
             src.len() as i32,
@@ -52,10 +53,7 @@ fn create_test_file(parent_fd: Fd, file_name: &str) -> Fd {
     create_test_file_with_content(
         parent_fd,
         file_name,
-        vec![
-            String::from("This is a sample text."),
-            String::from("1234567890"),
-        ],
+        vec![String::from("This is a sample text."), String::from("1234567890")],
     )
 }
 
@@ -66,7 +64,7 @@ fn read_directory(root_fd: Fd) -> Vec<String> {
 
     let mut new_length: wasi::Size = 0;
 
-    let res = __ic_custom_fd_readdir(
+    let res = __fx_custom_fd_readdir(
         root_fd as i32,
         bytes.as_mut_ptr(),
         len as i32,
@@ -109,28 +107,16 @@ fn read_directory(root_fd: Fd) -> Vec<String> {
 
 #[test]
 fn test_environ_get() {
-    let init_env = [
-        ("PATH", "/usr/bin"),
-        ("UID", "1028"),
-        ("HOME", "/home/user"),
-    ];
-
     let mut lines = Vec::new();
 
-    for pair in init_env.iter() {
-        lines.push(String::from(pair.0) + "=" + pair.1 + "\0");
-    }
-
-    let lines = lines;
-
-    init(&[12, 3, 54, 1], &init_env);
+    init();
 
     // get environment sizes
     let mut entry_count: wasi::Size = 0;
     let mut buffer_size: wasi::Size = 0;
 
     let ret = unsafe {
-        __ic_custom_environ_sizes_get(
+        __fx_custom_environ_sizes_get(
             (&mut entry_count) as *mut wasi::Size,
             (&mut buffer_size) as *mut wasi::Size,
         )
@@ -157,12 +143,8 @@ fn test_environ_get() {
     }
 
     // get environment values
-    let ret = unsafe {
-        __ic_custom_environ_get(
-            entry_table.as_mut_ptr() as *mut *mut u8,
-            buffer.as_mut_ptr() as *mut u8,
-        )
-    };
+    let ret =
+        unsafe { __fx_custom_environ_get(entry_table.as_mut_ptr() as *mut *mut u8, buffer.as_mut_ptr() as *mut u8) };
 
     assert!(ret == 0);
 
@@ -178,31 +160,23 @@ fn test_environ_get() {
 
 #[test]
 fn test_random_get() {
-    let init_env = [
-        ("PATH", "/usr/bin"),
-        ("UID", "1028"),
-        ("HOME", "/home/user"),
-    ];
-
-    let seed = [12, 3, 54, 21];
-
-    init(&seed, &init_env);
+    init();
 
     let buf_len: wasi::Size = 14usize;
 
     let mut random_buf1: Vec<u8> = Vec::with_capacity(buf_len);
 
-    let res = unsafe { __ic_custom_random_get(random_buf1.as_mut_ptr(), buf_len) };
+    let res = unsafe { __fx_custom_random_get(random_buf1.as_mut_ptr(), buf_len) };
 
     assert!(res == 0);
 
     unsafe { random_buf1.set_len(buf_len) };
 
-    init_seed(&seed);
+    init();
 
     let mut random_buf2: Vec<u8> = Vec::with_capacity(buf_len);
 
-    let res = unsafe { __ic_custom_random_get(random_buf2.as_mut_ptr(), buf_len) };
+    let res = unsafe { __fx_custom_random_get(random_buf2.as_mut_ptr(), buf_len) };
 
     assert!(res == 0);
 
@@ -214,20 +188,20 @@ fn test_random_get() {
 #[test]
 #[should_panic]
 fn test_proc_exit() {
-    init(&[], &[]);
+    init();
 
-    __ic_custom_proc_exit(5);
+    __fx_custom_proc_exit(5);
 }
 
 #[test]
 fn test_args_get() {
-    init(&[], &[]);
+    init();
 
     let mut entry_count: wasi::Size = 0;
     let mut buffer_size: wasi::Size = 0;
 
     let ret = unsafe {
-        __ic_custom_args_sizes_get(
+        __fx_custom_args_sizes_get(
             (&mut entry_count) as *mut wasi::Size,
             (&mut buffer_size) as *mut wasi::Size,
         )
@@ -251,10 +225,7 @@ fn test_args_get() {
     }
 
     // get environment values
-    let ret = __ic_custom_args_get(
-        entry_table.as_mut_ptr() as *mut *mut u8,
-        buffer.as_mut_ptr() as *mut u8,
-    );
+    let ret = unsafe { __fx_custom_args_get(entry_table.as_mut_ptr() as *mut *mut u8, buffer.as_mut_ptr() as *mut u8) };
 
     assert!(ret == 0);
 
@@ -267,17 +238,16 @@ fn test_args_get() {
 
 #[test]
 fn test_clock_res_get_clock_time_get() {
-    init(&[], &[]);
+    init();
 
     let mut resolution: u64 = 0;
 
-    let res = unsafe { __ic_custom_clock_res_get(0, (&mut resolution) as *mut u64) };
+    let res = unsafe { __fx_custom_clock_res_get(0, (&mut resolution) as *mut u64) };
 
     assert!(res == 0);
     assert!(resolution == 1_000_000_000);
 
-    let res =
-        unsafe { __ic_custom_clock_time_get(0, 1_000_000_000, (&mut resolution) as *mut u64) };
+    let res = unsafe { __fx_custom_clock_time_get(0, 1_000_000_000, (&mut resolution) as *mut u64) };
 
     assert!(res == 0);
     assert!(resolution > 0);
@@ -285,7 +255,7 @@ fn test_clock_res_get_clock_time_get() {
 
 #[test]
 fn test_fd_prestat_init_fd_prestat_dir_name() {
-    init(&[], &[]);
+    init();
 
     let mut root_fd = 0;
     let mut prestat = wasi::Prestat {
@@ -297,8 +267,7 @@ fn test_fd_prestat_init_fd_prestat_dir_name() {
 
     // find working fd
     loop {
-        let res =
-            unsafe { __ic_custom_fd_prestat_get(root_fd, (&mut prestat) as *mut wasi::Prestat) };
+        let res = unsafe { __fx_custom_fd_prestat_get(root_fd, (&mut prestat) as *mut wasi::Prestat) };
 
         if root_fd > 10 {
             panic!();
@@ -328,9 +297,7 @@ fn test_fd_prestat_init_fd_prestat_dir_name() {
         path.set_len(root_path_len);
     }
 
-    let res = unsafe {
-        __ic_custom_fd_prestat_dir_name(root_fd, path.as_mut_ptr(), root_path_len as i32)
-    };
+    let res = unsafe { __fx_custom_fd_prestat_dir_name(root_fd, path.as_mut_ptr(), root_path_len as i32) };
 
     assert!(res == 0);
 
@@ -342,47 +309,32 @@ fn test_fd_prestat_init_fd_prestat_dir_name() {
 
 #[test]
 fn test_create_dirs_and_file_in_it() {
-    init(&[], &[]);
+    init();
 
     let root_fd = 3;
     let new_file_name = String::from("file.txt");
 
     // create dirs
     let new_folder_name1 = String::from("test_folder1");
-    let res = unsafe {
-        __ic_custom_path_create_directory(
-            root_fd,
-            new_folder_name1.as_ptr(),
-            new_folder_name1.len() as i32,
-        )
-    };
+    let res =
+        unsafe { __fx_custom_path_create_directory(root_fd, new_folder_name1.as_ptr(), new_folder_name1.len() as i32) };
     assert!(res == 0);
 
     let new_folder_name2 = String::from("test_folder2");
-    let res = unsafe {
-        __ic_custom_path_create_directory(
-            root_fd,
-            new_folder_name2.as_ptr(),
-            new_folder_name2.len() as i32,
-        )
-    };
+    let res =
+        unsafe { __fx_custom_path_create_directory(root_fd, new_folder_name2.as_ptr(), new_folder_name2.len() as i32) };
     assert!(res == 0);
 
     let new_folder_name3 = String::from("test_folder3");
-    let res = unsafe {
-        __ic_custom_path_create_directory(
-            root_fd,
-            new_folder_name3.as_ptr(),
-            new_folder_name3.len() as i32,
-        )
-    };
+    let res =
+        unsafe { __fx_custom_path_create_directory(root_fd, new_folder_name3.as_ptr(), new_folder_name3.len() as i32) };
     assert!(res == 0);
 
     // open first dir
     let mut parent_folder_fd = 0;
 
     let res = unsafe {
-        __ic_custom_path_open(
+        __fx_custom_path_open(
             root_fd,
             0,
             new_folder_name1.as_ptr(),
@@ -402,7 +354,7 @@ fn test_create_dirs_and_file_in_it() {
     let mut new_file_fd = 0;
 
     let res = unsafe {
-        __ic_custom_path_open(
+        __fx_custom_path_open(
             parent_folder_fd,
             0,
             new_file_name.as_ptr(),
@@ -418,11 +370,7 @@ fn test_create_dirs_and_file_in_it() {
     assert!(res == 0);
 
     // delete the second directory
-    let ret = __ic_custom_path_remove_directory(
-        root_fd,
-        new_folder_name2.as_ptr(),
-        new_folder_name2.len() as i32,
-    );
+    let ret = __fx_custom_path_remove_directory(root_fd, new_folder_name2.as_ptr(), new_folder_name2.len() as i32);
     assert!(ret == 0);
 
     // check there are now 2 directories in the root folder and 1 file in the first directory
@@ -432,7 +380,7 @@ fn test_create_dirs_and_file_in_it() {
 
     let mut new_length: wasi::Size = 0;
 
-    let res = __ic_custom_fd_readdir(
+    let res = __fx_custom_fd_readdir(
         root_fd,
         bytes.as_mut_ptr(),
         len as i32,
@@ -477,18 +425,18 @@ fn test_create_dirs_and_file_in_it() {
 
 #[test]
 fn test_writing_and_reading() {
-    init(&[], &[]);
+    init();
 
     let root_fd = 3i32;
     let new_file_name = String::from("file.txt");
 
     let mut file_fd = create_test_file(root_fd as Fd, &new_file_name) as i32;
 
-    __ic_custom_fd_close(file_fd);
+    __fx_custom_fd_close(file_fd);
 
     // open file for reading
     let res = unsafe {
-        __ic_custom_path_open(
+        __fx_custom_path_open(
             root_fd,
             0,
             new_file_name.as_ptr(),
@@ -519,7 +467,7 @@ fn test_writing_and_reading() {
     let mut bytes_read: wasi::Size = 0;
 
     let res = unsafe {
-        __ic_custom_fd_read(
+        __fx_custom_fd_read(
             file_fd,
             read_buf.as_mut_ptr(),
             read_buf.len() as i32,
@@ -534,7 +482,7 @@ fn test_writing_and_reading() {
 
 #[test]
 fn test_writing_and_reading_from_a_stationary_pointer() {
-    init(&[], &[]);
+    init();
 
     let root_fd = 3;
     let new_file_name = String::from("file.txt");
@@ -542,7 +490,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
     let mut file_fd = 0;
 
     let res = unsafe {
-        __ic_custom_path_open(
+        __fx_custom_path_open(
             root_fd,
             0,
             new_file_name.as_ptr(),
@@ -573,7 +521,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
     let mut bytes_written: wasi::Size = 0;
 
     unsafe {
-        __ic_custom_fd_pwrite(
+        __fx_custom_fd_pwrite(
             file_fd,
             src.as_ptr(),
             src.len() as i32,
@@ -582,11 +530,11 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
         )
     };
 
-    __ic_custom_fd_close(file_fd);
+    __fx_custom_fd_close(file_fd);
 
     // open file for reading
     let res = unsafe {
-        __ic_custom_path_open(
+        __fx_custom_path_open(
             root_fd,
             0,
             new_file_name.as_ptr(),
@@ -617,7 +565,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
     let mut bytes_read: wasi::Size = 0;
 
     let res = unsafe {
-        __ic_custom_fd_pread(
+        __fx_custom_fd_pread(
             file_fd,
             read_buf.as_mut_ptr(),
             (read_buf.len()) as i32,
@@ -634,7 +582,7 @@ fn test_writing_and_reading_from_a_stationary_pointer() {
 
 #[test]
 fn test_writing_and_reading_file_stats() {
-    init(&[], &[]);
+    init();
 
     let root_fd = 3;
     let new_file_name = String::from("file.txt");
@@ -642,7 +590,7 @@ fn test_writing_and_reading_file_stats() {
     let mut file_fd = 0;
 
     unsafe {
-        __ic_custom_path_open(
+        __fx_custom_path_open(
             root_fd,
             0,
             new_file_name.as_ptr(),
@@ -672,7 +620,7 @@ fn test_writing_and_reading_file_stats() {
     let mut bytes_written: wasi::Size = 0;
 
     unsafe {
-        __ic_custom_fd_write(
+        __fx_custom_fd_write(
             file_fd,
             src.as_ptr(),
             src.len() as i32,
@@ -680,7 +628,7 @@ fn test_writing_and_reading_file_stats() {
         )
     };
 
-    __ic_custom_fd_sync(file_fd);
+    __fx_custom_fd_sync(file_fd);
 
     let mut file_stat: wasi::Filestat = wasi::Filestat {
         dev: 0,
@@ -694,16 +642,16 @@ fn test_writing_and_reading_file_stats() {
     };
 
     unsafe {
-        __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+        __fx_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
     }
 
     let mtime = ic_time();
     let atime = ic_time();
 
-    __ic_custom_fd_filestat_set_times(file_fd, 1 as i64, 2 as i64, 1 + 2 + 4 + 8);
+    __fx_custom_fd_filestat_set_times(file_fd, 1 as i64, 2 as i64, 1 + 2 + 4 + 8);
 
     unsafe {
-        __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+        __fx_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
     }
 
     assert!(file_stat.filetype == wasi::FILETYPE_REGULAR_FILE);
@@ -713,7 +661,7 @@ fn test_writing_and_reading_file_stats() {
     assert!(file_stat.mtim > file_stat.ctim);
 
     unsafe {
-        __ic_custom_fd_write(
+        __fx_custom_fd_write(
             file_fd,
             src.as_ptr(),
             src.len() as i32,
@@ -721,10 +669,10 @@ fn test_writing_and_reading_file_stats() {
         )
     };
 
-    __ic_custom_fd_filestat_set_times(file_fd, atime as i64, mtime as i64, 1 + 4);
+    __fx_custom_fd_filestat_set_times(file_fd, atime as i64, mtime as i64, 1 + 4);
 
     unsafe {
-        __ic_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
+        __fx_custom_fd_filestat_get(file_fd, &mut file_stat as *mut wasi::Filestat);
     }
 
     assert!(file_stat.filetype == wasi::FILETYPE_REGULAR_FILE);
@@ -736,7 +684,7 @@ fn test_writing_and_reading_file_stats() {
 
 #[test]
 fn test_forward_to_debug_is_called() {
-    init(&[], &[]);
+    init();
 
     let text_to_write1 = String::from("This is a sample text.");
     let text_to_write2 = String::from("1234567890");
@@ -755,7 +703,7 @@ fn test_forward_to_debug_is_called() {
     let mut bytes_written: wasi::Size = 0;
 
     let res = unsafe {
-        __ic_custom_fd_write(
+        __fx_custom_fd_write(
             1,
             src.as_ptr(),
             src.len() as i32,
@@ -769,7 +717,7 @@ fn test_forward_to_debug_is_called() {
 
 #[test]
 fn test_link_seek_tell() {
-    init(&[], &[]);
+    init();
 
     let root_fd = 3i32;
     let new_file_name = String::from("file.txt");
@@ -779,26 +727,19 @@ fn test_link_seek_tell() {
     // test seek and tell
     let mut position: wasi::Filesize = 0;
 
-    unsafe { __ic_custom_fd_tell(file_fd, &mut position as *mut wasi::Filesize) };
+    unsafe { __fx_custom_fd_tell(file_fd, &mut position as *mut wasi::Filesize) };
 
     assert!(position == 32);
 
     let mut position_after_seek: wasi::Filesize = 0;
-    unsafe {
-        __ic_custom_fd_seek(
-            file_fd,
-            10,
-            0,
-            &mut position_after_seek as *mut wasi::Filesize,
-        )
-    };
+    unsafe { __fx_custom_fd_seek(file_fd, 10, 0, &mut position_after_seek as *mut wasi::Filesize) };
 
     assert!(position_after_seek == 10);
 
     // create link
     let link_file_name = String::from("file_link.txt");
 
-    let res = __ic_custom_path_link(
+    let res = __fx_custom_path_link(
         root_fd,
         0,
         new_file_name.as_ptr(),
@@ -814,7 +755,7 @@ fn test_link_seek_tell() {
 
     // open file for reading
     let res = unsafe {
-        __ic_custom_path_open(
+        __fx_custom_path_open(
             root_fd,
             0,
             link_file_name.as_ptr(),
@@ -830,14 +771,7 @@ fn test_link_seek_tell() {
 
     // the file should be on the position
     let mut position_link: wasi::Filesize = 0;
-    unsafe {
-        __ic_custom_fd_seek(
-            link_file_fd,
-            10,
-            0,
-            &mut position_link as *mut wasi::Filesize,
-        )
-    };
+    unsafe { __fx_custom_fd_seek(link_file_fd, 10, 0, &mut position_link as *mut wasi::Filesize) };
 
     assert!(position_link == 10);
 
@@ -851,7 +785,7 @@ fn test_link_seek_tell() {
     let mut bytes_read: wasi::Size = 0;
 
     let res = unsafe {
-        __ic_custom_fd_read(
+        __fx_custom_fd_read(
             link_file_fd,
             read_buf.as_mut_ptr(),
             (read_buf.len()) as i32,
@@ -866,86 +800,65 @@ fn test_link_seek_tell() {
 
 #[test]
 fn test_seek_types() {
-    init(&[], &[]);
+    init();
 
     let file_fd = create_test_file(3 as Fd, "file.txt") as i32;
 
     // test seek and tell
     let mut position: wasi::Filesize = 0;
-    unsafe { __ic_custom_fd_tell(file_fd, &mut position as *mut wasi::Filesize) };
+    unsafe { __fx_custom_fd_tell(file_fd, &mut position as *mut wasi::Filesize) };
     assert!(position == 32);
 
     let mut position_after_seek: wasi::Filesize = 0;
-    unsafe {
-        __ic_custom_fd_seek(
-            file_fd,
-            10,
-            0,
-            &mut position_after_seek as *mut wasi::Filesize,
-        )
-    };
+    unsafe { __fx_custom_fd_seek(file_fd, 10, 0, &mut position_after_seek as *mut wasi::Filesize) };
     assert!(position_after_seek == 10);
 
     let mut position_after_seek: wasi::Filesize = 0;
-    unsafe {
-        __ic_custom_fd_seek(
-            file_fd,
-            2,
-            1,
-            &mut position_after_seek as *mut wasi::Filesize,
-        )
-    };
+    unsafe { __fx_custom_fd_seek(file_fd, 2, 1, &mut position_after_seek as *mut wasi::Filesize) };
     assert!(position_after_seek == 12);
 
     let mut position_after_seek: wasi::Filesize = 0;
-    unsafe {
-        __ic_custom_fd_seek(
-            file_fd,
-            -2,
-            2,
-            &mut position_after_seek as *mut wasi::Filesize,
-        )
-    };
+    unsafe { __fx_custom_fd_seek(file_fd, -2, 2, &mut position_after_seek as *mut wasi::Filesize) };
 
     assert!(position_after_seek == 30);
 }
 
 #[test]
 fn test_advice() {
-    init(&[], &[]);
+    init();
 
     let file_fd = create_test_file(3, "file.txt") as i32;
 
-    assert!(__ic_custom_fd_advise(file_fd, 0, 500, 0) == 0);
+    assert!(__fx_custom_fd_advise(file_fd, 0, 500, 0) == 0);
 
-    assert!(__ic_custom_fd_advise(file_fd + 10, 0, 500, 0) > 0);
+    assert!(__fx_custom_fd_advise(file_fd + 10, 0, 500, 0) > 0);
 
-    assert!(__ic_custom_fd_advise(file_fd, 0, 500, 10) > 0);
+    assert!(__fx_custom_fd_advise(file_fd, 0, 500, 10) > 0);
 }
 
 #[test]
 fn test_allocate() {
-    init(&[], &[]);
+    init();
 
     let file_fd = create_test_file(3, "file.txt") as i32;
 
-    assert!(__ic_custom_fd_allocate(file_fd, 0, 500) == 0);
-    assert!(__ic_custom_fd_allocate(7, 0, 500) == wasi::ERRNO_BADF.raw() as i32);
+    assert!(__fx_custom_fd_allocate(file_fd, 0, 500) == 0);
+    assert!(__fx_custom_fd_allocate(7, 0, 500) == wasi::ERRNO_BADF.raw() as i32);
 }
 
 #[test]
 fn test_datasync() {
-    init(&[], &[]);
+    init();
 
     let file_fd = create_test_file(3, "file.txt") as i32;
 
-    assert!(__ic_custom_fd_datasync(file_fd) == 0);
-    assert!(__ic_custom_fd_datasync(7) == wasi::ERRNO_BADF.raw() as i32);
+    assert!(__fx_custom_fd_datasync(file_fd) == 0);
+    assert!(__fx_custom_fd_datasync(7) == wasi::ERRNO_BADF.raw() as i32);
 }
 
 #[test]
 fn test_rename_unlink() {
-    init(&[], &[]);
+    init();
 
     let filename1 = "file1.txt";
     let filename2 = "file2.txt";
@@ -953,13 +866,13 @@ fn test_rename_unlink() {
     let filename1_renamed = "file1_renamed.txt";
 
     let file_fd = create_test_file(3, filename1) as i32;
-    __ic_custom_fd_close(file_fd);
+    __fx_custom_fd_close(file_fd);
     let file_fd = create_test_file(3, filename2) as i32;
-    __ic_custom_fd_close(file_fd);
+    __fx_custom_fd_close(file_fd);
     let file_fd = create_test_file(3, filename3) as i32;
-    __ic_custom_fd_close(file_fd);
+    __fx_custom_fd_close(file_fd);
 
-    let res = __ic_custom_path_rename(
+    let res = __fx_custom_path_rename(
         3,
         filename1.as_ptr(),
         filename1.len() as i32,
@@ -969,7 +882,7 @@ fn test_rename_unlink() {
     );
     assert!(res == 0);
 
-    let res = __ic_custom_path_unlink_file(3, filename3.as_ptr(), filename3.len() as i32);
+    let res = __fx_custom_path_unlink_file(3, filename3.as_ptr(), filename3.len() as i32);
     assert!(res == 0);
 
     // list files
@@ -984,59 +897,54 @@ fn test_rename_unlink() {
 #[test]
 #[should_panic]
 fn test_unimplemented_path_readlink() {
-    __ic_custom_path_readlink(0, null::<u8>(), 0, 0, 0, 0);
+    __fx_custom_path_readlink(0, null::<u8>(), 0, 0, 0, 0);
 }
 
 #[test]
 #[should_panic]
 fn test_unimplemented_path_symlink() {
-    __ic_custom_path_symlink(0, 0, 0, 0, 0);
+    __fx_custom_path_symlink(0, 0, 0, 0, 0);
 }
 
 #[test]
 #[should_panic]
 fn test_unimplemented_poll_oneoff() {
-    __ic_custom_poll_oneoff(
-        null::<wasi::Subscription>(),
-        null_mut::<wasi::Event>(),
-        0,
-        0,
-    );
+    __fx_custom_poll_oneoff(null::<wasi::Subscription>(), null_mut::<wasi::Event>(), 0, 0);
 }
 
 #[test]
 #[should_panic]
 fn test_unimplemented_proc_raise() {
-    __ic_custom_proc_raise(0);
+    __fx_custom_proc_raise(0);
 }
 
 #[test]
 #[should_panic]
 fn test_unimplemented_sock_accept() {
-    __ic_custom_sock_accept(0, 0, 0);
+    __fx_custom_sock_accept(0, 0, 0);
 }
 
 #[test]
 #[should_panic]
 fn test_unimplemented_sock_recv() {
-    __ic_custom_sock_recv(0, 0, 0, 0, 0, 0);
+    __fx_custom_sock_recv(0, 0, 0, 0, 0, 0);
 }
 
 #[test]
 #[should_panic]
 fn test_unimplemented_sock_send() {
-    __ic_custom_sock_send(0, 0, 0, 0, 0);
+    __fx_custom_sock_send(0, 0, 0, 0, 0);
 }
 
 #[test]
 #[should_panic]
 fn test_unimplemented_sock_shutdown() {
-    __ic_custom_sock_shutdown(0, 0);
+    __fx_custom_sock_shutdown(0, 0);
 }
 
 #[test]
 fn test_fd_stat_get_fd_stat_set_flags() {
-    init(&[], &[]);
+    init();
 
     let mut stat: wasi::Fdstat = wasi::Fdstat {
         fs_filetype: wasi::FILETYPE_UNKNOWN,
@@ -1047,7 +955,7 @@ fn test_fd_stat_get_fd_stat_set_flags() {
 
     let file_fd = create_test_file(3, "file.txt") as i32;
 
-    let ret = unsafe { __ic_custom_fd_fdstat_get(file_fd, (&mut stat) as *mut wasi::Fdstat) };
+    let ret = unsafe { __fx_custom_fd_fdstat_get(file_fd, (&mut stat) as *mut wasi::Fdstat) };
     assert!(ret == 0);
 
     let mut fs_flags = stat.fs_flags;
@@ -1055,9 +963,9 @@ fn test_fd_stat_get_fd_stat_set_flags() {
 
     fs_flags = 4;
 
-    __ic_custom_fd_fdstat_set_flags(file_fd, fs_flags as i32);
+    __fx_custom_fd_fdstat_set_flags(file_fd, fs_flags as i32);
 
-    let ret = unsafe { __ic_custom_fd_fdstat_get(file_fd, (&mut stat) as *mut wasi::Fdstat) };
+    let ret = unsafe { __fx_custom_fd_fdstat_get(file_fd, (&mut stat) as *mut wasi::Fdstat) };
     assert!(ret == 0);
 
     assert!(stat.fs_flags == fs_flags);
@@ -1065,12 +973,12 @@ fn test_fd_stat_get_fd_stat_set_flags() {
 
 #[test]
 fn test_path_filestat_get_set_times() {
-    init(&[], &[]);
+    init();
 
     let filename = "file.txt";
 
     let file_fd = create_test_file(3, filename) as i32;
-    __ic_custom_fd_close(file_fd);
+    __fx_custom_fd_close(file_fd);
 
     let mut filestat: wasi::Filestat = wasi::Filestat {
         dev: 0,
@@ -1084,7 +992,7 @@ fn test_path_filestat_get_set_times() {
     };
 
     unsafe {
-        __ic_custom_path_filestat_get(
+        __fx_custom_path_filestat_get(
             3,
             0,
             filename.as_ptr(),
@@ -1093,15 +1001,7 @@ fn test_path_filestat_get_set_times() {
         )
     };
 
-    __ic_custom_path_filestat_set_times(
-        3,
-        0,
-        filename.as_ptr(),
-        filename.len() as i32,
-        123,
-        456,
-        1 + 4,
-    );
+    __fx_custom_path_filestat_set_times(3, 0, filename.as_ptr(), filename.len() as i32, 123, 456, 1 + 4);
 
     let mut filestat2: wasi::Filestat = wasi::Filestat {
         dev: 0,
@@ -1115,7 +1015,7 @@ fn test_path_filestat_get_set_times() {
     };
 
     unsafe {
-        __ic_custom_path_filestat_get(
+        __fx_custom_path_filestat_get(
             3,
             0,
             filename.as_ptr(),
@@ -1130,24 +1030,23 @@ fn test_path_filestat_get_set_times() {
 
 #[test]
 fn test_fd_renumber_over_opened_file() {
-    init(&[], &[]);
+    init();
 
     let filename = "file.txt";
 
     let file_fd = create_test_file(3, filename) as i32;
 
     let filename2 = "file2.txt";
-    let second_file_fd =
-        create_test_file_with_content(3, filename2, vec![String::from("12345")]) as i32;
+    let second_file_fd = create_test_file_with_content(3, filename2, vec![String::from("12345")]) as i32;
 
     let mut position: wasi::Filesize = 0 as wasi::Filesize;
-    unsafe { __ic_custom_fd_tell(second_file_fd, &mut position as *mut wasi::Filesize) };
+    unsafe { __fx_custom_fd_tell(second_file_fd, &mut position as *mut wasi::Filesize) };
 
     assert!(position == 5);
 
-    __ic_custom_fd_renumber(file_fd, second_file_fd);
+    __fx_custom_fd_renumber(file_fd, second_file_fd);
 
-    unsafe { __ic_custom_fd_tell(second_file_fd, &mut position as *mut wasi::Filesize) };
+    unsafe { __fx_custom_fd_tell(second_file_fd, &mut position as *mut wasi::Filesize) };
 
     // we expect the create_test_file to leave the cursor at the position 32
     assert!(position == 32);

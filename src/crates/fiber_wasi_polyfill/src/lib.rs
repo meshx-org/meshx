@@ -1507,6 +1507,3 @@ pub fn init_with_memory_manager<M: Memory + 'static>(
 
 #[cfg(test)]
 mod lib_test;
-
-#[cfg(test)]
-mod integration_tests;
