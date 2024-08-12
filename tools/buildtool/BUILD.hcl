@@ -9,8 +9,9 @@ midl "com.example" {
   #]
 }
 
-component "buildtool_component" {
-  deps = [":bin"]
+meshx_component "buildtool_component" {
+  manifest = "meta/buildtool.cml"
+  deps     = [":bin"]
 }
 
 meshx_package "buildtool" {
@@ -19,18 +20,18 @@ meshx_package "buildtool" {
   ]
 }
 
-/*resource "font" {
+resource "font" {
   sources = [terminal_font_path]
   outputs = ["data/font.ttf"]
 }
 
-component "terminal_component" {
+/*meshx_component "terminal_component" {
   component_name = "terminal"
   manifest       = "meta/terminal.cml"
   deps           = [":bin"]
 }
 
-package "terminal" {
+meshx_package "terminal" {
   deps = [
     ":terminal_component",
     ":vsh-terminal",
