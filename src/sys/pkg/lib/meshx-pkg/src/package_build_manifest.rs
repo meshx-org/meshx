@@ -2,18 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use {
-    crate::errors::PackageBuildManifestError,
-    meshx_url::validate_resource_path,
-    serde::{Deserialize, Serialize},
-    std::{
-        collections::{btree_map, BTreeMap, HashSet},
-        fs,
-        io::{self, Read},
-        path::Path,
-    },
-    walkdir::WalkDir,
-};
+use crate::errors::PackageBuildManifestError;
+use meshx_url::validate_resource_path;
+use serde::{Deserialize, Serialize};
+use std::collections::{btree_map, BTreeMap, HashSet};
+use std::fs;
+use std::io::{self, Read};
+use std::path::Path;
+use walkdir::WalkDir;
 
 /// A `PackageBuildManifest` lists the files that should be included in a Fuchsia package. Both
 /// `external_contents` and `far_contents` are maps from package resource paths in the to-be-created
@@ -169,7 +165,7 @@ impl PackageBuildManifest {
         PackageBuildManifest::from_external_and_far_contents(external_contents, far_contents)
     }
 
-    /// Create a `PackageBuildManifest` from a `pm-build`-style Fuchsia INI file (fini). fini is a
+    /// Create a `PackageBuildManifest` from a `pm-build`-style MeshX INI file (mini). mini is a
     /// simple format where each line is an entry of `$PKG_PATH=$HOST_PATH`. This copies the
     /// parsing algorithm from pm, where:
     ///
@@ -186,13 +182,13 @@ impl PackageBuildManifest {
     ///
     /// ```
     /// # use meshx_pkg::PackageBuildManifest;
-    /// let fini_string = "\
+    /// let mini_string = "\
     ///     lib/mylib.so=build/system/path/mylib.so\n\
     ///     meta/my_component_manifest.cml=other/build/system/path/my_component_manifest.cml\n";
     ///
-    /// let creation_manifest = PackageBuildManifest::from_pm_fini(fini_string.as_bytes()).unwrap();
+    /// let creation_manifest = PackageBuildManifest::from_pm_mini(mini_string.as_bytes()).unwrap();
     /// ```
-    pub fn from_pm_fini<R: io::BufRead>(mut reader: R) -> Result<Self, PackageBuildManifestError> {
+    pub fn from_pm_mini<R: io::BufRead>(mut reader: R) -> Result<Self, PackageBuildManifestError> {
         let mut external_contents = BTreeMap::new();
         let mut far_contents = BTreeMap::new();
 
@@ -477,9 +473,9 @@ mod tests {
     }
 
     #[test]
-    fn test_from_pm_fini() {
+    fn test_from_pm_mini() {
         assert_eq!(
-            PackageBuildManifest::from_pm_fini(
+            PackageBuildManifest::from_pm_mini(
                 "this-path=this-host-path\n\
                  that/path=that/host/path\n\
                  another/path=another/host=path\n
@@ -508,9 +504,9 @@ mod tests {
     }
 
     #[test]
-    fn test_from_pm_fini_empty() {
+    fn test_from_pm_mini_empty() {
         assert_eq!(
-            PackageBuildManifest::from_pm_fini("".as_bytes()).unwrap(),
+            PackageBuildManifest::from_pm_mini("".as_bytes()).unwrap(),
             PackageBuildManifest(VersionedPackageBuildManifest::Version1(PackageBuildManifestV1 {
                 external_contents: btreemap! {},
                 far_contents: btreemap! {}
@@ -519,7 +515,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_pm_fini_same_file_contents() {
+    fn test_from_pm_mini_same_file_contents() {
         let dir = tempfile::tempdir().unwrap();
 
         let path = dir.path().join("path");
@@ -528,7 +524,7 @@ mod tests {
         fs::write(&path, b"hello world").unwrap();
         fs::write(&same, b"hello world").unwrap();
 
-        let fini = format!(
+        let mini = format!(
             "path={path}\n\
              path={same}\n",
             path = path.to_str().unwrap(),
@@ -536,7 +532,7 @@ mod tests {
         );
 
         assert_eq!(
-            PackageBuildManifest::from_pm_fini(fini.as_bytes()).unwrap(),
+            PackageBuildManifest::from_pm_mini(mini.as_bytes()).unwrap(),
             PackageBuildManifest(VersionedPackageBuildManifest::Version1(PackageBuildManifestV1 {
                 external_contents: btreemap! {
                     "path".to_string() => path.to_str().unwrap().to_string(),
@@ -547,7 +543,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_pm_fini_different_contents() {
+    fn test_from_pm_mini_different_contents() {
         let dir = tempfile::tempdir().unwrap();
 
         let path = dir.path().join("path");
@@ -556,7 +552,7 @@ mod tests {
         fs::write(&path, b"hello world").unwrap();
         fs::write(&different, b"different").unwrap();
 
-        let fini = format!(
+        let mini = format!(
             "path={path}\n\
              path={different}\n",
             path = path.to_str().unwrap(),
@@ -564,7 +560,7 @@ mod tests {
         );
 
         assert_matches!(
-            PackageBuildManifest::from_pm_fini(fini.as_bytes()),
+            PackageBuildManifest::from_pm_mini(mini.as_bytes()),
             Err(PackageBuildManifestError::DuplicateResourcePath { path }) if path == "path"
         );
     }
@@ -596,7 +592,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_pm_fini_not_found() {
+    fn test_from_pm_mini_not_found() {
         let dir = tempfile::tempdir().unwrap();
 
         let path = dir.path().join("path");
@@ -604,7 +600,7 @@ mod tests {
 
         fs::write(&path, b"hello world").unwrap();
 
-        let fini = format!(
+        let mini = format!(
             "path={path}\n\
              path={not_found}\n",
             path = path.to_str().unwrap(),
@@ -612,7 +608,7 @@ mod tests {
         );
 
         assert_matches!(
-            PackageBuildManifest::from_pm_fini(fini.as_bytes()),
+            PackageBuildManifest::from_pm_mini(mini.as_bytes()),
             Err(PackageBuildManifestError::IoError(err)) if err.kind() == io::ErrorKind::NotFound
         );
     }
@@ -620,7 +616,7 @@ mod tests {
     #[cfg(not(target_os = "fuchsia"))]
     #[cfg(unix)]
     #[test]
-    fn test_from_pm_fini_link() {
+    fn test_from_pm_mini_link() {
         let dir = tempfile::tempdir().unwrap();
 
         let path = dir.path().join("path");
@@ -631,7 +627,7 @@ mod tests {
         fs::hard_link(&path, &hard).unwrap();
         std::os::unix::fs::symlink(&path, &sym).unwrap();
 
-        let fini = format!(
+        let mini = format!(
             "path={path}\n\
              path={hard}\n\
              path={sym}\n",
@@ -641,7 +637,7 @@ mod tests {
         );
 
         assert_eq!(
-            PackageBuildManifest::from_pm_fini(fini.as_bytes()).unwrap(),
+            PackageBuildManifest::from_pm_mini(mini.as_bytes()).unwrap(),
             PackageBuildManifest(VersionedPackageBuildManifest::Version1(PackageBuildManifestV1 {
                 external_contents: btreemap! {
                     "path".to_string() => path.to_str().unwrap().to_string(),

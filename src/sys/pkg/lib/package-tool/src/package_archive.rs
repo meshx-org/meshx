@@ -194,14 +194,14 @@ pub async fn cmd_package_archive_remove(cmd: PackageArchiveRemoveCommand) -> Res
 }
 */
 
-/*
+
 #[cfg(test)]
 mod tests {
     use {
         super::*,
         crate::convert_to_depfile_filepath,
         camino::Utf8PathBuf,
-        meshx_archive::Utf8Reader,
+        //meshx_archive::Utf8Reader,
         meshx_pkg::PackageBuilder,
         pretty_assertions::assert_eq,
         std::{collections::BTreeMap, io::Write, process::Command},
@@ -350,7 +350,7 @@ mod tests {
         extract_contents
     }
 
-    #[tokio::test]
+    /*#[tokio::test]
     async fn test_archive_create_and_extract() {
         let tmp = TempDir::new().unwrap();
         let root = Utf8Path::from_path(tmp.path()).unwrap();
@@ -430,10 +430,10 @@ mod tests {
         );
 
         assert_eq!(extract_contents, BTreeMap::new());
-    }
+    }*/
 
     /// Returns the path of the directory into which we extracted the modified far
-    async fn test_archive_add_inner(
+    /*async fn test_archive_add_inner(
         tmp: &TempDir,
         path_to_add: Utf8PathBuf,
         contents_to_add: &str,
@@ -495,9 +495,9 @@ mod tests {
         .unwrap();
 
         Ok(extract_dir)
-    }
+    }*/
 
-    #[tokio::test]
+    /*#[tokio::test]
     async fn test_archive_add() {
         let tmp = TempDir::new().unwrap();
         let extract_dir = test_archive_add_inner(&tmp, "add_test".into(), "test", false)
@@ -585,9 +585,9 @@ mod tests {
                 ]
             )
         );
-    }
+    }*/
 
-    #[tokio::test]
+    /*#[tokio::test]
     async fn test_archive_remove() {
         let tmp = TempDir::new().unwrap();
         let root = Utf8Path::from_path(tmp.path()).unwrap();
@@ -661,7 +661,7 @@ mod tests {
                 ]
             )
         );
-    }
+    }*/
 
     #[tokio::test]
     async fn test_package_tool_archive_and_pm_expand() {
@@ -737,7 +737,7 @@ mod tests {
         assert_eq!(extract_contents, BTreeMap::new());
     }
 
-    #[tokio::test]
+    /*#[tokio::test]
     async fn test_archive_create_with_depfile() {
         let tmp = TempDir::new().unwrap();
         let root = Utf8Path::from_path(tmp.path()).unwrap();
@@ -789,7 +789,7 @@ mod tests {
                     .join(" "),
             ),
         );
-    }
+    }*/
 
     #[tokio::test]
     async fn test_pm_archive_and_package_tool_extract() {
@@ -799,7 +799,7 @@ mod tests {
         let pkg_dir = root.join("pkg");
         std::fs::create_dir(&pkg_dir).unwrap();
 
-        // `pm archive` also needs a FINI build manifest.
+        // `pm archive` also needs a MINI build manifest.
         let build_manifest_path = pkg_dir.join("build.manifest");
         let mut f = std::fs::File::create(&build_manifest_path).unwrap();
         writeln!(f, "bin={}", pkg_dir.join("bin")).unwrap();
@@ -850,4 +850,3 @@ mod tests {
         assert_eq!(extract_contents, BTreeMap::from([]));
     }
 }
-*/

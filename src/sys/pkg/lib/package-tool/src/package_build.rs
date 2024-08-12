@@ -24,7 +24,7 @@ pub async fn cmd_package_build(cmd: PackageBuildCommand) -> Result<()> {
     let package_build_manifest = File::open(&cmd.package_build_manifest_path)
         .with_context(|| format!("opening {}", cmd.package_build_manifest_path))?;
 
-    let package_build_manifest = PackageBuildManifest::from_pm_fini(BufReader::new(package_build_manifest))
+    let package_build_manifest = PackageBuildManifest::from_pmd_mini(BufReader::new(package_build_manifest))
         .with_context(|| format!("reading {}", cmd.package_build_manifest_path))?;
 
     println!("{:?}", package_build_manifest);

@@ -44,7 +44,7 @@ export function commandSync(command: string, args = "", options?: Partial<Comman
 }
 
 export function runBuildtool(inputs: readonly string[]): CreateNodesResultV2 | null {
-    const output = commandSync("buildtool", inputs.map((input) => `--input ${input}`).join(" "), {
+    const output = commandSync("cargo", "run -p buildtool -- "+ inputs.map((input) => `--input ${input}`).join(" "), {
         stdio: "pipe",
     });
 

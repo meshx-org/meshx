@@ -19,24 +19,24 @@ type CargoToml = {
 function createLibProject(dir: string, cargoJson: CargoToml): ProjectConfiguration {
     return {
         name: dir,
-       // sourceRoot: path.join(dir, "src"),
+        // sourceRoot: path.join(dir, "src"),
         root: dir,
         projectType: "library",
         tags: ["cargo", "lang:rs"],
         targets: {
-            'abcd2': {
-                                    executor: "nx-midl:echo",
-                                    options: {
-                                        command: "ls -a"
-                                    }
-                                },
+            /*abcd2: {
+                executor: "nx-midl:echo",
+                options: {
+                    command: "ls -a",
+                },
+            },*/
             build: {
                 executor: "@nxrs/cargo:build",
                 options: {
                     toolchain: "nightly",
                     release: false,
                     package: cargoJson.package.name,
-                    outDir: path.join('dist', dir)
+                    outDir: path.join("dist", dir),
                 },
                 configurations: {
                     production: {
@@ -68,19 +68,19 @@ function createBinProject(dir: string, cargoJson: CargoToml): ProjectConfigurati
         projectType: "application",
         tags: ["cargo", "lang:rs"],
         targets: {
-            'abcd2': {
+            /*abcd2: {
                 executor: "nx-midl:echo",
                 options: {
-                    command: "ls -a"
-                }
-            },
+                    command: "ls -a",
+                },
+            },*/
             build: {
                 executor: "@nxrs/cargo:build",
                 options: {
                     toolchain: "nightly",
                     release: false,
                     package: cargoJson.package.name,
-                    outDir: path.join('dist', dir)
+                    outDir: path.join("dist", dir),
                 },
                 configurations: {
                     production: {
@@ -174,8 +174,8 @@ export const createNodesV2: CreateNodesV2 = [
     /* This will look for all `index.ts` files that follow your file structure convention. */
     "**/*/Cargo.toml",
     (indexPathList, conf, ctx) => {
-        console.log('createNodesV2', indexPathList)
-        
+        console.log("createNodesV2", indexPathList);
+
         const cargoJsons = indexPathList.map((indexPath) => {
             const cargoToml = fs.readFileSync(indexPath, "utf8");
             const cargoJson = load(cargoToml) as CargoToml;
@@ -236,9 +236,5 @@ export const createNodesV2: CreateNodesV2 = [
                 },
             ];
         });
-
-        
-
-         
     },
 ];

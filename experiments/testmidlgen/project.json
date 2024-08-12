@@ -3,7 +3,7 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "sourceRoot": "experiments/testmidlgen",
     "projectType": "application",
-    "implicitDependencies": ["tools/midl/midlgen_rust", "tools/midl/midlgen"],
+    "implicitDependencies": [],
     "targets": {
         "build:table.json": {
             "executor": "nx:run-commands",

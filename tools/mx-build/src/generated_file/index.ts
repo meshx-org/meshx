@@ -1,4 +1,6 @@
 import { logger, ExecutorContext } from "@nx/devkit";
+import * as fs from "fs";
+import { dirname } from "path";
 
 export type Options = {
     contents: string;
@@ -7,7 +9,10 @@ export type Options = {
 
 export default async function executor(options: Options, context: ExecutorContext): Promise<{ success: boolean }> {
     try {
-        logger.log("gen");
+        const parent = dirname(options.path);
+        fs.mkdirSync(parent, { recursive: true });
+        fs.writeFileSync(options.path, options.contents);
+        logger.log(options);
         return { success: true };
     } catch (e) {
         logger.error(`error: ${e}`);

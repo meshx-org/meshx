@@ -3535,11 +3535,14 @@ dependencies = [
  "camino",
  "meshx-merkle",
  "meshx-pkg",
+ "pretty_assertions",
  "serde",
  "serde_json",
  "tempfile",
  "tempfile-ext",
+ "tokio",
  "version-history",
+ "walkdir",
 ]
 
 [[package]]

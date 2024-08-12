@@ -4,7 +4,7 @@
     "sourceRoot": "tools/nx-midl/src",
     "projectType": "library",
     "tags": [],
-    "implicitDependencies": ["tools/midl/midlc", "tools/midl/midlgen_ts", "tools/midl/midlgen_rust"],
+    "implicitDependencies": [],
     "targets": {
         "build": {
             "executor": "@nx/js:tsc",

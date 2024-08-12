@@ -1,9 +1,14 @@
 {
     "executors": {
-        "generated_file": {
+        "generated-sfile": {
             "implementation": "./src/generated_file/index",
             "schema": "./src/generated_file/schema.json",
             "description": "Genereates a file"
+        },
+        "mini-manifest": {
+            "implementation": "./src/mini_manifest/index",
+            "schema": "./src/mini_manifest/schema.json",
+            "description": "Genereates a mini manifest from deps"
         }
     }
 }
