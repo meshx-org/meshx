@@ -96,7 +96,7 @@ impl {{ synchronous_proxy }} {
 
     /// Waits until an event arrives and returns it. It is safe for other
     /// threads to make concurrent requests while waiting for an event.
-    pub fn wait_for_event(&self, deadline: zx::Time) -> Result<{{ event }}, midl::Error> {
+    pub fn wait_for_event(&self, deadline: fx::Time) -> Result<{{ event }}, midl::Error> {
         {{ event }}::decode(self.client.wait_for_event(deadline)?)
     }
 
@@ -412,7 +412,7 @@ impl futures::Stream for {{ request_stream }} {
             match this.inner.channel().read_etc(cx, bytes, handles) {
                 std::task::Poll::Ready(Ok(())) => {},
                 std::task::Poll::Pending => return std::task::Poll::Pending,
-                std::task::Poll::Ready(Err(zx_status::Status::PEER_CLOSED)) => {
+                std::task::Poll::Ready(Err(fx_status::Status::PEER_CLOSED)) => {
                     this.is_terminated = true;
                     return std::task::Poll::Ready(None);
                 }

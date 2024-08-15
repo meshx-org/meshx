@@ -4,10 +4,10 @@ use std::collections::HashMap;
 use crate::PaddingMarker;
 
 pub type LiteralKind<'a> = &'a str;
-pub static StringLiteral: LiteralKind = "string";
-pub static NumericLiteral: LiteralKind = "numeric";
-pub static BoolLiteral: LiteralKind = "bool";
-pub static DefaultLiteral: LiteralKind = "default";
+pub static STRING_LITERAL: LiteralKind = "string";
+pub static NUMERIC_LITERAL: LiteralKind = "numeric";
+pub static BOOL_LITERAL: LiteralKind = "bool";
+pub static DEFAULT_LITERAL: LiteralKind = "default";
 
 // An EncodedLibraryIdentifier is a LibraryIdentifier encoded as a string,
 // suitable for use in map keys.

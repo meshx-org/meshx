@@ -700,10 +700,10 @@ where
                         /*
 
                         if (method.HasResultUnion()) {
-                            ZX_ASSERT(decl.kind == Decl::Kind::kUnion);
+                            FX_ASSERT(decl.kind == Decl::Kind::kUnion);
                             let result_union = static_cast<const Union*>(decl);
-                            ZX_ASSERT(!result_union.members.empty());
-                            ZX_ASSERT(result_union.members[0].maybe_used);
+                            FX_ASSERT(!result_union.members.empty());
+                            FX_ASSERT(result_union.members[0].maybe_used);
                             let success_variant_type = result_union->members[0].maybe_used->type_ctor->type;
 
                             if (success_variant_type) {

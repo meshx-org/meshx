@@ -398,7 +398,6 @@ impl<'a, 'r, 'd> TypeCreator<'a, 'r, 'd> {
     }
 
     fn create(&self) -> Option<ast::Type> {
-        println!("lay: {:?}", self.layout);
         let target = self.layout.resolved().unwrap().element().as_decl().unwrap();
 
         match target {
@@ -504,7 +503,7 @@ impl Typespace {
 
             /* else if (builtin->id == Builtin::Identity::kVector) {
                 vector_layout_name_ = builtin->name;
-            } else if (builtin->id == Builtin::Identity::kZxExperimentalPointer) {
+            } else if (builtin->id == Builtin::Identity::kFxExperimentalPointer) {
                 pointer_type_name_ = builtin->name;
             }*/
         }

@@ -44,10 +44,12 @@ struct Target {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
-#[serde(rename_all = "camelCase")]
 enum Input {
-    File(String),
-    DependentTasks { dependent_tasks_output_files: String },
+    Str(String),
+    #[serde(rename = "camelCase")]
+    DependentTasks {
+        dependent_tasks_output_files: String,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -602,13 +604,101 @@ fn meshx_component(
     target_name
 }
 
+fn midl_rust(
+    ctx: &mut TargetContext<'_>,
+    attrs: &HashMap<hcl::Identifier, hcl::Value>,
+    root: &PathBuf,
+    projects: &mut HashMap<String, ProjectConfiguration>,
+) -> String {
+    let target_name = format!("build_{}", ctx.target_name);
+    let deps = from_attr_deps(ctx, attrs);
+
+    ctx.project.borrow_mut().targets.insert(
+        target_name.clone(),
+        Target {
+            inputs: vec![Input::Str(format!(
+                "{{workspaceRoot}}/dist/{}/{}/ir.midl.json",
+                root.display(),
+                ctx.target_name
+            ))],
+            depends_on: deps,
+            outputs: vec![],
+            executor: String::from("@meshx-org/nx-midl:midlc"),
+            options: json!({}),
+            metadata: None,
+        },
+    );
+
+    target_name
+}
+
+fn midl_typescript(
+    ctx: &mut TargetContext<'_>,
+    attrs: &HashMap<hcl::Identifier, hcl::Value>,
+    root: &PathBuf,
+    projects: &mut HashMap<String, ProjectConfiguration>,
+) -> String {
+    let raw_target_name = format!("build_{}_raw", ctx.target_name);
+    let target_name = format!("build_{}", ctx.target_name);
+    let deps = from_attr_deps(ctx, attrs);
+
+    let out_dir = format!("{}/ts", ctx.target_out_dir);
+    let dist_dir = format!("{}/build", out_dir);
+    std::fs::create_dir_all(dist_dir.clone());
+
+    let mut proj = ctx.project.borrow_mut();
+
+    proj.targets.insert(
+        raw_target_name.clone(),
+        Target {
+            inputs: vec![Input::DependentTasks {
+                dependent_tasks_output_files: String::from("**/*/ir.midl.json"),
+            }],
+            depends_on: deps,
+            outputs: vec![],
+            executor: String::from("@meshx-org/nx-midl:midlgen"),
+            options: json!({
+                "binding": "ts",
+                "cwd": "",
+                "outDir": out_dir
+            }),
+            metadata: None,
+        },
+    );
+
+    proj.targets.insert(
+        target_name.clone(),
+        Target {
+            inputs: vec![Input::DependentTasks {
+                dependent_tasks_output_files: String::from("**/*.ts"),
+            }],
+            depends_on: vec![Dependency {
+                projects: None,
+                target: raw_target_name.clone(),
+            }],
+            outputs: vec![],
+            executor: String::from("@nx/js:tsc"),
+            options: json!({
+                "outputPath": dist_dir,
+                "rootDir": "./",
+                "main": format!("{}/midl_TODO/index.ts", out_dir),
+                "tsConfig":  format!("{}/midl_TODO/tsconfig.json", out_dir),
+                "assets": []
+            }),
+            metadata: None,
+        },
+    );
+
+    target_name
+}
+
 /// Declares a MIDL library.
 ///
 /// Supported backends: rust, typescript
-fn generate_midl(
+fn midl(
     ctx: &mut TargetContext<'_>,
     attrs: &HashMap<hcl::Identifier, hcl::Value>,
-    root: PathBuf,
+    root: &PathBuf,
     projects: &mut HashMap<String, ProjectConfiguration>,
 ) -> String {
     let target_name = format!("build_{}", ctx.target_name);
@@ -628,9 +718,7 @@ fn generate_midl(
 
     let name = attrs
         .get("name")
-        .unwrap_or(&hcl::Value::String(ctx.target_name.to_string()))
-        .as_str()
-        .expect("sources must be an array");
+        .map_or(ctx.target_name.to_string(), |v| v.as_str().unwrap().to_string());
 
     let sources: Vec<&str> = attrs
         .get("sources")
@@ -643,8 +731,29 @@ fn generate_midl(
 
     let inputs: Vec<Input> = sources
         .iter()
-        .map(|src| Input::File(format!("{{workspaceRoot}}/{}", src)))
+        .map(|src| Input::Str(format!("{{workspaceRoot}}/{}", src)))
         .collect();
+
+    let binding_deps = vec![Dependency {
+        projects: None,
+        target: target_name.clone(),
+    }];
+    let mut binding_attrs = HashMap::new();
+    binding_attrs.insert(hcl::Identifier::sanitized("deps"), to_attr_deps(binding_deps));
+
+    midl_rust(
+        &mut ctx.with_target_name(format!("{}_rust", &ctx.target_name)),
+        &binding_attrs,
+        root,
+        projects,
+    );
+
+    midl_typescript(
+        &mut ctx.with_target_name(format!("{}_ts", &ctx.target_name)),
+        &binding_attrs,
+        root,
+        projects,
+    );
 
     let mut proj = ctx.project.borrow_mut();
     proj.implicit_dependencies.insert("tools/nx-midl".to_string());
@@ -653,15 +762,11 @@ fn generate_midl(
         Target {
             inputs,
             depends_on: deps,
-            outputs: vec![format!(
-                "{{workspaceRoot}}/dist/{0}/{1}/{1}.midl.json",
-                root.display(),
-                ctx.target_name
-            )],
-            executor: String::from("@meshx-org/nx-midl:echo"),
+            outputs: vec![format!("{{workspaceRoot}}/dist/{}/ir.midl.json", root.display())],
+            executor: String::from("@meshx-org/nx-midl:midlc"),
             options: json!({
-                "outDir": format!("dist/{0}/{1}/{1}", root.display(), ctx.target_name),
-                "midlJson": "./msx.json",
+                "name": name,
+                "outDir": format!("dist/{}", root.display()),
                 "srcs": sources
             }),
             metadata: None,
@@ -706,8 +811,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         ctx.declare_var("current", root.display().to_string());
         ctx.declare_var("outdir", "dir");
-        ctx.declare_var("var", value!({ example = false }));
-        ctx.declare_var("terminal_font_path", "mypath");
 
         let glob_def = FuncDef::builder()
             .params([ParamType::String, ParamType::String])
@@ -725,7 +828,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut targets = HashMap::new();
 
         targets.insert(
-            format!("build"),
+            String::from("build"),
             Target {
                 inputs: vec![],
                 outputs: vec![],
@@ -776,13 +879,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             };
 
             let root_target = match block.identifier() {
-                "midl" => generate_midl(&mut ctx, &attrs, root.clone(), &mut projects),
+                "midl" => midl(&mut ctx, &attrs, &root, &mut projects),
+                "midl_rust" => midl_rust(&mut ctx, &attrs, &root, &mut projects),
+                "midl_typescript" => midl_typescript(&mut ctx, &attrs, &root, &mut projects),
                 "resource" => resource(&mut ctx, &attrs, root.clone(), &mut projects),
                 "meshx_component_manifest" => meshx_component_manifest(&mut ctx, &attrs, root.clone(), &mut projects),
                 "meshx_component" => meshx_component(&mut ctx, &attrs, root.clone(), &mut projects),
                 "meshx_package" => meshx_package(&mut ctx, &attrs, root.clone(), &mut projects),
                 v => panic!("not supported block: {:?}", v),
             };
+
+            eprint!("{:?}", projects);
         }
 
         let p = (*default_project).borrow();

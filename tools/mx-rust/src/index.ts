@@ -173,9 +173,7 @@ export const createDependencies: CreateDependencies = (opts, ctx) => {
 export const createNodesV2: CreateNodesV2 = [
     /* This will look for all `index.ts` files that follow your file structure convention. */
     "**/*/Cargo.toml",
-    (indexPathList, conf, ctx) => {
-        console.log("createNodesV2", indexPathList);
-
+    (indexPathList, _, ctx) => {
         const cargoJsons = indexPathList.map((indexPath) => {
             const cargoToml = fs.readFileSync(indexPath, "utf8");
             const cargoJson = load(cargoToml) as CargoToml;

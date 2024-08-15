@@ -35,7 +35,6 @@ export function commandSync(command: string, args = "", options?: Partial<Comman
             success: true,
         };
     } catch (e) {
-        console.log(e);
         return {
             output: e as string,
             success: false,

@@ -20,7 +20,6 @@ pub(crate) fn consume_literal(token: Pair<'_>, ctx: &mut ParsingContext<'_>) -> 
         }
         Rule::numeric_literal => {
             let value = consume_numeric_literal(value_token, ctx);
-            log::debug!("{}", value);
             ast::Literal::NumericValue(value, span)
         }
         _ => {

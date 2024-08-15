@@ -3175,6 +3175,7 @@ dependencies = [
  "midlgen",
  "serde",
  "serde_json",
+ "sheller",
  "tera",
  "thiserror",
 ]
@@ -4527,6 +4528,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "sheller"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0c8b09ff32b0ee3b42443a2d30032d62f5f81161edefc43af978d1f742b7904"
+dependencies = [
+ "tracing",
 ]
 
 [[package]]

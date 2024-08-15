@@ -1,5 +1,7 @@
 //! The MIDL Schema AST.
 
+// TODO: remove next line once compiler considered stable
+#![allow(unused)] 
 #![deny(rust_2018_idioms, unsafe_code)]
 #![feature(map_try_insert)]
 #![feature(try_blocks)]
@@ -122,7 +124,7 @@ fn compile(
         panic!("No library was produced.\n");
     }
 
-    log::debug!("all {:#?}", all_libraries);
+    //log::debug!("all {:#?}", all_libraries);
 
     if !success {
         return Err(std::io::Error::new(std::io::ErrorKind::Other, "Compilation failed"));
@@ -142,6 +144,7 @@ fn compile(
     // We recompile dependencies, and only emit output for the target library.
     let generator = generator::JSONGenerator::new(compilation, experimental_flags);
     write(generator.produce(), output);
+    log::info!("{:?}", output);
 
     Ok(())
 }

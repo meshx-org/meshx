@@ -3,16 +3,12 @@ import { runBuildtool } from "./command";
 
 export const createNodesV2: CreateNodesV2 = [
     "**/*/BUILD.hcl",
-    (indexPathList, conf, ctx) => {
+    (indexPathList) => {
         const output = runBuildtool(indexPathList);
         if (!output) return [];
         return output;
     },
 ];
-
-type Metadata = {
-    projectDeps?: string[];
-};
 
 /*export const createDependencies: CreateDependencies = (opts, ctx) => {
     const projects = Object.values(ctx.projects);

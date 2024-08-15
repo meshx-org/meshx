@@ -211,10 +211,6 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
         let checkpoint = self.ctx.diagnostics.checkpoint();
         self.run_impl();
 
-        for (s, d) in &self.ctx.library.declarations.borrow().all {
-            println!("{:?} {:?}", s, d.len());
-        }
-
         checkpoint.no_new_errors()
     }
 
@@ -362,7 +358,6 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             }
             ast::Element::Bits { inner } => {
                 let bits_decl = inner.borrow();
-                println!("bits_, {:?}", bits_decl.clone().subtype_ctor);
                 self.visit_type_constructor(&bits_decl.subtype_ctor, context);
             }
             ast::Element::BitsMember { inner } => {
@@ -421,8 +416,6 @@ impl<'ctx, 'd> ResolveStep<'ctx, 'd> {
             let target = inner.borrow();
 
             let subtype_property = target.lookup_property("subtype");
-
-            println!("target {:?} subt: {:?}", target, subtype_property);
 
             match subtype_property {
                 Some(subtype_property) => {

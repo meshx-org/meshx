@@ -1,35 +1,27 @@
-import { logger, readJsonFile, ExecutorContext } from "@nx/devkit"
-import { exec } from "child_process"
-import { sync } from "glob"
-import * as path from "path"
+import { logger, ExecutorContext } from "@nx/devkit";
+import { exec } from "child_process";
+import * as path from "path";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Options {
-    language: any
-    outDir: string
-    midlJson?: string
-    cwd?: string
-    midlcPath?: string
+    language: any;
+    outDir: string;
+    srcs: string[];
+    name: string;
+    cwd?: string;
+    midlcPath?: string;
 }
 
 interface LibraryDependency {
-    path: string
+    path: string;
 }
 
 interface MIDLJson {
-    files: any
-    name: string
-    references: LibraryDependency[]
-    include: string[]
-    exclude: string[]
-}
-
-function resolveFiles(basePath: string, config: MIDLJson) {
-    const midlFiles = sync(`${basePath}/${config.include}`, {
-        ignore: config.exclude.map((excl) => `${basePath}/${excl}`),
-    })
-
-    return midlFiles
+    files: any;
+    name: string;
+    references: LibraryDependency[];
+    include: string[];
+    exclude: string[];
 }
 
 async function buildIR(options: Options, context: ExecutorContext): Promise<void> {
@@ -42,71 +34,70 @@ async function buildIR(options: Options, context: ExecutorContext): Promise<void
     // }
     //
 
-    //console.log("midlc", deps)
+    const outDir = path.resolve(context.root, options.outDir);
+    const root = context.projectsConfigurations!.projects[context.projectName!].root;
 
-    const outDir = path.resolve(context.root, options.outDir)
-    const root = context.projectsConfigurations?.projects[context.projectName!].root
-
-    const midlJsonPath = path.resolve(root!, options.midlJson || "msx.json")
-    const config = readJsonFile<MIDLJson>(midlJsonPath)
+    //const midlJsonPath = path.resolve(root!, options.midlJson || "msx.json")
+    //const config = readJsonFile<MIDLJson>(midlJsonPath)
 
     // Reqursively resolve all dependancy paths from the midl.json files
-    const resolveDependencies = (dependencies: LibraryDependency[]): Record<string, string[]> => {
-        let libraries: Record<string, string[]> = {}
+    /*const resolveDependencies = (dependencies: LibraryDependency[]): Record<string, string[]> => {
+        let libraries: Record<string, string[]> = {};
 
         for (const dependency of dependencies) {
-            const files: string[] = []
-            const dependencyPath = path.resolve(root!, dependency.path)
-            const dependencyJson = readJsonFile<MIDLJson>(path.resolve(dependencyPath, "msx.json"))
+            const files: string[] = [];
+            const dependencyPath = path.resolve(root!, dependency.path);
+            const dependencyJson = readJsonFile<MIDLJson>(path.resolve(dependencyPath, "msx.json"));
 
-            const midlFiles = resolveFiles(dependencyPath, dependencyJson)
+            const midlFiles = resolveFiles(dependencyPath, dependencyJson);
 
-            files.push(...midlFiles.map((file: any) => path.resolve(dependencyPath, file)))
-            libraries = { ...libraries, ...resolveDependencies(dependencyJson.references) }
-            libraries[dependencyJson.name] = files
+            files.push(...midlFiles.map((file: any) => path.resolve(dependencyPath, file)));
+            libraries = { ...libraries, ...resolveDependencies(dependencyJson.references) };
+            libraries[dependencyJson.name] = files;
         }
 
-        return libraries
-    }
+        return libraries;
+    };*/
 
-    const files = resolveDependencies(config.references)
+    const files: Record<string, string[]> = {}; // resolveDependencies(config.references)
 
-    files[config.name] = resolveFiles(path.resolve(root!), config)
+    files[options.name] = options.srcs.map(p => path.resolve(context.cwd, p))
 
-    let filesFlags = ""
+    let filesFlags = "";
     Object.entries(files).forEach(([name, files]) => {
-        filesFlags += `--files ${files.join(" ")} `
-    })
+        filesFlags += `--files ${files.join(" ")} `;
+    });
 
-    const command = `${context.root}/dist/tools/midl/midlc/midlc compile -n ${config.name} -o=${outDir}/ir.json ${filesFlags}`
-
+    const command = `cargo run -p midlc -- compile -n ${options.name} -o=${outDir}/ir.midl.json ${filesFlags}`;
     return new Promise((resolve, reject) => {
         exec(
             command,
+            
             {
                 env: {
                     CLICOLOR_FORCE: "1",
-                    RUST_LOG: "info",
-                    RUST_BACKTRACE: "full"
+                    RUST_LOG: "debug",
+                    RUST_BACKTRACE: "full",
                 },
+                shell: "/bin/zsh",
                 cwd: options.cwd ? options.cwd : root,
             },
             (err, stdout, stderr) => {
-                if (err) reject(err)
+                if (err) reject(err);
 
-                logger.log(stdout)
-                //logger.log(stderr)
-                resolve()
+                logger.log(stdout);
+                logger.log(stderr)
+                resolve();
             }
-        )
-    })
+        );
+    });
 }
 
 async function buildLibrary(options: Options, context: ExecutorContext): Promise<void> {
-    const projectRoot = context.projectsConfigurations?.projects[context.projectName!].root
-    const cwd = options.cwd ? options.cwd : projectRoot
+    const projectRoot = context.projectsConfigurations?.projects[context.projectName!].root;
+    const cwd = options.cwd ? options.cwd : projectRoot;
 
-    const outDir = path.resolve(context.root, options.outDir)
+    const outDir = path.resolve(context.root, options.outDir);
 
     return new Promise((resolve, reject) => {
         exec(
@@ -117,26 +108,26 @@ async function buildLibrary(options: Options, context: ExecutorContext): Promise
                 cwd,
             },
             (err, stdout, stderr) => {
-                if (err) reject(err)
+                if (err) reject(err);
 
-                logger.log(stdout)
-                logger.log(stderr)
-                resolve()
+                logger.log(stdout);
+                logger.log(stderr);
+                resolve();
             }
-        )
-    })
+        );
+    });
 }
 
 export default async function executor(options: Options, context: ExecutorContext): Promise<{ success: boolean }> {
     try {
-        await buildIR(options, context)
+        await buildIR(options, context);
 
         //logger.info(`Executing "midlgen_ts"...`)
         //await buildLibrary(options, context)
 
-        return { success: true }
+        return { success: true };
     } catch (e) {
-        logger.error(`error: ${e}`)
-        return { success: false }
+        logger.error(`error: ${e}`);
+        return { success: false };
     }
 }

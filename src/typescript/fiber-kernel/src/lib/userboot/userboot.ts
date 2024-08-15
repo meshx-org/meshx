@@ -113,8 +113,8 @@ class ChildMessageLayout {
     }
 }
 
-class ChildContext implements Disposable {
-    [Symbol.dispose](): void {
+class ChildContext {
+    destroy(): void {
         for (const handle of this.handles) {
             fx_handle_close(handle);
         }
@@ -210,7 +210,7 @@ function parse_next_process_arguments(next: string, argv: { value: string[] }): 
         return;
     }
 
-    const args = next.split("+")
+    const args = next.split("+");
     argv.value = args;
 
     // At a minimum, child processes will be passed a single argument containing the binary name.
@@ -323,7 +323,7 @@ async function bootstrap(channel: fx.Channel): Promise<u32> {
 
     handle_termination(info);
 
-    return 0
+    return 0;
 }
 
 type TerminationInfo = {

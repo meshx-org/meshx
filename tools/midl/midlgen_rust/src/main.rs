@@ -1,4 +1,5 @@
 // Copyright 2024 MeshX Authors. All rights reserved.
+#![allow(unused)] 
 
 mod compile;
 mod types;
@@ -41,7 +42,7 @@ struct Generator {
 handlebars::handlebars_helper!(doc_comments: |*args| {
 
     //let ir: Vec<ir::Attribute> = serde_json::from_value(args[0].clone()).unwrap();
-     
+
 
     vec![] as Vec<String>
 });
@@ -161,7 +162,7 @@ struct Args {
 
 fn main() -> Result<(), GeneratorError> {
     let args = Args::parse();
-    
+
     let contents = std::fs::read_to_string(args.json).unwrap();
 
     let root = serde_json::from_str::<ir::Root>(contents.as_str())?;

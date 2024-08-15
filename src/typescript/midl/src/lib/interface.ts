@@ -6,7 +6,7 @@
 import { Channel, ChannelPair, ChannelReader, ChannelReaderError } from "@meshx-org/fiber-ts"
 import { MidlError, ErrorCode } from "./errors"
 import { IncomingMessage, IncomingMessageSink, OutgoingMessage, OutgoingMessageSink } from "./message"
-import { Status } from "@meshx-org/fiber-types"
+import { FX_OK, Status } from "@meshx-org/fiber-types"
 import { Completer } from "./completer"
 
 export const epitaphOrdinal = 0xffffffffffffffffn
@@ -159,8 +159,8 @@ export class InterfacePair<T> {
 
     constructor() {
         const pair = ChannelPair.create()!
-        this.request = new InterfaceRequest<T>(pair.first)
-        this.handle = new InterfaceHandle<T>(pair.second)
+        this.request = new InterfaceRequest<T>(pair.handle!.first)
+        this.handle = new InterfaceHandle<T>(pair.handle!.second)
     }
 
     passRequest(): InterfaceRequest<T> | null {
@@ -229,19 +229,19 @@ export abstract class Binding<T> {
     wrap(impl: T): InterfaceHandle<T> | null {
         // TODO assert(!isBound)
         const pair = ChannelPair.create()
-        if (!pair) {
+        if (pair.status !== FX_OK) {
             return null
         }
 
         this.#impl = impl
-        this._reader.bind(pair.first)
+        this._reader.bind(pair.handle!.first)
 
         const callback = this.onBind
         if (callback != null) {
             callback()
         }
 
-        return new InterfaceHandle<T>(pair.second)
+        return new InterfaceHandle<T>(pair.handle!.second)
     }
 
     /// Binds the given implementation to the given interface request.
@@ -449,13 +449,13 @@ export class ProxyController<T> {
     /// The proxy must not already have been bound.
     request(): InterfaceRequest<T> {
         // TODO: assert(!isBound);
-        const pair = ChannelPair.create()
-        if (!pair) {
+        const result = ChannelPair.create()
+        if (result.status !== FX_OK) {
             throw new Error("channel creation failed")
         }
 
         // TODO: assert(pair.status == FX.OK);
-        this._reader.bind(pair.first)
+        this._reader.bind(result.handle!.first)
         this._boundCompleter.complete(null)
 
         const callback = this.onBind
@@ -463,7 +463,7 @@ export class ProxyController<T> {
             callback()
         }
 
-        return new InterfaceRequest<T>(pair.second)
+        return new InterfaceRequest<T>(result.handle!.second)
     }
 
     /// Binds the proxy to the given interface handle.

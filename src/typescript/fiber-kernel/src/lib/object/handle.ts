@@ -52,7 +52,7 @@ function conditional_select_nospec_eq(x: number, y: number, a: number, b: number
 // const gHandleTableArena : Handle[] = []
 
 /** A Handle is how a specific process refers to a specific Dispatcher. */
-export class Handle implements Disposable {
+export class Handle {
     #handle_table_id: bigint
     #dispatcher: Dispatcher
     #rights: fx_rights_t
@@ -81,10 +81,6 @@ export class Handle implements Disposable {
     private static create_dup(rhs: Handle, rights: fx_rights_t, base_value: number): Handle {
         const dispatcher = rhs.dispatcher()
         return new Handle(dispatcher, rights, base_value)
-    }
-
-    [Symbol.dispose](): void {
-        throw new Error("Method not implemented.")
     }
 
     public static make_dispather(dispatcher: Dispatcher, rights: fx_rights_t): HandleOwner {

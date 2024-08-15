@@ -4,7 +4,7 @@
         "module": "commonjs",
         "forceConsistentCasingInFileNames": true,
         "strict": true,
-        "lib": ["ESNext.Disposable", "DOM"],
+        "lib": ["DOM"],
         "esModuleInterop": true,
         "noImplicitOverride": true,
         "noPropertyAccessFromIndexSignature": true,

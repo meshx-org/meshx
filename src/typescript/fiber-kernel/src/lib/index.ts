@@ -72,7 +72,8 @@ function msg_get_handles(
 
     for (let i = 0; i < num_handles; ++i) {
         const ref = new Ref(0);
-        map_handle_to_value(up, handle_list[i], ref);
+        // TODO: remove null assertion
+        map_handle_to_value(up, handle_list[i]!, ref);
         hvs[i] = ref.value;
     }
 
@@ -91,7 +92,8 @@ function msg_get_handles(
             }
         }*/
 
-        const handle = new HandleOwner(handle_list[i]);
+        // TODO: remove null assertion
+        const handle = new HandleOwner(handle_list[i]!);
         // TODO(https://fxbug.dev/42105832): This takes a lock per call. Consider doing these in a
         // batch.
         up.handle_table().add_handle(handle);

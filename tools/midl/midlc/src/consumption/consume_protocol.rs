@@ -327,7 +327,7 @@ fn consume_protocol_method(
 
                     let result_payload = consume_parameter_list(param_list_token, &success_variant_context, false, ctx);
 
-                    // ZX_ASSERT_MSG(err_variant_context != nullptr && framework_err_variant_context != nullptr, "error type contexts should have been computed");
+                    // FX_ASSERT_MSG(err_variant_context != nullptr && framework_err_variant_context != nullptr, "error type contexts should have been computed");
 
                     let response_payload = create_method_result(
                         &success_variant_context,

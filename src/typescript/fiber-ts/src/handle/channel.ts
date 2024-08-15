@@ -12,6 +12,7 @@ import {
     fx_handle_disposition_t,
     u32,
     fx_handle_t,
+    FX_OK,
 } from "@meshx-org/fiber-types";
 import { HandleWrapper, HandleWrapperPair } from "./handle-wrapper";
 import { Handle } from "./handle";
@@ -36,7 +37,7 @@ export class Channel extends HandleWrapper {
     static MAX_MSG_BYTES = FX_CHANNEL_MAX_MSG_BYTES;
     static MAX_MSG_HANDLES = FX_CHANNEL_MAX_MSG_HANDLES;
 
-    /*writeEtc(data: Uint8Array, handleDispositions: HandleDisposition[] = []): Status {
+    writeEtc(data: Uint8Array, handleDispositions: HandleDisposition[] = []): Status {
         if (!this.handle || !this.handle.isValid) return Status.ERR_BAD_HANDLE;
 
         const fx_handle_dispositions: fx_handle_disposition_t[] = [];
@@ -51,14 +52,14 @@ export class Channel extends HandleWrapper {
             });
         }
 
-        const status = self.fiber.sys_channel_write_etc(
+        const status = FX_OK;/*self.fiber.sys_channel_write_etc(
             this.handle.raw,
             0,
             data.buffer,
             data.byteLength,
             fx_handle_dispositions,
             fx_handle_dispositions.length
-        );
+        );*/
 
         for (let i = 0; i < handleDispositions.length; ++i) {
             handleDispositions[i].result = fx_handle_dispositions[i].result;
@@ -70,7 +71,7 @@ export class Channel extends HandleWrapper {
         }
 
         return status;
-    }*/
+    }
 
     write(flags: u32, data: Uint8Array, handles: fx_handle_t[]): Status {
         if (!this.handle || !this.handle.isValid) return Status.ERR_BAD_HANDLE;

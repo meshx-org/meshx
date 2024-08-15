@@ -1,7 +1,0 @@
-{
-    "name": "fx",
-    "bindings": ["rust"],
-    "include": ["**/*.midl"],
-    "exclude": [],
-    "references": []
-}

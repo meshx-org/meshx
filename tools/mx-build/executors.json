@@ -1,6 +1,6 @@
 {
     "executors": {
-        "generated-sfile": {
+        "generated-file": {
             "implementation": "./src/generated_file/index",
             "schema": "./src/generated_file/schema.json",
             "description": "Genereates a file"

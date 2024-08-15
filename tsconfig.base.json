@@ -4,6 +4,7 @@
         "baseUrl": "./",
         "target": "ES2020",
         "paths": {
+            "midl_TODO":  ["dist/sdk/midl/fx/ts/midl_TODO/index.ts"],
             "@meshx-org/component-manager": ["src/typescript/component-manager/src/index.ts"],
             "@meshx-org/fiber-kernel": ["src/typescript/fiber-kernel/src/index.ts"],
             "@meshx-org/fiber-sys": ["src/typescript/fiber-sys/src/index.ts"],

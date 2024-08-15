@@ -705,7 +705,7 @@ impl Compiler {
         if let midlgen::ir::Type::StringType { .. } = val.r#type {
             r#type = String::from("string");
         } else {
-            r#type = self.compile_type(&val.r#type).midl;
+            r#type = self.compile_type(&val.r#type).param;
         }
 
         types::Const {

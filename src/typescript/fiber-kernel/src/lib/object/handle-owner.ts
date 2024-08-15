@@ -3,7 +3,7 @@ import { Handle } from "./handle"
 
 // HandleOwner wraps a Handle in an Arc that has shared
 // ownership of the Handle and deletes it whenever it falls out of scope.
-export class HandleOwner implements Disposable {
+export class HandleOwner {
     constructor(public handle: Handle) {}
 
     dispatcher() {
@@ -20,9 +20,5 @@ export class HandleOwner implements Disposable {
     
     has_rights(rights: fx_rights_t) {
         return this.handle.has_rights(rights)
-    }
-
-    [Symbol.dispose](): void {
-        console.log("removed")
     }
 }

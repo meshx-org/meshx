@@ -5,7 +5,7 @@ midl "com.example" {
   #  "sdk/midl/meshx.drm",
   #  "sdk/midl/meshx.media2",
   #  "sdk/midl/meshx.mem",
-  #  "fiber/vdso/zx",
+  #  "fiber/fx",
   #]
 }
 
@@ -21,7 +21,7 @@ meshx_package "buildtool" {
 }
 
 resource "font" {
-  sources = [terminal_font_path]
+  sources = []
   outputs = ["data/font.ttf"]
 }
 

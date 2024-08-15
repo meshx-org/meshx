@@ -1,5 +1,6 @@
 "use client"
 
+import { ObjType } from "midl_TODO"
 import type { Libp2p, PeerId, PrivateKey, PublicKey } from "@libp2p/interface"
 import { keys } from "@libp2p/crypto"
 import { peerIdFromKeys } from "@libp2p/peer-id"

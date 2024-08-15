@@ -84,7 +84,6 @@ export function cargoCommandSync(args = "", options?: Partial<RunCargoOptions>):
             success: true,
         };
     } catch (e) {
-        console.log(e);
         return {
             output: e as string,
             success: false,

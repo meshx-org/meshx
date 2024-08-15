@@ -394,7 +394,6 @@ where
 
         // For each param supplied...
         for param_index in 0..num_params {
-            println!("1.");
             // Walk through the next constraint to see if one can resolve.
             while constraint_index < num_constraints
                 && !self.resolve_one_constraint(constraint_index, resolver, params.get(param_index).unwrap(), resource)
