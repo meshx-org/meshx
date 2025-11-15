@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use serde::de::{self, Deserializer};
+use serde::de::Deserializer;
 use std::collections::{HashMap, HashSet};
 use wash_runtime::wit::WitInterface;
 

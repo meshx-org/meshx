@@ -1,6 +1,6 @@
 pub mod completion;
-pub mod update;
 pub mod dev;
+pub mod update;
 
 use etcetera::{
     AppStrategy, AppStrategyArgs,
