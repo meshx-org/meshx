@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo metadata:*)",
+      "Bash(cargo build:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(cargo test:*)",
+      "Bash(cargo +nightly fmt:*)",
+      "Bash(cargo clippy:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

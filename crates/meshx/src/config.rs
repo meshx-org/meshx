@@ -31,9 +31,7 @@ pub struct Config {
 impl Config {
     /// Create a new [Config] instance with default values and the list of MeshX templates
     pub fn default_with_templates() -> Self {
-        Self {
-            ..Default::default()
-        }
+        Self {}
     }
 }
 
@@ -123,10 +121,10 @@ where
         return Ok(());
     }
 
-    let mut config = Config::default();
+    let config = Config::default();
 
     // Create a figment from the build args and extract relevant config
-    let figment = Figment::new().merge(figment::providers::Serialized::defaults(build_args));
+    let _figment = Figment::new().merge(figment::providers::Serialized::defaults(build_args));
 
     save_config(&config, &config_path).await?;
 
