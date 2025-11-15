@@ -7,7 +7,6 @@ use etcetera::{
     choose_app_strategy,
 };
 use std::{
-    collections::HashMap,
     ops::Deref,
     path::{Path, PathBuf},
     sync::Arc,
@@ -19,10 +18,10 @@ use crate::{
     config::{Config, generate_default_config, load_config},
 };
 
-use anyhow::{Context as _, bail, ensure};
+use anyhow::Context as _;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{debug, error, info, instrument, trace};
+use tracing::{debug, instrument, trace};
 
 pub const CONFIG_FILE_NAME: &str = "config.json";
 
@@ -48,7 +47,7 @@ impl<T: CliCommand + ?Sized> CliCommandExt for T {}
 pub trait CliCommandExt: CliCommand {
     /// Execute pre-hook logic before the command runs. By default, if [`CliCommand::enable_pre_hook`]
     /// returns a hook type, it will execute all components registered with the pre-hook for that type.
-    fn pre_hook(&self, ctx: &CliContext) -> impl Future<Output = anyhow::Result<()>> {
+    fn pre_hook(&self, _ctx: &CliContext) -> impl Future<Output = anyhow::Result<()>> {
         async {
             if let Some(hook_type) = self.enable_pre_hook() {
                 trace!(?hook_type, "executing pre-hooks for command");
@@ -59,7 +58,7 @@ pub trait CliCommandExt: CliCommand {
 
     /// Execute post-hook logic after the command runs. By default, if [`CliCommand::enable_post_hook`]
     /// returns a hook type, it will execute all components registered with the post-hook for that type.
-    fn post_hook(&self, ctx: &CliContext) -> impl Future<Output = anyhow::Result<()>> {
+    fn post_hook(&self, _ctx: &CliContext) -> impl Future<Output = anyhow::Result<()>> {
         async {
             if let Some(hook_type) = self.enable_post_hook() {
                 trace!(?hook_type, "executing post-hooks for command");

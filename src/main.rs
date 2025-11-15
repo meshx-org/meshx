@@ -110,7 +110,7 @@ impl CliCommand for MeshXCliCommand {
 
 #[tokio::main]
 async fn main() {
-    let mut meshx_cmd = Cli::command();
+    let meshx_cmd = Cli::command();
 
     // Check for --non-interactive flag before parsing (to avoid requiring plugin commands to be registered)
     let non_interactive_flag = std::env::args().any(|arg| arg == "--non-interactive");
