@@ -111,10 +111,7 @@ pub async fn save_config(config: &Config, path: &Path) -> Result<()> {
 }
 
 /// Generate project-specific configuration after successful build
-pub async fn generate_project_config<T>(
-    project_dir: &Path,
-    build_args: T,
-) -> Result<()>
+pub async fn generate_project_config<T>(project_dir: &Path, build_args: T) -> Result<()>
 where
     T: Serialize,
 {
