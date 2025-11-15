@@ -260,9 +260,65 @@ Runs on: Ubuntu, macOS, Windows
 - **Tag format**: `meshx-v{version}` (e.g., `meshx-v0.0.1`)
 
 ### Commit Messages
-- Use conventional commit format when possible
-- Keep messages concise and descriptive
-- Focus on "why" rather than "what"
+
+**Format**: Use [Conventional Commits](https://www.conventionalcommits.org/) format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Commit Types
+- **feat**: A new feature
+- **fix**: A bug fix
+- **docs**: Documentation only changes
+- **style**: Changes that don't affect code meaning (formatting, white-space, etc.)
+- **refactor**: Code change that neither fixes a bug nor adds a feature
+- **perf**: Performance improvement
+- **test**: Adding missing tests or correcting existing tests
+- **build**: Changes to build system or dependencies (Cargo.toml, CI/CD)
+- **ci**: Changes to CI configuration files and scripts
+- **chore**: Other changes that don't modify src or test files
+- **revert**: Reverts a previous commit
+
+#### Examples
+```bash
+# Feature addition
+git commit -m "feat: add shell completion for bash and zsh"
+git commit -m "feat(cli): add new update command with version check"
+
+# Bug fix
+git commit -m "fix: resolve panic when config file is missing"
+git commit -m "fix(docker): correct entrypoint path in Dockerfile"
+
+# Documentation
+git commit -m "docs: update README with installation instructions"
+git commit -m "docs: add CLAUDE.md for AI assistant guidance"
+
+# Refactoring
+git commit -m "refactor: simplify error handling in CLI context"
+
+# Performance
+git commit -m "perf: optimize dependency resolution caching"
+
+# CI/CD changes
+git commit -m "ci: add cargo-machete to lint workflow"
+git commit -m "build: bump tokio version to 1.45.1"
+
+# Breaking changes (add ! after type)
+git commit -m "feat!: change config file format to JSON5"
+```
+
+#### Guidelines
+- Use lowercase for type and description
+- Use imperative mood ("add" not "added" or "adds")
+- Keep first line under 72 characters
+- Add body for complex changes explaining "why" rather than "what"
+- Reference issues/PRs in footer: `Fixes #123` or `Closes #456`
+- Use `!` after type or add `BREAKING CHANGE:` footer for breaking changes
 
 ### Pre-commit Checks
 Before committing:
