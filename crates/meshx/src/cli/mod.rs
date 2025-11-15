@@ -1,5 +1,6 @@
 pub mod completion;
 pub mod update;
+pub mod dev;
 
 use etcetera::{
     AppStrategy, AppStrategyArgs,
@@ -290,7 +291,7 @@ impl CliContextBuilder {
         let app_strategy: Arc<dyn DirectoryStrategy> = Arc::new(
             choose_app_strategy(AppStrategyArgs {
                 top_level_domain: "com.meshx".to_string(),
-                author: "MeshX Team".to_string(),
+                author: "meshx.co".to_string(),
                 app_name: "meshx".to_string(),
             })
             .context("failed to to determine file system strategy")?,

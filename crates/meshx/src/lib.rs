@@ -7,3 +7,4 @@ pub const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub mod cli;
 /// Configuration management for wash
 pub mod config;
+pub mod types;

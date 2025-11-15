@@ -66,6 +66,9 @@ enum MeshXCliCommand {
     /// Generate shell completions
     #[clap(name = "completion")]
     Completion(meshx::cli::completion::CompletionCommand),
+    /// Start a development server for a Wasm component
+    #[clap(name = "dev")]
+    Dev(meshx::cli::dev::DevCommand),
     /// Update MeshX to the latest version
     #[clap(name = "update", alias = "upgrade")]
     Update(meshx::cli::update::UpdateCommand),
@@ -90,6 +93,7 @@ impl CliCommand for MeshXCliCommand {
 
                 Ok(CommandOutput::ok("", None))
             }
+            MeshXCliCommand::Dev(cmd) => cmd.handle(ctx).await,
             MeshXCliCommand::Update(cmd) => cmd.handle(ctx).await,
         }
     }
@@ -97,12 +101,14 @@ impl CliCommand for MeshXCliCommand {
     fn enable_pre_hook(&self) -> Option<()> {
         match self {
             MeshXCliCommand::Completion(cmd) => cmd.enable_pre_hook(),
+            MeshXCliCommand::Dev(cmd) => cmd.enable_pre_hook(),
             MeshXCliCommand::Update(cmd) => cmd.enable_pre_hook(),
         }
     }
     fn enable_post_hook(&self) -> Option<()> {
         match self {
             MeshXCliCommand::Completion(cmd) => cmd.enable_post_hook(),
+            MeshXCliCommand::Dev(cmd) => cmd.enable_post_hook(),
             MeshXCliCommand::Update(cmd) => cmd.enable_post_hook(),
         }
     }
