@@ -6,7 +6,7 @@ A Rust workspace for MeshX projects.
 
 This repository is organized as a Rust workspace with the following structure:
 
-```
+```text
 meshx/
 ├── Cargo.toml          # Workspace configuration
 ├── crates/             # Individual crates/projects
