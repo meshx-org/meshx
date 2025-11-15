@@ -1,0 +1,25 @@
+name: 'Run Cargo Command for Packages'
+description: 'Runs a cargo command for specified packages'
+
+inputs:
+  command:
+    description: 'Cargo command to run (e.g., "clippy", "test", "build", "check")'
+    required: true
+  packages:
+    description: 'Space-separated list of packages (e.g., "meshlet-cloud meshlet-scheduler")'
+    required: true
+  args:
+    description: 'Additional arguments to pass to cargo command'
+    required: false
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run cargo ${{ inputs.command }} for packages
+      shell: bash
+      run: |
+        for package in ${{ inputs.packages }}; do
+          echo "Running cargo ${{ inputs.command }} for $package..."
+          cargo ${{ inputs.command }} -p $package ${{ inputs.args }}
+        done

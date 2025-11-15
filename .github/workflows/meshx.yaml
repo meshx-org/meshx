@@ -1,0 +1,233 @@
+name: meshx
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/meshx.yaml"
+      - "crates/**"
+      - "src/**"
+      - "tests/**"
+      - "Cargo.*"
+      - "rust-toolchain.toml"
+      - "rustfmt.toml"
+  push:
+    branches:
+      - main
+    tags:
+      - "meshx-v*"
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "^1.25.0"
+          cache: false
+      - name: Setup TinyGo
+        uses: acifani/setup-tinygo@v2
+        with:
+          tinygo-version: "0.39.0"
+      - name: Setup wasm-tools
+        uses: bytecodealliance/actions/wasm-tools/setup@v1
+        with:
+          version: "1.223.1"
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "29.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+      - name: Build
+        run: cargo build
+      - name: Test
+        env:
+          RUST_BACKTRACE: "1"
+        run: |
+          cargo test --workspace
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "29.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          rust-toolchain: nightly
+          rust-components: rustfmt
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@735e5933943122c5ac182670a935f54a949265c1 # v2.52.4
+        with:
+          tool: cargo-machete@0.8.0
+      - name: Format
+        run: |
+          cargo +nightly fmt -- --check
+      - name: Lint
+        run: |
+          cargo clippy --workspace -- -D warnings
+      - name: Check for unused dependencies
+        run: |
+          cargo machete
+
+  canary:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/docker-build-push.yaml
+    secrets: inherit
+    with:
+      push: true
+      image: ghcr.io/meshx-org/meshx
+      tags: |
+        type=raw,value=canary-v2
+
+  docker-release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/meshx-v')
+    permissions:
+      contents: write
+      packages: write
+    uses: ./.github/workflows/docker-build-push.yaml
+    secrets: inherit
+    with:
+      push: true
+      image: ghcr.io/meshx-org/meshx
+      tags: |
+        type=match,pattern=meshx-v(.*),group=1
+
+ 
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/meshx-v')
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            buildCommand: cargo zigbuild
+            artifact: meshx-x86_64-unknown-linux-musl
+            runner: ubuntu-latest
+            bin: meshx
+          - target: aarch64-unknown-linux-musl
+            buildCommand: cargo zigbuild
+            artifact: meshx-aarch64-unknown-linux-musl
+            runner: ubuntu-latest
+            bin: meshx
+          - target: x86_64-apple-darwin
+            buildCommand: cargo build
+            artifact: meshx-x86_64-apple-darwin
+            runner: macos-latest
+            bin: meshx
+          - target: aarch64-apple-darwin
+            buildCommand: cargo build
+            artifact: meshx-aarch64-apple-darwin
+            runner: macos-latest
+            bin: meshx
+          - target: x86_64-pc-windows-msvc
+            buildCommand: cargo build
+            artifact: meshx-x86_64-pc-windows-msvc
+            runner: windows-latest
+            bin: meshx.exe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          rust-toolchain: stable
+          # Only needed for ubuntu
+          install-zigbuild: ${{ matrix.runner == 'ubuntu-latest' }}
+          rust-targets: "${{ matrix.target }}"
+
+      - name: Setup protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "29.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build binary (${{ matrix.target }})
+        run: |
+          ${{ matrix.buildCommand }} --release --target ${{ matrix.target }}
+          cp target/${{ matrix.target }}/release/${{ matrix.bin }} ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  upload-release-assets:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Generate build provenance attestations
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: "./artifacts/*/meshx*"
+
+      - name: Create GitHub Release and upload binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: |
+            ./artifacts/*/*
+          token: ${{ github.token }}
+          prerelease: false
+          generate_release_notes: true
