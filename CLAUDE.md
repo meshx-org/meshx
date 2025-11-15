@@ -328,6 +328,55 @@ cargo clippy --workspace -- -D warnings
 cargo test --workspace
 ```
 
+### Pull Request Workflow
+**IMPORTANT**: Always create a Pull Request (PR) for pushing changes. Never push directly to `main`.
+
+#### Creating a Pull Request
+1. **Create a feature branch**:
+   ```bash
+   git checkout -b feature/description
+   # or
+   git checkout -b claude/session-id
+   ```
+
+2. **Make your changes and commit**:
+   ```bash
+   # Make changes, then commit
+   git add .
+   git commit -m "feat: description of changes"
+   ```
+
+3. **Push to remote**:
+   ```bash
+   git push -u origin feature/description
+   ```
+
+4. **Create PR using GitHub CLI** (recommended):
+   ```bash
+   gh pr create --title "Feature: Description" --body "Detailed description of changes"
+   ```
+
+   Or **create PR manually** via GitHub web interface:
+   - Go to https://github.com/meshx-org/meshx/pulls
+   - Click "New pull request"
+   - Select your branch and create the PR
+
+5. **Wait for CI checks** to pass:
+   - All tests must pass
+   - Code must pass linting (clippy, rustfmt)
+   - No unused dependencies
+
+6. **Merge only after approval** and CI passes
+
+#### PR Best Practices
+- ✅ Write clear, descriptive PR titles using conventional commit format
+- ✅ Include detailed description of what changed and why
+- ✅ Reference related issues: `Fixes #123` or `Closes #456`
+- ✅ Ensure all CI checks pass before requesting review
+- ✅ Keep PRs focused and reasonably sized
+- ✅ Update documentation if needed
+- ✅ Add tests for new functionality
+
 ## Docker
 
 ### Building
