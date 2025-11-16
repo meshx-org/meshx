@@ -46,7 +46,7 @@ tokio = {workspace = true, features = ["full"]}
 tracing = {workspace = true, features = ["attributes"]}
 tracing-subscriber = {workspace = true, features = ["env-filter", "ansi", "time", "json"]}
 wash-runtime = {workspace = true, features = ["wasi-webgpu"]}
-meshx_client = { path = "./crates/meshx-client" }
+meshx_client = { path = "./crates/meshx-client", default-features = false, features = ["rustls-tls"] }
 
 [workspace.dependencies]
 anyhow = {version = "1.0.98", default-features = false}
