@@ -1,5 +1,9 @@
 # MeshX
 
+[![Maintenance Status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)](https://github.com/meshx-org/meshx)
+
+> **Status**: This project is actively maintained and under active development.
+
 A Rust workspace for MeshX projects.
 
 ## Workspace Structure
