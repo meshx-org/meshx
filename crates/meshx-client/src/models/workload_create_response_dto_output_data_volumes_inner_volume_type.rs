@@ -14,17 +14,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeType {
     #[serde(rename = "hostPath")]
-    pub host_path: Box<models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath>,
+    pub host_path:
+        Box<models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath>,
     #[serde(rename = "emptyDir")]
     pub empty_dir: serde_json::Value,
 }
 
 impl WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeType {
-    pub fn new(host_path: models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath, empty_dir: serde_json::Value) -> WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeType {
+    pub fn new(
+        host_path: models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath,
+        empty_dir: serde_json::Value,
+    ) -> WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeType {
         WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeType {
             host_path: Box::new(host_path),
             empty_dir,
         }
     }
 }
-

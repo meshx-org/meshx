@@ -28,7 +28,11 @@ pub struct WorkloadCreateResponseDtoOutputData {
 }
 
 impl WorkloadCreateResponseDtoOutputData {
-    pub fn new(name: String, components: Vec<models::WorkloadCreateResponseDtoOutputDataComponentsInner>, host_interfaces: Vec<models::WorkloadCreateResponseDtoOutputDataHostInterfacesInner>) -> WorkloadCreateResponseDtoOutputData {
+    pub fn new(
+        name: String,
+        components: Vec<models::WorkloadCreateResponseDtoOutputDataComponentsInner>,
+        host_interfaces: Vec<models::WorkloadCreateResponseDtoOutputDataHostInterfacesInner>,
+    ) -> WorkloadCreateResponseDtoOutputData {
         WorkloadCreateResponseDtoOutputData {
             name,
             annotations: None,
@@ -39,4 +43,3 @@ impl WorkloadCreateResponseDtoOutputData {
         }
     }
 }
-

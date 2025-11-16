@@ -24,7 +24,12 @@ pub struct WorkloadCreateResponseDtoOutputDataComponentsInner {
 }
 
 impl WorkloadCreateResponseDtoOutputDataComponentsInner {
-    pub fn new(name: String, image: String, pool_size: f64, max_invocations: f64) -> WorkloadCreateResponseDtoOutputDataComponentsInner {
+    pub fn new(
+        name: String,
+        image: String,
+        pool_size: f64,
+        max_invocations: f64,
+    ) -> WorkloadCreateResponseDtoOutputDataComponentsInner {
         WorkloadCreateResponseDtoOutputDataComponentsInner {
             name,
             image,
@@ -33,4 +38,3 @@ impl WorkloadCreateResponseDtoOutputDataComponentsInner {
         }
     }
 }
-

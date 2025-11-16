@@ -18,10 +18,11 @@ pub struct WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf {
 }
 
 impl WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf {
-    pub fn new(host_path: models::WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath) -> WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf {
+    pub fn new(
+        host_path: models::WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath,
+    ) -> WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf {
         WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf {
             host_path: Box::new(host_path),
         }
     }
 }
-

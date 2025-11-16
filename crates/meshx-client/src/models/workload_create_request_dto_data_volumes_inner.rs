@@ -20,11 +20,13 @@ pub struct WorkloadCreateRequestDtoDataVolumesInner {
 }
 
 impl WorkloadCreateRequestDtoDataVolumesInner {
-    pub fn new(name: String, volume_type: models::WorkloadCreateRequestDtoDataVolumesInnerVolumeType) -> WorkloadCreateRequestDtoDataVolumesInner {
+    pub fn new(
+        name: String,
+        volume_type: models::WorkloadCreateRequestDtoDataVolumesInnerVolumeType,
+    ) -> WorkloadCreateRequestDtoDataVolumesInner {
         WorkloadCreateRequestDtoDataVolumesInner {
             name,
             volume_type: Box::new(volume_type),
         }
     }
 }
-

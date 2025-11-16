@@ -69,7 +69,7 @@ cargo test -p your-crate-name
 ### Regenerate OpenAPI
 
 ```bash
-openapi-generator-cli generate -g rust -o crates/meshx-client -i openapi.yaml --additional-properties=packageName=meshx_client,packageVersion=0.0.1
+openapi-generator-cli generate -g rust -o crates/meshx-client -i openapi.yaml --additional-properties=packageName=meshx_client,packageVersion=<version-here>
 ```
 
 ### Shared Dependencies

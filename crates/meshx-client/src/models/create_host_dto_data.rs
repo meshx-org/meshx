@@ -26,7 +26,13 @@ pub struct CreateHostDtoData {
 }
 
 impl CreateHostDtoData {
-    pub fn new(name: String, project: f64, cpu_count: i32, cpu_kind: CpuKind, ram_mb: i32) -> CreateHostDtoData {
+    pub fn new(
+        name: String,
+        project: f64,
+        cpu_count: i32,
+        cpu_kind: CpuKind,
+        ram_mb: i32,
+    ) -> CreateHostDtoData {
         CreateHostDtoData {
             name,
             project,
@@ -36,7 +42,7 @@ impl CreateHostDtoData {
         }
     }
 }
-/// 
+///
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum CpuKind {
     #[serde(rename = "burst")]
@@ -50,4 +56,3 @@ impl Default for CpuKind {
         Self::Burst
     }
 }
-

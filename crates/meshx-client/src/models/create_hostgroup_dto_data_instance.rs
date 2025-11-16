@@ -30,7 +30,7 @@ impl CreateHostgroupDtoDataInstance {
         }
     }
 }
-/// 
+///
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
 pub enum Type {
     #[serde(rename = "burst-gen1")]
@@ -44,4 +44,3 @@ impl Default for Type {
         Self::BurstGen1
     }
 }
-

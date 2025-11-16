@@ -24,7 +24,12 @@ pub struct WorkloadCreateResponseDtoOutputDataHostInterfacesInner {
 }
 
 impl WorkloadCreateResponseDtoOutputDataHostInterfacesInner {
-    pub fn new(namespace: String, package: String, interfaces: Vec<String>, config: std::collections::HashMap<String, String>) -> WorkloadCreateResponseDtoOutputDataHostInterfacesInner {
+    pub fn new(
+        namespace: String,
+        package: String,
+        interfaces: Vec<String>,
+        config: std::collections::HashMap<String, String>,
+    ) -> WorkloadCreateResponseDtoOutputDataHostInterfacesInner {
         WorkloadCreateResponseDtoOutputDataHostInterfacesInner {
             namespace,
             package,
@@ -33,4 +38,3 @@ impl WorkloadCreateResponseDtoOutputDataHostInterfacesInner {
         }
     }
 }
-

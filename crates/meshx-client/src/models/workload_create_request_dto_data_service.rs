@@ -22,7 +22,11 @@ pub struct WorkloadCreateRequestDtoDataService {
 }
 
 impl WorkloadCreateRequestDtoDataService {
-    pub fn new(name: String, image: String, max_restarts: f64) -> WorkloadCreateRequestDtoDataService {
+    pub fn new(
+        name: String,
+        image: String,
+        max_restarts: f64,
+    ) -> WorkloadCreateRequestDtoDataService {
         WorkloadCreateRequestDtoDataService {
             name,
             image,
@@ -30,4 +34,3 @@ impl WorkloadCreateRequestDtoDataService {
         }
     }
 }
-

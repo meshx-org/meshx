@@ -24,7 +24,12 @@ pub struct WorkloadCreateRequestDtoDataComponentsInner {
 }
 
 impl WorkloadCreateRequestDtoDataComponentsInner {
-    pub fn new(name: String, image: String, pool_size: f64, max_invocations: f64) -> WorkloadCreateRequestDtoDataComponentsInner {
+    pub fn new(
+        name: String,
+        image: String,
+        pool_size: f64,
+        max_invocations: f64,
+    ) -> WorkloadCreateRequestDtoDataComponentsInner {
         WorkloadCreateRequestDtoDataComponentsInner {
             name,
             image,
@@ -33,4 +38,3 @@ impl WorkloadCreateRequestDtoDataComponentsInner {
         }
     }
 }
-

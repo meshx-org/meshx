@@ -4,15 +4,15 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**create_workload**](WorkloadApi.md#create_workload) | **POST** /v1/workloads | 
-[**delete_workload**](WorkloadApi.md#delete_workload) | **DELETE** /v1/workloads/{name} | 
-[**list_workloads**](WorkloadApi.md#list_workloads) | **GET** /v1/workloads | 
+[**create_workload**](WorkloadApi.md#create_workload) | **POST** /v1/applications/{applicationId}/workloads | 
+[**delete_workload**](WorkloadApi.md#delete_workload) | **DELETE** /v1/applications/{applicationId}/workloads/{name} | 
+[**list_workloads**](WorkloadApi.md#list_workloads) | **GET** /v1/applications/{applicationId}/workloads | 
 
 
 
 ## create_workload
 
-> models::WorkloadCreateResponseDtoOutput create_workload(workload_create_request_dto)
+> models::WorkloadCreateResponseDtoOutput create_workload(application_id, workload_create_request_dto)
 
 
 ### Parameters
@@ -20,6 +20,7 @@ Method | HTTP request | Description
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
+**application_id** | **i32** |  | [required] |
 **workload_create_request_dto** | [**WorkloadCreateRequestDto**](WorkloadCreateRequestDto.md) |  | [required] |
 
 ### Return type
@@ -40,7 +41,7 @@ No authorization required
 
 ## delete_workload
 
-> delete_workload(name, application_id)
+> delete_workload(application_id, name)
 
 
 ### Parameters
@@ -48,8 +49,8 @@ No authorization required
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
+**application_id** | **i32** |  | [required] |
 **name** | **String** |  | [required] |
-**application_id** | **f64** | Filter workloads from the given ID. | [required] |
 
 ### Return type
 
@@ -77,7 +78,7 @@ No authorization required
 
 Name | Type | Description  | Required | Notes
 ------------- | ------------- | ------------- | ------------- | -------------
-**application_id** | **f64** | Filter workloads from the given ID. | [required] |
+**application_id** | **i32** |  | [required] |
 
 ### Return type
 

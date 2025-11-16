@@ -24,7 +24,12 @@ pub struct WorkloadCreateRequestDtoDataHostInterfacesInner {
 }
 
 impl WorkloadCreateRequestDtoDataHostInterfacesInner {
-    pub fn new(namespace: String, package: String, interfaces: Vec<String>, config: std::collections::HashMap<String, String>) -> WorkloadCreateRequestDtoDataHostInterfacesInner {
+    pub fn new(
+        namespace: String,
+        package: String,
+        interfaces: Vec<String>,
+        config: std::collections::HashMap<String, String>,
+    ) -> WorkloadCreateRequestDtoDataHostInterfacesInner {
         WorkloadCreateRequestDtoDataHostInterfacesInner {
             namespace,
             package,
@@ -33,4 +38,3 @@ impl WorkloadCreateRequestDtoDataHostInterfacesInner {
         }
     }
 }
-

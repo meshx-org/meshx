@@ -28,7 +28,14 @@ pub struct ServiceListDtoOutputInner {
 }
 
 impl ServiceListDtoOutputInner {
-    pub fn new(id: f64, name: String, created_at: String, updated_at: String, project_id: f64, host_id: String) -> ServiceListDtoOutputInner {
+    pub fn new(
+        id: f64,
+        name: String,
+        created_at: String,
+        updated_at: String,
+        project_id: f64,
+        host_id: String,
+    ) -> ServiceListDtoOutputInner {
         ServiceListDtoOutputInner {
             id,
             name,
@@ -39,4 +46,3 @@ impl ServiceListDtoOutputInner {
         }
     }
 }
-

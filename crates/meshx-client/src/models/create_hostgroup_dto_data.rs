@@ -24,7 +24,12 @@ pub struct CreateHostgroupDtoData {
 }
 
 impl CreateHostgroupDtoData {
-    pub fn new(name: String, project: f64, instance: models::CreateHostgroupDtoDataInstance, desired_replicas: f64) -> CreateHostgroupDtoData {
+    pub fn new(
+        name: String,
+        project: f64,
+        instance: models::CreateHostgroupDtoDataInstance,
+        desired_replicas: f64,
+    ) -> CreateHostgroupDtoData {
         CreateHostgroupDtoData {
             name,
             project,
@@ -33,4 +38,3 @@ impl CreateHostgroupDtoData {
         }
     }
 }
-

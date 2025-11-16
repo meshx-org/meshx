@@ -20,11 +20,13 @@ pub struct WorkloadCreateRequestDtoDataVolumesInnerVolumeType {
 }
 
 impl WorkloadCreateRequestDtoDataVolumesInnerVolumeType {
-    pub fn new(host_path: models::WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath, empty_dir: serde_json::Value) -> WorkloadCreateRequestDtoDataVolumesInnerVolumeType {
+    pub fn new(
+        host_path: models::WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath,
+        empty_dir: serde_json::Value,
+    ) -> WorkloadCreateRequestDtoDataVolumesInnerVolumeType {
         WorkloadCreateRequestDtoDataVolumesInnerVolumeType {
             host_path: Box::new(host_path),
             empty_dir,
         }
     }
 }
-

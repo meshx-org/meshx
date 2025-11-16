@@ -28,7 +28,11 @@ pub struct WorkloadCreateRequestDtoData {
 }
 
 impl WorkloadCreateRequestDtoData {
-    pub fn new(name: String, components: Vec<models::WorkloadCreateRequestDtoDataComponentsInner>, host_interfaces: Vec<models::WorkloadCreateRequestDtoDataHostInterfacesInner>) -> WorkloadCreateRequestDtoData {
+    pub fn new(
+        name: String,
+        components: Vec<models::WorkloadCreateRequestDtoDataComponentsInner>,
+        host_interfaces: Vec<models::WorkloadCreateRequestDtoDataHostInterfacesInner>,
+    ) -> WorkloadCreateRequestDtoData {
         WorkloadCreateRequestDtoData {
             name,
             annotations: None,
@@ -39,4 +43,3 @@ impl WorkloadCreateRequestDtoData {
         }
     }
 }
-

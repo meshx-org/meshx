@@ -20,11 +20,13 @@ pub struct WorkloadCreateResponseDtoOutputDataVolumesInner {
 }
 
 impl WorkloadCreateResponseDtoOutputDataVolumesInner {
-    pub fn new(name: String, volume_type: models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeType) -> WorkloadCreateResponseDtoOutputDataVolumesInner {
+    pub fn new(
+        name: String,
+        volume_type: models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeType,
+    ) -> WorkloadCreateResponseDtoOutputDataVolumesInner {
         WorkloadCreateResponseDtoOutputDataVolumesInner {
             name,
             volume_type: Box::new(volume_type),
         }
     }
 }
-

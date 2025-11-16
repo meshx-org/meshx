@@ -18,10 +18,9 @@ pub struct WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath {
 }
 
 impl WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath {
-    pub fn new(local_path: String) -> WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath {
-        WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath {
-            local_path,
-        }
+    pub fn new(
+        local_path: String,
+    ) -> WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath {
+        WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath { local_path }
     }
 }
-

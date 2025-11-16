@@ -22,7 +22,11 @@ pub struct WorkloadCreateResponseDtoOutputDataService {
 }
 
 impl WorkloadCreateResponseDtoOutputDataService {
-    pub fn new(name: String, image: String, max_restarts: f64) -> WorkloadCreateResponseDtoOutputDataService {
+    pub fn new(
+        name: String,
+        image: String,
+        max_restarts: f64,
+    ) -> WorkloadCreateResponseDtoOutputDataService {
         WorkloadCreateResponseDtoOutputDataService {
             name,
             image,
@@ -30,4 +34,3 @@ impl WorkloadCreateResponseDtoOutputDataService {
         }
     }
 }
-

@@ -192,10 +192,17 @@ paths:
       summary: ''
       tags:
         - Application
-  /v1/workloads:
+  /v1/applications/{applicationId}/workloads:
     post:
       operationId: createWorkload
-      parameters: []
+      parameters:
+        - name: applicationId
+          required: true
+          in: path
+          schema:
+            minimum: -9007199254740991
+            maximum: 9007199254740991
+            type: integer
       requestBody:
         required: true
         content:
@@ -217,31 +224,33 @@ paths:
       parameters:
         - name: applicationId
           required: true
-          in: query
-          description: Filter workloads from the given ID.
+          in: path
           schema:
-            type: number
+            minimum: -9007199254740991
+            maximum: 9007199254740991
+            type: integer
       responses:
         '200':
           description: ''
       summary: ''
       tags:
         - Workload
-  /v1/workloads/{name}:
+  /v1/applications/{applicationId}/workloads/{name}:
     delete:
       operationId: deleteWorkload
       parameters:
+        - name: applicationId
+          required: true
+          in: path
+          schema:
+            minimum: -9007199254740991
+            maximum: 9007199254740991
+            type: integer
         - name: name
           required: true
           in: path
           schema:
             type: string
-        - name: applicationId
-          required: true
-          in: query
-          description: Filter workloads from the given ID.
-          schema:
-            type: number
       responses:
         '200':
           description: ''

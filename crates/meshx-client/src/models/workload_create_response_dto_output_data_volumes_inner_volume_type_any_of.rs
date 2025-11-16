@@ -14,14 +14,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Default, Debug, PartialEq, Serialize, Deserialize)]
 pub struct WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOf {
     #[serde(rename = "hostPath")]
-    pub host_path: Box<models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath>,
+    pub host_path:
+        Box<models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath>,
 }
 
 impl WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOf {
-    pub fn new(host_path: models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath) -> WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOf {
+    pub fn new(
+        host_path: models::WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath,
+    ) -> WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOf {
         WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOf {
             host_path: Box::new(host_path),
         }
     }
 }
-

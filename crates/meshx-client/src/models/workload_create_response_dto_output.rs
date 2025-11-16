@@ -18,10 +18,11 @@ pub struct WorkloadCreateResponseDtoOutput {
 }
 
 impl WorkloadCreateResponseDtoOutput {
-    pub fn new(data: models::WorkloadCreateResponseDtoOutputData) -> WorkloadCreateResponseDtoOutput {
+    pub fn new(
+        data: models::WorkloadCreateResponseDtoOutputData,
+    ) -> WorkloadCreateResponseDtoOutput {
         WorkloadCreateResponseDtoOutput {
             data: Box::new(data),
         }
     }
 }
-

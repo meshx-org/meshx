@@ -28,7 +28,14 @@ pub struct ServiceDtoOutput {
 }
 
 impl ServiceDtoOutput {
-    pub fn new(id: f64, name: String, created_at: String, updated_at: String, project_id: f64, host_id: String) -> ServiceDtoOutput {
+    pub fn new(
+        id: f64,
+        name: String,
+        created_at: String,
+        updated_at: String,
+        project_id: f64,
+        host_id: String,
+    ) -> ServiceDtoOutput {
         ServiceDtoOutput {
             id,
             name,
@@ -39,4 +46,3 @@ impl ServiceDtoOutput {
         }
     }
 }
-

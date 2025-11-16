@@ -18,10 +18,9 @@ pub struct WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPat
 }
 
 impl WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath {
-    pub fn new(local_path: String) -> WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath {
-        WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath {
-            local_path,
-        }
+    pub fn new(
+        local_path: String,
+    ) -> WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath {
+        WorkloadCreateResponseDtoOutputDataVolumesInnerVolumeTypeAnyOfHostPath { local_path }
     }
 }
-

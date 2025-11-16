@@ -18,10 +18,9 @@ pub struct WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf1 {
 }
 
 impl WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf1 {
-    pub fn new(empty_dir: serde_json::Value) -> WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf1 {
-        WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf1 {
-            empty_dir,
-        }
+    pub fn new(
+        empty_dir: serde_json::Value,
+    ) -> WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf1 {
+        WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOf1 { empty_dir }
     }
 }
-

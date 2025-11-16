@@ -46,9 +46,9 @@ Class | Method | HTTP request | Description
 *ShellApi* | [**create**](docs/ShellApi.md#create) | **POST** /shells | 
 *ShellApi* | [**get_all**](docs/ShellApi.md#get_all) | **GET** /shells | 
 *ShellApi* | [**get_one**](docs/ShellApi.md#get_one) | **GET** /shells/{id} | 
-*WorkloadApi* | [**create_workload**](docs/WorkloadApi.md#create_workload) | **POST** /v1/workloads | 
-*WorkloadApi* | [**delete_workload**](docs/WorkloadApi.md#delete_workload) | **DELETE** /v1/workloads/{name} | 
-*WorkloadApi* | [**list_workloads**](docs/WorkloadApi.md#list_workloads) | **GET** /v1/workloads | 
+*WorkloadApi* | [**create_workload**](docs/WorkloadApi.md#create_workload) | **POST** /v1/applications/{applicationId}/workloads | 
+*WorkloadApi* | [**delete_workload**](docs/WorkloadApi.md#delete_workload) | **DELETE** /v1/applications/{applicationId}/workloads/{name} | 
+*WorkloadApi* | [**list_workloads**](docs/WorkloadApi.md#list_workloads) | **GET** /v1/applications/{applicationId}/workloads | 
 
 
 ## Documentation For Models
