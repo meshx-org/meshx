@@ -11,8 +11,6 @@ use tokio::io::SeekFrom;
 use tokio::{fs::File, select, sync::mpsc};
 use tracing::{debug, error, info};
 
-#[cfg(not(target_os = "windows"))]
-use wash_runtime::plugin::wasi_webgpu::WasiWebGpu;
 use wash_runtime::{
     host::Host,
     plugin::{wasi_config::WasiConfig, wasi_http::HttpServer, wasi_logging::WasiLogging},
@@ -35,11 +33,6 @@ pub struct DevCommand {
     /// The address on which the HTTP server will listen
     #[clap(long = "address", default_value = "0.0.0.0:8000")]
     pub address: String,
-
-    /// Enable WASI WebGPU support
-    #[cfg(not(target_os = "windows"))]
-    #[clap(long = "wasi-webgpu", default_value_t = false)]
-    pub wasi_webgpu: bool,
 
     // TODO: filesystem root?
     /// The root directory for the blobstore to use for `wasi:blobstore/blobstore`. Defaults to a subfolder in the wash data directory.
@@ -139,13 +132,6 @@ impl CliCommand for DevCommand {
         // Add logging plugin
         host_builder = host_builder.with_plugin(Arc::new(WasiLogging))?;
         debug!("Logging plugin registered");
-
-        // Enable WASI WebGPU if requested
-        #[cfg(not(target_os = "windows"))]
-        if self.wasi_webgpu {
-            host_builder = host_builder.with_plugin(Arc::new(WasiWebGpu::default()))?;
-            debug!("WASI WebGPU plugin registered");
-        }
 
         // Build and start the host
         let _host = host_builder.build()?.start().await?;
