@@ -81,12 +81,11 @@ async fn collect_yaml_files(dir_path: &PathBuf) -> anyhow::Result<Vec<PathBuf>> 
         .context("Failed to read directory entry")?
     {
         let path = entry.path();
-        if path.is_file() {
-            if let Some(extension) = path.extension() {
-                if extension == "yaml" || extension == "yml" {
-                    yaml_files.push(path);
-                }
-            }
+        if path.is_file()
+            && let Some(extension) = path.extension()
+            && (extension == "yaml" || extension == "yml")
+        {
+            yaml_files.push(path);
         }
     }
 
@@ -231,14 +230,16 @@ impl CliCommand for DeployCommand {
         };
 
         // Configure the API client
-        let mut config = Configuration::default();
-        config.base_path = "https://api.meshx.net".into();
-        config.user_agent = Some(format!(
-            "meshx-cli/{version} ({os}; {arch})",
-            version = env!("CARGO_PKG_VERSION"),
-            os = std::env::consts::OS,
-            arch = std::env::consts::ARCH,
-        ));
+        let config = Configuration {
+            base_path: "https://api.meshx.net".into(),
+            user_agent: Some(format!(
+                "meshx-cli/{version} ({os}; {arch})",
+                version = env!("CARGO_PKG_VERSION"),
+                os = std::env::consts::OS,
+                arch = std::env::consts::ARCH,
+            )),
+            ..Default::default()
+        };
 
         // Deploy each state file separately
         let total_manifests = state_files.len();
