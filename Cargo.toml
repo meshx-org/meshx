@@ -44,7 +44,7 @@ serde_yaml = {workspace = true}
 tokio = {workspace = true, features = ["full"]}
 tracing = {workspace = true, features = ["attributes"]}
 tracing-subscriber = {workspace = true, features = ["env-filter", "ansi", "time", "json"]}
-wash-runtime = {workspace = true}
+wash-runtime = {workspace = true, features = ["wasi-webgpu"]}
 
 [workspace.dependencies]
 anyhow = {version = "1.0.98", default-features = false}

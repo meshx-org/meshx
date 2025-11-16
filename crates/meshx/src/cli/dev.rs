@@ -2,33 +2,18 @@ use crate::{
     cli::{CliCommand, CliContext, CommandOutput},
     config::{Config, load_config},
 };
-use anyhow::{Context as _, bail, ensure};
+use anyhow::{Context as _, ensure};
 use clap::Args;
-use std::{
-    collections::{HashMap, HashSet},
-    path::{Path, PathBuf},
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-    time::SystemTime,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncSeekExt;
 use tokio::io::SeekFrom;
 use tokio::{fs::File, select, sync::mpsc};
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info};
 
-#[cfg(not(target_os = "windows"))]
-use wash_runtime::plugin::wasi_webgpu::WasiWebGpu;
 use wash_runtime::{
-    host::{Host, HostApi},
+    host::Host,
     plugin::{wasi_config::WasiConfig, wasi_http::HttpServer, wasi_logging::WasiLogging},
-    types::{
-        Component, HostPathVolume, LocalResources, Volume, VolumeMount, VolumeType, Workload,
-        WorkloadStartRequest, WorkloadState, WorkloadStopRequest,
-    },
-    wit::WitInterface,
 };
 
 async fn load_state_file(file: &mut File) -> anyhow::Result<crate::types::ConfigFile> {
@@ -48,11 +33,6 @@ pub struct DevCommand {
     /// The address on which the HTTP server will listen
     #[clap(long = "address", default_value = "0.0.0.0:8000")]
     pub address: String,
-
-    /// Enable WASI WebGPU support
-    #[cfg(not(target_os = "windows"))]
-    #[clap(long = "wasi-webgpu", default_value_t = false)]
-    pub wasi_webgpu: bool,
 
     // TODO: filesystem root?
     /// The root directory for the blobstore to use for `wasi:blobstore/blobstore`. Defaults to a subfolder in the wash data directory.
@@ -76,7 +56,7 @@ impl CliCommand for DevCommand {
     async fn handle(&self, ctx: &CliContext) -> anyhow::Result<CommandOutput> {
         info!(manifest = ?self.manifest_path, "starting development session for project");
 
-        let config = load_config(
+        let _config = load_config(
             &ctx.config_path(),
             Some(self.manifest_path.as_path()),
             // Override the component path with the one provided in the command line
@@ -88,8 +68,7 @@ impl CliCommand for DevCommand {
 
         info!(manifest = ?self.manifest_path, "watching file for updates");
 
-        let mut running: HashMap<crate::types::WorkloadKey, crate::types::Workload> =
-            HashMap::new();
+        let _running: HashMap<crate::types::WorkloadKey, crate::types::Workload> = HashMap::new();
 
         let mut host_builder = Host::builder();
 
@@ -154,15 +133,8 @@ impl CliCommand for DevCommand {
         host_builder = host_builder.with_plugin(Arc::new(WasiLogging))?;
         debug!("Logging plugin registered");
 
-        // Enable WASI WebGPU if requested
-        #[cfg(not(target_os = "windows"))]
-        if self.wasi_webgpu {
-            host_builder = host_builder.with_plugin(Arc::new(WasiWebGpu::default()))?;
-            debug!("WASI WebGPU plugin registered");
-        }
-
         // Build and start the host
-        let host = host_builder.build()?.start().await?;
+        let _host = host_builder.build()?.start().await?;
 
         match load_state_file(&mut file).await {
             Ok(cfg) => {
@@ -187,16 +159,13 @@ impl CliCommand for DevCommand {
 
         info!("development session started successfully");
         info!(address = %format!("{}://{}", protocol, self.address), "listening for HTTP requests");
+        info!("watching for file changes (press Ctrl+c to stop)...");
 
-        loop {
-            info!("watching for file changes (press Ctrl+c to stop)...");
-            select! {
-                // Process a stop
-                _ = stop_rx.recv() => {
-                    info!("Stopping development session ...");
-                    break
-                },
-            }
+        select! {
+            // Process a stop
+            _ = stop_rx.recv() => {
+                info!("Stopping development session ...");
+            },
         }
 
         Ok(CommandOutput::ok(
