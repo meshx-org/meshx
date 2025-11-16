@@ -1,4 +1,5 @@
 pub mod completion;
+pub mod deploy;
 pub mod dev;
 pub mod update;
 

@@ -1,7 +1,7 @@
 [package]
 authors = ["The MeshX Team"]
 categories = ["meshx", "command-line-utilities"]
-description = "The MeshX Shell (meshx) for developing and publishing Wasm components"
+description = "The MeshX Shell (meshx) for developing and deploying Wasm components"
 edition = "2024"
 keywords = ["webassembly", "wasm", "component", "meshx", "cli"]
 license = "Apache-2.0"
@@ -13,6 +13,7 @@ version = "0.0.1"
 [workspace]
 members = [
   #"crates/meshlet",
+  "crates/meshx-client",
 ]
 resolver = "2"
 
@@ -45,6 +46,7 @@ tokio = {workspace = true, features = ["full"]}
 tracing = {workspace = true, features = ["attributes"]}
 tracing-subscriber = {workspace = true, features = ["env-filter", "ansi", "time", "json"]}
 wash-runtime = {workspace = true, features = ["wasi-webgpu"]}
+meshx_client = { path = "./crates/meshx-client" }
 
 [workspace.dependencies]
 anyhow = {version = "1.0.98", default-features = false}

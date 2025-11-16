@@ -69,6 +69,9 @@ enum MeshXCliCommand {
     /// Start a development server for a Wasm component
     #[clap(name = "dev")]
     Dev(meshx::cli::dev::DevCommand),
+    /// Deploy a manifest to MeshX Cloud
+    #[clap(name = "deploy")]
+    Deploy(meshx::cli::deploy::DeployCommand),
     /// Update MeshX to the latest version
     #[clap(name = "update", alias = "upgrade")]
     Update(meshx::cli::update::UpdateCommand),
@@ -94,6 +97,7 @@ impl CliCommand for MeshXCliCommand {
                 Ok(CommandOutput::ok("", None))
             }
             MeshXCliCommand::Dev(cmd) => cmd.handle(ctx).await,
+            MeshXCliCommand::Deploy(cmd) => cmd.handle(ctx).await,
             MeshXCliCommand::Update(cmd) => cmd.handle(ctx).await,
         }
     }
@@ -102,6 +106,7 @@ impl CliCommand for MeshXCliCommand {
         match self {
             MeshXCliCommand::Completion(cmd) => cmd.enable_pre_hook(),
             MeshXCliCommand::Dev(cmd) => cmd.enable_pre_hook(),
+            MeshXCliCommand::Deploy(cmd) => cmd.enable_pre_hook(),
             MeshXCliCommand::Update(cmd) => cmd.enable_pre_hook(),
         }
     }
@@ -109,6 +114,7 @@ impl CliCommand for MeshXCliCommand {
         match self {
             MeshXCliCommand::Completion(cmd) => cmd.enable_post_hook(),
             MeshXCliCommand::Dev(cmd) => cmd.enable_post_hook(),
+            MeshXCliCommand::Deploy(cmd) => cmd.enable_post_hook(),
             MeshXCliCommand::Update(cmd) => cmd.enable_post_hook(),
         }
     }
