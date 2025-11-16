@@ -66,6 +66,12 @@ Run tests for a specific crate:
 cargo test -p your-crate-name
 ```
 
+### Regenerate OpenAPI
+
+```bash
+openapi-generator-cli generate -g rust -o crates/meshx-client -i openapi.yaml --additional-properties=packageName=meshx_client,packageVersion=0.0.1
+```
+
 ### Shared Dependencies
 
 Common dependencies can be defined in the `[workspace.dependencies]` section of the root `Cargo.toml`. Individual crates can then reference these shared dependencies without specifying versions:

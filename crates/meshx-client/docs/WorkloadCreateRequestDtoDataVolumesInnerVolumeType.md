@@ -1,0 +1,12 @@
+# WorkloadCreateRequestDtoDataVolumesInnerVolumeType
+
+## Properties
+
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**host_path** | [**models::WorkloadCreateRequestDtoDataVolumesInnerVolumeTypeAnyOfHostPath**](WorkloadCreateRequestDto_data_volumes_inner_volumeType_anyOf_hostPath.md) |  | 
+**empty_dir** | [**serde_json::Value**](.md) |  | 
+
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+

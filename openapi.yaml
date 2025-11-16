@@ -1,0 +1,693 @@
+
+openapi: 3.1.0
+paths:
+  /hosts:
+    post:
+      operationId: createHost
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHostDTO'
+      responses:
+        '201':
+          description: ''
+      summary: ''
+      tags:
+        - Host
+    get:
+      operationId: listHosts
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Host
+  /hosts/{id}:
+    get:
+      operationId: getHostById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Host
+  /projects:
+    post:
+      operationId: createProject
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      summary: ''
+      tags:
+        - Project
+    get:
+      operationId: listProjects
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Project
+  /hostgroups:
+    post:
+      operationId: createHostgroup
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHostgroupDTO'
+      responses:
+        '201':
+          description: Hostgroup created successfully
+        '400':
+          description: Invalid hostgroup data
+      summary: Create a new hostgroup
+      tags:
+        - Hostgroup
+    get:
+      operationId: listHostgroups
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Hostgroup
+  /hostgroups/{id}:
+    get:
+      operationId: getHostgroupById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Hostgroup
+  /shells:
+    post:
+      operationId: create
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      tags:
+        - Shell
+    get:
+      operationId: getAll
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      tags:
+        - Shell
+  /shells/{id}:
+    get:
+      operationId: getOne
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+      tags:
+        - Shell
+  /organizations:
+    post:
+      operationId: createOrganization
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      summary: ''
+      tags:
+        - Organization
+    get:
+      operationId: listOrganizations
+      parameters: []
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Organization
+  /organizations/{id}:
+    get:
+      operationId: getOrganizationById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Organization
+  /v1/applications:
+    post:
+      operationId: createApplication
+      parameters: []
+      responses:
+        '201':
+          description: ''
+      summary: ''
+      tags:
+        - Application
+    get:
+      operationId: listApplications
+      parameters:
+        - name: projectId
+          required: true
+          in: query
+          description: Filter applications from the given ID.
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Application
+  /v1/workloads:
+    post:
+      operationId: createWorkload
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkloadCreateRequestDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkloadCreateResponseDto_Output'
+      summary: ''
+      tags:
+        - Workload
+    get:
+      operationId: listWorkloads
+      parameters:
+        - name: applicationId
+          required: true
+          in: query
+          description: Filter workloads from the given ID.
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Workload
+  /v1/workloads/{name}:
+    delete:
+      operationId: deleteWorkload
+      parameters:
+        - name: name
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: applicationId
+          required: true
+          in: query
+          description: Filter workloads from the given ID.
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Workload
+  /services:
+    post:
+      operationId: createService
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateServiceDTO'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceDTO_Output'
+      summary: ''
+      tags:
+        - Service
+    get:
+      operationId: listServices
+      parameters: []
+      responses:
+        default:
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceListDTO_Output'
+      summary: ''
+      tags:
+        - Service
+  /services/{id}:
+    get:
+      operationId: getServiceById
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: number
+      responses:
+        '200':
+          description: ''
+      summary: ''
+      tags:
+        - Service
+info:
+  title: MeshX Cloud API
+  description: MeshX Cloud API
+  version: 0.1.0-beta
+  contact:
+    name: The MeshX Team
+    url: https://meshx.co/contact
+    email: hello@meshx.co
+  termsOfService: https://meshx.co/legal/tos
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+tags: []
+servers: []
+components:
+  schemas:
+    CreateHostDTO:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+            project:
+              type: number
+            cpu_count:
+              type: integer
+              minimum: -9007199254740991
+              maximum: 9007199254740991
+            cpu_kind:
+              type: string
+              enum:
+                - burst
+                - dedicated
+            ram_mb:
+              type: integer
+              minimum: -9007199254740991
+              maximum: 9007199254740991
+              multipleOf: 512
+          required:
+            - name
+            - project
+            - cpu_count
+            - cpu_kind
+            - ram_mb
+      required:
+        - data
+    CreateHostgroupDTO:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+            project:
+              type: number
+            instance:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - burst-gen1
+                    - perf-gen1
+                vcpu_count:
+                  type: number
+                  minimum: 1
+                  maximum: 8
+                ram_mib:
+                  type: number
+                  minimum: 256
+                  maximum: 65536
+              required:
+                - type
+                - vcpu_count
+                - ram_mib
+            desired_replicas:
+              type: number
+              minimum: 1
+              maximum: 10
+          required:
+            - name
+            - project
+            - instance
+            - desired_replicas
+      required:
+        - data
+    WorkloadCreateRequestDto:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+            annotations:
+              type: object
+              propertyNames:
+                type: string
+              additionalProperties:
+                type: string
+            service:
+              type: object
+              properties:
+                name:
+                  type: string
+                image:
+                  type: string
+                  format: uri
+                maxRestarts:
+                  type: number
+              required:
+                - name
+                - image
+                - maxRestarts
+            components:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  image:
+                    type: string
+                    format: uri
+                  poolSize:
+                    type: number
+                  maxInvocations:
+                    type: number
+                required:
+                  - name
+                  - image
+                  - poolSize
+                  - maxInvocations
+            hostInterfaces:
+              type: array
+              items:
+                type: object
+                properties:
+                  namespace:
+                    type: string
+                  package:
+                    type: string
+                  interfaces:
+                    type: array
+                    items:
+                      type: string
+                  config:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties:
+                      type: string
+                required:
+                  - namespace
+                  - package
+                  - interfaces
+                  - config
+            volumes:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  volumeType:
+                    anyOf:
+                      - type: object
+                        properties:
+                          hostPath:
+                            type: object
+                            properties:
+                              local_path:
+                                type: string
+                            required:
+                              - local_path
+                        required:
+                          - hostPath
+                      - type: object
+                        properties:
+                          emptyDir:
+                            type: object
+                            properties: {}
+                            additionalProperties: false
+                        required:
+                          - emptyDir
+                required:
+                  - name
+                  - volumeType
+          required:
+            - name
+            - components
+            - hostInterfaces
+      required:
+        - data
+    WorkloadCreateResponseDto_Output:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+            annotations:
+              type: object
+              propertyNames:
+                type: string
+              additionalProperties:
+                type: string
+            service:
+              type: object
+              properties:
+                name:
+                  type: string
+                image:
+                  type: string
+                  format: uri
+                maxRestarts:
+                  type: number
+              required:
+                - name
+                - image
+                - maxRestarts
+              additionalProperties: false
+            components:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  image:
+                    type: string
+                    format: uri
+                  poolSize:
+                    type: number
+                  maxInvocations:
+                    type: number
+                required:
+                  - name
+                  - image
+                  - poolSize
+                  - maxInvocations
+                additionalProperties: false
+            hostInterfaces:
+              type: array
+              items:
+                type: object
+                properties:
+                  namespace:
+                    type: string
+                  package:
+                    type: string
+                  interfaces:
+                    type: array
+                    items:
+                      type: string
+                  config:
+                    type: object
+                    propertyNames:
+                      type: string
+                    additionalProperties:
+                      type: string
+                required:
+                  - namespace
+                  - package
+                  - interfaces
+                  - config
+                additionalProperties: false
+            volumes:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  volumeType:
+                    anyOf:
+                      - type: object
+                        properties:
+                          hostPath:
+                            type: object
+                            properties:
+                              local_path:
+                                type: string
+                            required:
+                              - local_path
+                            additionalProperties: false
+                        required:
+                          - hostPath
+                        additionalProperties: false
+                      - type: object
+                        properties:
+                          emptyDir:
+                            type: object
+                            properties: {}
+                            additionalProperties: false
+                        required:
+                          - emptyDir
+                        additionalProperties: false
+                required:
+                  - name
+                  - volumeType
+                additionalProperties: false
+          required:
+            - name
+            - components
+            - hostInterfaces
+          additionalProperties: false
+      required:
+        - data
+      additionalProperties: false
+    CreateServiceDTO:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            name:
+              type: string
+            project:
+              type: number
+            host:
+              type: string
+            type:
+              type: string
+          required:
+            - name
+            - project
+            - host
+            - type
+      required:
+        - data
+    ServiceDTO_Output:
+      type: object
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date
+          pattern: >-
+            ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        updatedAt:
+          type: string
+          format: date
+          pattern: >-
+            ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+        projectId:
+          type: number
+        hostId:
+          type: string
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+        - projectId
+        - hostId
+      additionalProperties: false
+    ServiceListDTO_Output:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: number
+          name:
+            type: string
+          createdAt:
+            type: string
+            format: date
+            pattern: >-
+              ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          updatedAt:
+            type: string
+            format: date
+            pattern: >-
+              ^(?:(?:\d\d[2468][048]|\d\d[13579][26]|\d\d0[48]|[02468][048]00|[13579][26]00)-02-29|\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\d|30)|(?:02)-(?:0[1-9]|1\d|2[0-8])))$
+          projectId:
+            type: number
+          hostId:
+            type: string
+        required:
+          - id
+          - name
+          - createdAt
+          - updatedAt
+          - projectId
+          - hostId
+        additionalProperties: false
