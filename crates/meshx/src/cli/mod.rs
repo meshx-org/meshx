@@ -1,3 +1,4 @@
+pub mod auth;
 pub mod completion;
 pub mod deploy;
 pub mod dev;
