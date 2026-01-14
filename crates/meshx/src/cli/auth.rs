@@ -244,7 +244,7 @@ async fn handle_logout(ctx: &CliContext) -> anyhow::Result<CommandOutput> {
     ))
 }
 
-async fn handle_whoami(ctx: &CliContext, api_key: &str) -> anyhow::Result<CommandOutput> {
+async fn handle_whoami(ctx: &CliContext, _api_key: &str) -> anyhow::Result<CommandOutput> {
     let token_path = ctx.data_dir().join(TOKEN_FILE);
 
     if !token_path.exists() {
