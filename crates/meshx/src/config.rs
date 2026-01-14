@@ -1,5 +1,5 @@
 //! Contains the [Config] struct and related functions for managing
-//! wash configuration, including loading, saving, and merging configurations
+//! meshx configuration, including loading, saving, and merging configurations
 //! with explicit defaults.
 
 use std::path::{Path, PathBuf};
@@ -14,13 +14,13 @@ use tracing::info;
 
 use crate::cli::CONFIG_FILE_NAME;
 
-pub const PROJECT_CONFIG_DIR: &str = ".wash";
+pub const PROJECT_CONFIG_DIR: &str = ".meshx";
 
-/// Main wash configuration structure with hierarchical merging support and explicit defaults
+/// Main meshx configuration structure with hierarchical merging support and explicit defaults
 ///
 /// The "global" [Config] is stored under the user's XDG_CONFIG_HOME directory
-/// (typically `~/.config/wash/config.json`), while the "local" project configuration
-/// is stored in the project's `.wash/config.json` file. This allows for both reasonable
+/// (typically `~/.config/meshx/config.json`), while the "local" project configuration
+/// is stored in the project's `.meshx/config.json` file. This allows for both reasonable
 /// global defaults and project-specific overrides.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
@@ -38,9 +38,9 @@ impl Config {
 /// Load configuration with hierarchical merging
 /// Order of precedence (lowest to highest):
 /// 1. Default values
-/// 2. Global config (~/.wash/config.json)
-/// 3. Local project config (.wash/config.json)
-/// 4. Environment variables (WASH_ prefix)
+/// 2. Global config (~/.meshx/config.json)
+/// 3. Local project config (.meshx/config.json)
+/// 4. Environment variables (MESHX_ prefix)
 /// 5. Command line arguments
 ///
 /// # Arguments
@@ -71,8 +71,8 @@ where
         }
     }
 
-    // Environment variables with WASH_ prefix
-    figment = figment.merge(Env::prefixed("WASH_"));
+    // Environment variables with MESHX_ prefix
+    figment = figment.merge(Env::prefixed("MESHX_"));
 
     // TODO(#16): There's more testing to be done here to ensure that CLI args can override existing
     // config without replacing present values with empty values.
@@ -84,7 +84,7 @@ where
 
     figment
         .extract()
-        .context("Failed to load wash configuration")
+        .context("Failed to load meshx configuration")
 }
 
 /// Save configuration to specified path
@@ -113,7 +113,7 @@ pub async fn generate_project_config<T>(project_dir: &Path, build_args: T) -> Re
 where
     T: Serialize,
 {
-    let config_dir = project_dir.join(".wash");
+    let config_dir = project_dir.join(".meshx");
     let config_path = config_dir.join("config.json");
 
     // Don't overwrite existing config
@@ -137,11 +137,11 @@ where
 
 /// Get the local project configuration file path
 pub fn local_config_path(project_dir: &Path) -> PathBuf {
-    project_dir.join(".wash").join(CONFIG_FILE_NAME)
+    project_dir.join(".meshx").join(CONFIG_FILE_NAME)
 }
 
 /// Generate a default configuration file with all explicit defaults
-/// This is useful for `wash config init` command
+/// This is useful for `meshx config init` command
 pub async fn generate_default_config(
     path: &Path,
     force: bool,

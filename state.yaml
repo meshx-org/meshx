@@ -4,18 +4,28 @@ metadata:
   annotations:
     meshx.cloud/app: demo-app
 workloads:
-  - name: hello-world
+  hello-world: 
     namespace: default
-    world:
-      components:
-        - name: http-component
-          image: oci://ghcr.io/bytecodealliance/sample-wasi-http-rust/sample-wasi-http-rust:latest
-          poolSize: 10
-          maxInvocations: 1000
-      hostInterfaces:
-        - namespace: wasi
-          package: http
-          interfaces:
-            - incoming-handler
-          config:
-            address: "0.0.0.0:8080"
+    components:
+      - name: http-component
+        image: oci://ghcr.io/bytecodealliance/sample-wasi-http-rust/sample-wasi-http-rust:latest
+        poolSize: 10
+        maxInvocations: 1000
+    hostInterfaces:
+      - namespace: wasi
+        package: http
+        interfaces:
+          - incoming-handler
+        config:
+          address: "0.0.0.0:8080"
+      - namespace: wasi
+        package: keyvalue
+        interfaces:
+          - store@0.2.0-draft2
+        config:
+          resource-id: "${resources.store.resource-id}"
+resources:
+  dns:
+    type: dns
+  store:
+    type: kv

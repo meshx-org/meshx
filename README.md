@@ -1,85 +1,70 @@
-# MeshX
+<br>
+<br>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/meshx_cli_logo_dark.svg">
+    <img width="500" alt="MeshX CLI logo" src="docs/meshx_cli_logo_light.svg">
+  </picture>
+</p>
 
+<br>
+
+<p align="center">
+  Build wasm components then deploy and manage them on MeshX Cloud
+</p>
+
+<br>
+
+<div align="center">
+
+[![License](https://img.shields.io/github/license/meshx-org/meshx)](LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/meshx-org/meshx)](https://github.com/meshx-org/meshx)
 [![Maintenance Status](https://img.shields.io/badge/maintenance-actively--developed-brightgreen.svg)](https://github.com/meshx-org/meshx)
+[![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)](https://www.rust-lang.org)
+[![Cargo](https://img.shields.io/badge/cargo-latest-blue.svg)](https://crates.io)
+</div>
 
-> **Status**: This project is actively maintained and under active development.
+<p align="center">
+  <strong>⚠️ Highly WIP - Broken builds on main are common</strong>
+</p>
 
-A Rust workspace for MeshX projects.
+<br>
+<hr />
+<br>
 
-## Workspace Structure
+The `meshx` CLI is a terminal wrapper around MeshX Cloud, designed to simplify interacting with MeshX Cloud's services from your terminal. It streamlines Wasm component development, deployment, and management by providing direct access to MeshX Cloud features in a familiar command-line interface.
 
-This repository is organized as a Rust workspace with the following structure:
+## Features
 
-```text
-meshx/
-├── Cargo.toml          # Workspace configuration
-├── crates/             # Individual crates/projects
-│   └── (your crates here)
-└── README.md
-```
+To be updated...
 
-## Getting Started
+## Installation
 
-### Creating a New Crate
-
-To add a new crate to the workspace:
-
-```bash
-cd crates
-cargo new your-crate-name
-```
-
-Or for a library:
+### From Source
 
 ```bash
-cd crates
-cargo new --lib your-crate-name
+git clone https://github.com/meshx-org/meshx.git
+cd meshx
+cargo install --path .
 ```
 
-The workspace is configured to automatically include all crates in the `crates/` directory.
+## Commands
 
-### Building
+| Command            | Description                                                    |
+| ------------------ | -------------------------------------------------------------- |
+| `meshx auth`       | Authenticate with MeshX ID                                     |
+| `meshx completion` | Generate shell completions                                     |
+| `meshx dev`        | Start a development server for a Wasm component                |
+| `meshx deploy`     | Deploy a manifest to MeshX Cloud                               |
+| `meshx new`        | Create a new project from a template or git repository         |
+| `meshx update`     | Update MeshX to the latest version                             |
 
-Build all crates in the workspace:
+_Run `meshx --help` or `meshx <command> --help` for detailed usage information._
 
-```bash
-cargo build
-```
-
-Build a specific crate:
-
-```bash
-cargo build -p your-crate-name
-```
-
-### Testing
-
-Run tests for all crates:
-
-```bash
-cargo test
-```
-
-Run tests for a specific crate:
-
-```bash
-cargo test -p your-crate-name
-```
-
-### Regenerate OpenAPI
+## Regenerate Cloud OpenAPI
 
 ```bash
 openapi-generator-cli generate -g rust -o crates/meshx-client -i openapi.yaml --additional-properties=packageName=meshx_client,packageVersion=<version-here>
-```
-
-### Shared Dependencies
-
-Common dependencies can be defined in the `[workspace.dependencies]` section of the root `Cargo.toml`. Individual crates can then reference these shared dependencies without specifying versions:
-
-```toml
-# In crates/your-crate/Cargo.toml
-[dependencies]
-tokio = { workspace = true }
 ```
 
 ## Attribution

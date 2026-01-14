@@ -104,7 +104,7 @@ impl std::fmt::Display for OutputParseErr {
     }
 }
 
-/// The final output for a wash CLI command
+/// The final output for a meshx CLI command
 #[derive(Debug, Clone, Serialize)]
 pub struct CommandOutput {
     /// The message to display to the user
@@ -258,7 +258,7 @@ impl DirectoryStrategy for Windows {
     }
 }
 
-/// CliContext holds the global context for the wash CLI, including output kind and directories
+/// CliContext holds the global context for the meshx CLI, including output kind and directories
 ///
 /// It is used to manage configuration, data, and cache directories based on the XDG Base Directory Specification,
 /// or a custom configuration if needed.
@@ -322,7 +322,7 @@ impl CliContextBuilder {
         } else {
             debug!(
                 dir = ?app_strategy.cache_dir(),
-                "creating cache directory for wash CLI"
+                "creating cache directory for meshx CLI"
             );
             tokio::fs::create_dir_all(app_strategy.cache_dir())
                 .await
@@ -337,7 +337,7 @@ impl CliContextBuilder {
         } else {
             debug!(
                 dir = ?app_strategy.config_dir(),
-                "creating config directory for wash CLI"
+                "creating config directory for meshx CLI"
             );
             tokio::fs::create_dir_all(app_strategy.config_dir())
                 .await
@@ -358,7 +358,7 @@ impl CliContext {
 
     #[instrument(level = "debug", skip(self))]
     pub async fn check_new_version(&self) -> anyhow::Result<bool> {
-        debug!("checking for new version of wash");
+        debug!("checking for new version of meshx");
 
         let new_version_available = self.app_strategy.in_cache_dir("new_version_available.txt");
         if new_version_available.exists() {
@@ -382,7 +382,7 @@ impl CliContext {
             trace!(?release, "fetched latest release from GitHub");
             let tagged_version = release
                 .tag_name
-                .strip_prefix("wash-v")
+                .strip_prefix("meshx-v")
                 .unwrap_or(&release.tag_name);
 
             debug!(ver = ?tagged_version, "determined tagged version");
@@ -409,7 +409,7 @@ impl CliContext {
         self.app_strategy.in_config_dir(CONFIG_FILE_NAME)
     }
 
-    /// Fetches the wash configuration from the config file located in the XDG config directory,
+    /// Fetches the meshx configuration from the config file located in the XDG config directory,
     /// creating it with default values if it does not exist.
     pub async fn ensure_config(&self, project_dir: Option<&Path>) -> anyhow::Result<Config> {
         let config_path = self.config_path();
