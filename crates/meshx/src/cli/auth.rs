@@ -21,14 +21,22 @@ pub struct AuthCommand {
 enum AuthSubcommand {
     /// Authenticate with MeshX Cloud using device flow
     Login {
-        #[clap(short = 'k', long = "api-key", help = "API key for authentication server")]
+        #[clap(
+            short = 'k',
+            long = "api-key",
+            help = "API key for authentication server"
+        )]
         api_key: String,
     },
     /// Log out from MeshX Cloud
     Logout,
     /// Display information about the currently authenticated user
     Whoami {
-        #[clap(short = 'k', long = "api-key", help = "API key for authentication server")]
+        #[clap(
+            short = 'k',
+            long = "api-key",
+            help = "API key for authentication server"
+        )]
         api_key: String,
     },
 }
@@ -89,31 +97,40 @@ async fn handle_login(ctx: &CliContext, api_key: &str) -> anyhow::Result<Command
     let response = client
         .post(format!("{}/api/auth/device/code", AUTH_SERVER))
         .header("x-api-key", api_key)
-        .form(&[
-            ("client_id", "test"),
-            ("scope", "openid profile email"),
-        ])
+        .form(&[("client_id", "test"), ("scope", "openid profile email")])
         .send()
         .await
         .context("Failed to request device code")?;
 
     if !response.status().is_success() {
         let status = response.status();
-        let error_text = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         return Ok(CommandOutput::error(
-            format!("Authentication server returned error ({}): {}", status, error_text),
+            format!(
+                "Authentication server returned error ({}): {}",
+                status, error_text
+            ),
             Some(serde_json::json!({
                 "status": status.as_u16(),
                 "error": error_text
-            }))
+            })),
         ));
     }
 
-    let response_text = response.text().await.context("Failed to read response body")?;
+    let response_text = response
+        .text()
+        .await
+        .context("Failed to read response body")?;
     debug!("Device code response: {}", response_text);
 
-    let device_response: DeviceCodeResponse = serde_json::from_str(&response_text)
-        .context(format!("Failed to parse device code response. Server returned: {}", response_text))?;
+    let device_response: DeviceCodeResponse =
+        serde_json::from_str(&response_text).context(format!(
+            "Failed to parse device code response. Server returned: {}",
+            response_text
+        ))?;
 
     // Step 2: Display instructions to user
     let message = format!(
@@ -191,8 +208,8 @@ async fn handle_login(ctx: &CliContext, api_key: &str) -> anyhow::Result<Command
     };
 
     let token_path = ctx.data_dir().join(TOKEN_FILE);
-    let token_json = serde_json::to_string_pretty(&stored_token)
-        .context("Failed to serialize token")?;
+    let token_json =
+        serde_json::to_string_pretty(&stored_token).context("Failed to serialize token")?;
 
     tokio::fs::write(&token_path, token_json)
         .await
@@ -212,10 +229,7 @@ async fn handle_logout(ctx: &CliContext) -> anyhow::Result<CommandOutput> {
     let token_path = ctx.data_dir().join(TOKEN_FILE);
 
     if !token_path.exists() {
-        return Ok(CommandOutput::error(
-            "Not currently logged in",
-            None,
-        ));
+        return Ok(CommandOutput::error("Not currently logged in", None));
     }
 
     tokio::fs::remove_file(&token_path)
@@ -224,7 +238,10 @@ async fn handle_logout(ctx: &CliContext) -> anyhow::Result<CommandOutput> {
 
     info!("Logged out successfully");
 
-    Ok(CommandOutput::ok("Successfully logged out from MeshX Cloud", None))
+    Ok(CommandOutput::ok(
+        "Successfully logged out from MeshX Cloud",
+        None,
+    ))
 }
 
 async fn handle_whoami(ctx: &CliContext, api_key: &str) -> anyhow::Result<CommandOutput> {
@@ -241,8 +258,8 @@ async fn handle_whoami(ctx: &CliContext, api_key: &str) -> anyhow::Result<Comman
         .await
         .context("Failed to read token file")?;
 
-    let stored_token: StoredToken = serde_json::from_str(&token_json)
-        .context("Failed to parse token file")?;
+    let stored_token: StoredToken =
+        serde_json::from_str(&token_json).context("Failed to parse token file")?;
 
     // Check if token is expired
     let current_time = std::time::SystemTime::now()
