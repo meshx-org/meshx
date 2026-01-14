@@ -5,6 +5,6 @@ pub const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Command line interface implementations for meshx
 pub mod cli;
-/// Configuration management for wash
+/// Configuration management for meshx
 pub mod config;
 pub mod types;

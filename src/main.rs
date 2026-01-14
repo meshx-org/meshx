@@ -63,6 +63,9 @@ struct Cli {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Subcommand)]
 enum MeshXCliCommand {
+    /// Authenticate with MeshX ID
+    #[clap(name = "auth")]
+    Auth(meshx::cli::auth::AuthCommand),
     /// Generate shell completions
     #[clap(name = "completion")]
     Completion(meshx::cli::completion::CompletionCommand),
@@ -82,6 +85,7 @@ impl CliCommand for MeshXCliCommand {
     #[instrument(level = "debug", skip_all, name = "meshx")]
     async fn handle(&self, ctx: &CliContext) -> anyhow::Result<CommandOutput> {
         match self {
+            MeshXCliCommand::Auth(cmd) => cmd.handle(ctx).await,
             MeshXCliCommand::Completion(cmd) => {
                 // Handle completion generation directly here since we need access to the full CLI
                 let mut meshx_cmd = Cli::command();
@@ -104,6 +108,7 @@ impl CliCommand for MeshXCliCommand {
 
     fn enable_pre_hook(&self) -> Option<()> {
         match self {
+            MeshXCliCommand::Auth(cmd) => cmd.enable_pre_hook(),
             MeshXCliCommand::Completion(cmd) => cmd.enable_pre_hook(),
             MeshXCliCommand::Dev(cmd) => cmd.enable_pre_hook(),
             MeshXCliCommand::Deploy(cmd) => cmd.enable_pre_hook(),
@@ -112,6 +117,7 @@ impl CliCommand for MeshXCliCommand {
     }
     fn enable_post_hook(&self) -> Option<()> {
         match self {
+            MeshXCliCommand::Auth(cmd) => cmd.enable_post_hook(),
             MeshXCliCommand::Completion(cmd) => cmd.enable_post_hook(),
             MeshXCliCommand::Dev(cmd) => cmd.enable_post_hook(),
             MeshXCliCommand::Deploy(cmd) => cmd.enable_post_hook(),

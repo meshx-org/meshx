@@ -132,8 +132,8 @@ pub trait CliCommand {
 - **Hierarchical configuration** using Figment:
   1. Default values
   2. Global config (`~/.config/meshx/config.json`)
-  3. Local project config (`.wash/config.json`)
-  4. Environment variables (`WASH_` prefix)
+  3. Local project config (`.meshx/config.json`)
+  4. Environment variables (`MESHX_` prefix)
   5. Command line arguments
 - XDG Base Directory Specification compliance (Linux/macOS)
 - Windows-specific directory handling via `etcetera`

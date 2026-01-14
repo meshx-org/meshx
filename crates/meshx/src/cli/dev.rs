@@ -35,7 +35,7 @@ pub struct DevCommand {
     pub address: String,
 
     // TODO: filesystem root?
-    /// The root directory for the blobstore to use for `wasi:blobstore/blobstore`. Defaults to a subfolder in the wash data directory.
+    /// The root directory for the blobstore to use for `wasi:blobstore/blobstore`. Defaults to a subfolder in the meshx data directory.
     #[clap(long = "blobstore-root")]
     pub blobstore_root: Option<PathBuf>,
 
