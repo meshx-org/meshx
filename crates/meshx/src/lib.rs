@@ -7,4 +7,9 @@ pub const CARGO_PKG_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub mod cli;
 /// Configuration management for meshx
 pub mod config;
-pub mod types;
+/// Create new meshx projects
+pub mod new;
+/// Types for meshx
+pub(crate) mod types;
+/// Manage WebAssembly Interface Types (WIT) for meshx components
+pub(crate) mod wit;

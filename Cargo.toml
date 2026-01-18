@@ -1,20 +1,28 @@
 [package]
-authors = ["The MeshX Team"]
+name = "meshx"
 categories = ["meshx", "command-line-utilities"]
 description = "The MeshX Shell (meshx) for developing and deploying Wasm components"
-edition = "2024"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
 keywords = ["webassembly", "wasm", "component", "meshx", "cli"]
-license = "Apache-2.0"
-name = "meshx"
 readme = "README.md"
-repository = "https://github.com/meshx-org/meshx"
-version = "0.0.1"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
 
 [workspace]
 members = [
   #"crates/meshlet",
+  "crates/meshx-plugins",
   "crates/meshx-client",
 ]
+package.authors = ["The MeshX Team"]
+package.edition = "2024"
+package.rust-version = "1.91.0"
+package.version = "0.0.1"
+package.license = "Apache-2.0"
+package.repository = "https://github.com/meshx-org/meshx"
 resolver = "2"
 
 [lib]
@@ -36,17 +44,31 @@ clap_complete = {workspace = true}
 ctrlc = {workspace = true}
 dialoguer = {workspace = true, features = ["editor", "password", "zeroize", "fuzzy-select", "fuzzy-matcher"]}
 etcetera = {workspace = true}
-figment = {workspace = true, features = ["json", "env"]}
+figment = {workspace = true, features = ["json", "env", "yaml", "toml"]}
+flate2 = {workspace = true}
+meshx_client = {path = "./crates/meshx-client", default-features = false, features = ["rustls-tls"]}
+meshx_plugins = {path = "./crates/meshx-plugins", default-features = false}
 reqwest = {workspace = true, features = ["json", "rustls-tls"]}
 semver = {workspace = true}
 serde = {workspace = true, features = ["derive"]}
 serde_json = {workspace = true, features = ["std"]}
 serde_yaml = {workspace = true}
+serde_yaml_ng = {workspace = true}
+tar = {workspace = true}
+tempfile = {workspace = true}
 tokio = {workspace = true, features = ["full"]}
 tracing = {workspace = true, features = ["attributes"]}
 tracing-subscriber = {workspace = true, features = ["env-filter", "ansi", "time", "json"]}
+url = {workspace = true}
+wash-runtime = {workspace = true, features = ["washlet", "oci", "wasi-config", "wasi-logging", "wasi-blobstore", "wasi-keyvalue"]}
+wasm-pkg-client = {workspace = true}
+wasm-pkg-core = {workspace = true}
+which = {workspace = true}
+
+# Enable WebGPU support on non-Windows platforms
+# WebGPU is disabled on Windows due to dependency version conflicts with the windows crate
+[target.'cfg(not(target_os = "windows"))'.dependencies]
 wash-runtime = {workspace = true, features = ["wasi-webgpu"]}
-meshx_client = { path = "./crates/meshx-client", default-features = false, features = ["rustls-tls"] }
 
 [workspace.dependencies]
 anyhow = {version = "1.0.98", default-features = false}
@@ -57,15 +79,35 @@ ctrlc = {version = "3.4.7", default-features = false}
 dialoguer = {version = "0.11.0", default-features = false, features = ["editor", "password", "zeroize", "fuzzy-select", "fuzzy-matcher"]}
 etcetera = {version = "0.10.0", default-features = false}
 figment = {version = "0.10.19", default-features = false}
+flate2 = {version = "1.1.8", default-features = false}
 reqwest = {version = "0.12.20", default-features = false, features = ["json", "rustls-tls"]}
 semver = {version = "1.0.26", default-features = false}
 serde = {version = "1.0.219", default-features = false}
 serde_json = {version = "1.0.140", default-features = false}
 serde_yaml = {version = "0.9.34-deprecated", default-features = false}
-tokio = {version = "1.45.1", default-features = false, features = ["full"]}
-tracing = {version = "0.1.41", default-features = false, features = ["attributes"]}
+serde_yaml_ng = {version = "0.9", default-features = false}
+tar = {version = "0.4.38", default-features = false}
+tempfile = {version = "3.24.0", default-features = false}
+tokio = {version = "1.49.0", default-features = false, features = ["full"]}
+tracing = {version = "0.1.44", default-features = false, features = ["attributes"]}
 tracing-subscriber = {version = "0.3.19", default-features = false, features = ["env-filter", "ansi", "time", "json"]}
-wash-runtime = {git = "https://github.com/wasmCloud/wash.git", rev = "89c09ac"}
+url = {version = "2.5.8", default-features = false}
+wash-runtime = {git = "https://github.com/wasmCloud/wash.git", branch = "main"}
+wasm-pkg-client = {version = "0.10.0", default-features = false}
+wasm-pkg-core = {version = "0.10.0", default-features = false}
+which = {version = "8.0.0", default-features = false, features = ["real-sys"]}
+wasmtime = { version = "38", default-features = false }
+async-trait = { version = "0.1.89", default-features = false }
+
+[workspace.metadata.cargo-machete]
+ignored = [
+  # Used in build.rs
+  "pbjson",
+  "pbjson-types",
+  "serde", # Used for protos
+  "tonic",
+  "tonic-prost",
+]
 
 [package.metadata.binstall]
 pkg-fmt = "bin"

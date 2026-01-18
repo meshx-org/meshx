@@ -1,0 +1,7 @@
+package meshx:runtime@0.1.0;
+
+world logging {
+    import wasi:logging/logging@0.1.0-draft;
+}
+
+  

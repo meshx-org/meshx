@@ -1,7 +1,11 @@
 pub mod auth;
 pub mod completion;
+pub mod component_build;
+pub mod config;
 pub mod deploy;
 pub mod dev;
+pub mod doctor;
+pub mod new;
 pub mod update;
 
 use etcetera::{
@@ -18,7 +22,9 @@ use std::{
 use crate::{
     CARGO_PKG_VERSION,
     cli::update::fetch_latest_release_public,
-    config::{Config, generate_default_config, load_config},
+    config::{
+        Config, generate_default_config, load_config, locate_project_config, locate_user_config,
+    },
 };
 
 use anyhow::Context as _;
@@ -26,7 +32,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{debug, instrument, trace};
 
-pub const CONFIG_FILE_NAME: &str = "config.json";
+pub const CONFIG_FILE_NAME: &str = "config.yaml";
+pub const CONFIG_DIR_NAME: &str = ".meshx";
+
+pub const VALID_CONFIG_FILES: [&str; 4] =
+    ["config.yaml", "config.yml", "config.json", "config.toml"];
 
 /// A trait that defines the interface for all CLI commands
 pub trait CliCommand {
@@ -266,6 +276,10 @@ impl DirectoryStrategy for Windows {
 pub struct CliContext {
     /// Application strategy to access configuration directories.
     app_strategy: Arc<dyn DirectoryStrategy>,
+    // path to global config. Usually inside XDG config dir
+    config: Option<PathBuf>,
+    // path to project dir. Usually current working dir
+    project_dir: PathBuf,
 }
 
 impl Deref for CliContext {
@@ -280,6 +294,8 @@ impl Deref for CliContext {
 #[derive(Default)]
 pub struct CliContextBuilder {
     non_interactive: bool,
+    config: Option<PathBuf>,
+    project_dir: Option<PathBuf>,
 }
 
 impl CliContextBuilder {
@@ -288,12 +304,22 @@ impl CliContextBuilder {
         self
     }
 
+    pub fn config(mut self, config: PathBuf) -> Self {
+        self.config = Some(config);
+        self
+    }
+
+    pub fn project_dir(mut self, project_dir: PathBuf) -> Self {
+        self.project_dir = Some(project_dir);
+        self
+    }
+
     /// Build the CliContext
     pub async fn build(self) -> anyhow::Result<CliContext> {
         let app_strategy: Arc<dyn DirectoryStrategy> = Arc::new(
             choose_app_strategy(AppStrategyArgs {
                 top_level_domain: "com.meshx".to_string(),
-                author: "meshx.co".to_string(),
+                author: "MeshX Team".to_string(),
                 app_name: "meshx".to_string(),
             })
             .context("failed to to determine file system strategy")?,
@@ -344,7 +370,19 @@ impl CliContextBuilder {
                 .context("failed to create config directory")?;
         }
 
-        let ctx = CliContext { app_strategy };
+        let project_dir = match &self.project_dir {
+            Some(dir) => dir.clone(),
+            None => std::env::current_dir()?,
+        };
+
+        // Change working directory to project path
+        std::env::set_current_dir(&project_dir).context("failed to open project directory")?;
+
+        let ctx = CliContext {
+            app_strategy,
+            project_dir,
+            config: self.config,
+        };
 
         Ok(ctx)
     }
@@ -405,14 +443,37 @@ impl CliContext {
         Ok(false)
     }
 
-    pub fn config_path(&self) -> std::path::PathBuf {
-        self.app_strategy.in_config_dir(CONFIG_FILE_NAME)
+    pub fn user_config_path(&self) -> std::path::PathBuf {
+        if let Some(config) = &self.config {
+            return config.clone();
+        }
+
+        locate_user_config(&self.config_dir())
+    }
+
+    pub fn project_dir(&self) -> &PathBuf {
+        &self.project_dir
+    }
+
+    pub fn project_config_path(&self) -> PathBuf {
+        locate_project_config(self.project_dir())
+    }
+
+    pub fn load_config<T>(&self, overrides: Option<T>) -> anyhow::Result<Config>
+    where
+        T: Serialize + Into<Config>,
+    {
+        load_config(
+            &self.user_config_path(),
+            Some(self.project_dir()),
+            overrides,
+        )
     }
 
     /// Fetches the meshx configuration from the config file located in the XDG config directory,
     /// creating it with default values if it does not exist.
     pub async fn ensure_config(&self, project_dir: Option<&Path>) -> anyhow::Result<Config> {
-        let config_path = self.config_path();
+        let config_path = self.user_config_path();
 
         // Check if the config file exists, if not create it with defaults
         if !config_path.exists() {
@@ -420,10 +481,10 @@ impl CliContext {
                 ?config_path,
                 "config file not found, creating with defaults"
             );
-            generate_default_config(&config_path, false, true).await?;
+            generate_default_config(&config_path, false).await?;
         }
 
         // Load the configuration using the hierarchical configuration system
-        load_config(&self.config_path(), project_dir, None::<Config>)
+        load_config(&self.user_config_path(), project_dir, None::<Config>)
     }
 }

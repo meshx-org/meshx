@@ -1,11 +1,14 @@
 use std::io::{BufWriter, IsTerminal};
+use std::path::PathBuf;
 
 use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 use clap_complete::generate;
 use tracing::{Level, error, info, instrument, trace, warn};
 use tracing_subscriber::{EnvFilter, Registry, layer::SubscriberExt, util::SubscriberInitExt};
 
-use meshx::cli::{CliCommand, CliCommandExt, CliContext, CommandOutput, OutputKind};
+use meshx::cli::{
+    CONFIG_DIR_NAME, CliCommand, CliCommandExt, CliContext, CommandOutput, OutputKind,
+};
 
 #[derive(Debug, Clone, Parser)]
 #[clap(
@@ -55,6 +58,17 @@ struct Cli {
     )]
     non_interactive: bool,
 
+    #[clap(
+        long = "user-config",
+        help = "Path to user configuration file.",
+        global = true
+    )]
+    user_config: Option<PathBuf>,
+
+    /// Path to the project directory
+    #[clap(short = 'C', default_value = find_project_root().into_os_string())]
+    project_path: PathBuf,
+
     #[clap(subcommand)]
     command: Option<MeshXCliCommand>,
 }
@@ -66,15 +80,27 @@ enum MeshXCliCommand {
     /// Authenticate with MeshX ID
     #[clap(name = "auth")]
     Auth(meshx::cli::auth::AuthCommand),
+    /// Build a Wasm component
+    #[clap(name = "build")]
+    Build(meshx::cli::component_build::ComponentBuildCommand),
     /// Generate shell completions
     #[clap(name = "completion")]
     Completion(meshx::cli::completion::CompletionCommand),
+    /// View configuration for meshx
+    #[clap(name = "config", subcommand)]
+    Config(meshx::cli::config::ConfigCommand),
     /// Start a development server for a Wasm component
     #[clap(name = "dev")]
     Dev(meshx::cli::dev::DevCommand),
     /// Deploy a manifest to MeshX Cloud
     #[clap(name = "deploy")]
     Deploy(meshx::cli::deploy::DeployCommand),
+    /// Check the health of your meshx installation and environment
+    #[clap(name = "doctor")]
+    Doctor(meshx::cli::doctor::DoctorCommand),
+    /// Create a new project from a template or git repository
+    #[clap(name = "new")]
+    New(meshx::cli::new::NewCommand),
     /// Update MeshX to the latest version
     #[clap(name = "update", alias = "upgrade")]
     Update(meshx::cli::update::UpdateCommand),
@@ -103,6 +129,10 @@ impl CliCommand for MeshXCliCommand {
             MeshXCliCommand::Dev(cmd) => cmd.handle(ctx).await,
             MeshXCliCommand::Deploy(cmd) => cmd.handle(ctx).await,
             MeshXCliCommand::Update(cmd) => cmd.handle(ctx).await,
+            MeshXCliCommand::Build(cmd) => cmd.handle(ctx).await,
+            MeshXCliCommand::New(cmd) => cmd.handle(ctx).await,
+            MeshXCliCommand::Doctor(cmd) => cmd.handle(ctx).await,
+            MeshXCliCommand::Config(cmd) => cmd.handle(ctx).await,
         }
     }
 
@@ -113,8 +143,13 @@ impl CliCommand for MeshXCliCommand {
             MeshXCliCommand::Dev(cmd) => cmd.enable_pre_hook(),
             MeshXCliCommand::Deploy(cmd) => cmd.enable_pre_hook(),
             MeshXCliCommand::Update(cmd) => cmd.enable_pre_hook(),
+            MeshXCliCommand::Build(cmd) => cmd.enable_pre_hook(),
+            MeshXCliCommand::New(cmd) => cmd.enable_pre_hook(),
+            MeshXCliCommand::Doctor(cmd) => cmd.enable_pre_hook(),
+            MeshXCliCommand::Config(cmd) => cmd.enable_pre_hook(),
         }
     }
+
     fn enable_post_hook(&self) -> Option<()> {
         match self {
             MeshXCliCommand::Auth(cmd) => cmd.enable_post_hook(),
@@ -122,6 +157,10 @@ impl CliCommand for MeshXCliCommand {
             MeshXCliCommand::Dev(cmd) => cmd.enable_post_hook(),
             MeshXCliCommand::Deploy(cmd) => cmd.enable_post_hook(),
             MeshXCliCommand::Update(cmd) => cmd.enable_post_hook(),
+            MeshXCliCommand::Build(cmd) => cmd.enable_post_hook(),
+            MeshXCliCommand::New(cmd) => cmd.enable_post_hook(),
+            MeshXCliCommand::Doctor(cmd) => cmd.enable_post_hook(),
+            MeshXCliCommand::Config(cmd) => cmd.enable_post_hook(),
         }
     }
 }
@@ -150,7 +189,7 @@ async fn main() {
             let (mut stdout, _stderr) = initialize_tracing(cli.log_level, cli.verbose);
             exit_with_output(
                 &mut stdout,
-                CommandOutput::error(format!("{e:?}"), None).with_output_kind(cli.output),
+                CommandOutput::error(format!("{e:#}"), None).with_output_kind(cli.output),
             );
         }
     };
@@ -211,9 +250,8 @@ async fn main() {
         &mut stdout_buf,
         command_output
             .unwrap_or_else(|e| {
-                // NOTE: This format!() invocation specifically outputs the anyhow backtrace, which is why
-                // it's used over a `.to_string()` call.
-                CommandOutput::error(format!("{e:?}"), None).with_output_kind(cli.output)
+                // Use {e:#} to show the error chain without the backtrace
+                CommandOutput::error(format!("{e:#}"), None).with_output_kind(cli.output)
             })
             .with_output_kind(cli.output),
     )
@@ -293,7 +331,8 @@ fn initialize_tracing(
             .with_level(true)
             .with_file(false)
             .with_line_number(false)
-            .with_ansi(true);
+            .with_ansi(true)
+            .without_time();
 
         // Register all layers with the subscriber
         Registry::default().with(env_filter).with(fmt_layer).init();
@@ -312,4 +351,26 @@ fn exit_with_output(stdout: &mut impl std::io::Write, output: CommandOutput) -> 
     } else {
         std::process::exit(1);
     }
+}
+
+fn find_project_root() -> PathBuf {
+    let fallback = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let mut current_dir = match fallback.canonicalize() {
+        Ok(dir) => dir,
+        Err(_) => return fallback,
+    };
+
+    loop {
+        if current_dir.join(CONFIG_DIR_NAME).exists() {
+            return current_dir;
+        }
+
+        if let Some(parent) = current_dir.parent() {
+            current_dir = parent.to_path_buf();
+        } else {
+            break;
+        }
+    }
+
+    fallback
 }

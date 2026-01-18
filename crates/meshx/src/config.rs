@@ -2,44 +2,176 @@
 //! meshx configuration, including loading, saving, and merging configurations
 //! with explicit defaults.
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Context, Result, bail};
 use figment::{
     Figment,
-    providers::{Env, Format, Json},
+    providers::{Env, Format, Json, Toml, Yaml},
 };
 use serde::{Deserialize, Serialize};
 use tracing::info;
+use wash_runtime::wit::WitInterface;
 
-use crate::cli::CONFIG_FILE_NAME;
-
-pub const PROJECT_CONFIG_DIR: &str = ".meshx";
+use crate::{
+    cli::{CONFIG_DIR_NAME, CONFIG_FILE_NAME, VALID_CONFIG_FILES},
+    wit::WitConfig,
+};
 
 /// Main meshx configuration structure with hierarchical merging support and explicit defaults
 ///
 /// The "global" [Config] is stored under the user's XDG_CONFIG_HOME directory
-/// (typically `~/.config/meshx/config.json`), while the "local" project configuration
-/// is stored in the project's `.meshx/config.json` file. This allows for both reasonable
+/// (typically `~/.config/meshx/config.yaml`), while the "local" project configuration
+/// is stored in the project's `.meshx/config.yaml` file. This allows for both reasonable
 /// global defaults and project-specific overrides.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    /// Version of the configuration schema (default: current Cargo package version)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    /// Build configuration for different project types (default: empty/optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub build: Option<BuildConfig>,
+
+    /// MeshX dev configuration (default: empty/optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dev: Option<DevConfig>,
+
+    /// WIT dependency management configuration (default: empty/optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wit: Option<WitConfig>,
     // TODO(#15): Support dev config which can be overridden in local project config
     // e.g. for runtime config, http ports, etc
 }
 
-impl Config {
-    /// Create a new [Config] instance with default values and the list of MeshX templates
-    pub fn default_with_templates() -> Self {
-        Self {}
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            version: Some(env!("CARGO_PKG_VERSION").to_string()),
+            build: None,
+            dev: None,
+            wit: None,
+        }
     }
+}
+
+impl Config {
+    /// Get the WIT directory from the configuration, defaulting to "./wit" if not set
+    pub fn wit_dir(&self) -> PathBuf {
+        if let Some(wit_config) = &self.wit
+            && let Some(wit_dir) = &wit_config.wit_dir
+        {
+            return wit_dir.clone();
+        }
+        PathBuf::from("wit")
+    }
+
+    /// Get the development configuration, defaulting to [DevConfig::default()] if not set
+    pub fn dev(&self) -> DevConfig {
+        self.dev.clone().unwrap_or_default()
+    }
+
+    pub fn build(&self) -> BuildConfig {
+        self.build.clone().unwrap_or_default()
+    }
+}
+
+/// Configuration for building WebAssembly components
+///
+/// # Example
+///
+/// ```yaml
+/// build:
+///   command: cargo build --target wasm32-wasip2 --release
+///   component_path: target/wasm32-wasip2/release/my_component.wasm
+/// ```
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct BuildConfig {
+    /// Command to build the component
+    pub command: Option<String>,
+    /// Environment variables to set when running the build command
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub env: HashMap<String, String>,
+    /// Expected path to the built Wasm component artifact
+    /// If not specified, defaults to `<project-dir>.wasm`.
+    /// Relative paths are resolved against the project directory.
+    /// Exposed to build commands via `MESHX_COMPONENT_PATH` env var.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component_path: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DevVolume {
+    /// Host path to mount
+    pub host_path: PathBuf,
+    /// Guest path inside the dev environment
+    pub guest_path: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DevComponent {
+    /// Name of the component
+    pub name: String,
+    /// Path to the component file
+    pub file: PathBuf,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DevConfig {
+    /// Command to run the component in dev mode
+    /// If not specified, defaults to 'build.command'.
+    pub command: Option<String>,
+    /// Address for the dev server to bind to (default: "0.0.0.0:8000")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub address: Option<String>,
+
+    /// Whether the component under development should be treated as a service
+    #[serde(default)]
+    pub service: bool,
+    /// Optional path to a wasm component to be used as a service
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service_file: Option<PathBuf>,
+
+    /// Additional components to load alongside the main component
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub components: Vec<DevComponent>,
+
+    /// Volumes to mount into the dev environment
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub volumes: Vec<DevVolume>,
+
+    /// Host interfaces configuration
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub host_interfaces: Vec<WitInterface>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tls_cert_path: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tls_key_path: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tls_ca_path: Option<PathBuf>,
+
+    /// Enable WASI WebGPU support in the dev environment. Only supported on non-Windows platforms.
+    #[serde(default)]
+    pub wasi_webgpu: bool,
+
+    /// Optional path for WASI keyvalue filesystem storage. If not set, an in-memory store is used.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wasi_keyvalue_path: Option<PathBuf>,
+
+    /// Optional path for WASI blobstore filesystem storage. If not set, an in-memory store is used.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wasi_blobstore_path: Option<PathBuf>,
 }
 
 /// Load configuration with hierarchical merging
 /// Order of precedence (lowest to highest):
 /// 1. Default values
-/// 2. Global config (~/.meshx/config.json)
-/// 3. Local project config (.meshx/config.json)
+/// 2. Global config (~/.meshx/config.yaml)
+/// 3. Local project config (.meshx/config.yaml)
 /// 4. Environment variables (MESHX_ prefix)
 /// 5. Command line arguments
 ///
@@ -60,14 +192,14 @@ where
 
     // Global config file
     if global_config_path.exists() {
-        figment = figment.merge(Json::file(global_config_path));
+        figment = figment.merge(load_config_file(global_config_path)?);
     }
 
     // Local project config
     if let Some(project_dir) = project_dir {
-        let local_config_path = project_dir.join(PROJECT_CONFIG_DIR).join(CONFIG_FILE_NAME);
-        if local_config_path.exists() {
-            figment = figment.merge(Json::file(local_config_path));
+        let project_config_path = locate_project_config(project_dir);
+        if project_config_path.exists() {
+            figment = figment.merge(load_config_file(&project_config_path)?);
         }
     }
 
@@ -87,6 +219,55 @@ where
         .context("Failed to load meshx configuration")
 }
 
+pub fn locate_project_config(project_dir: &Path) -> PathBuf {
+    for file_name in VALID_CONFIG_FILES.iter() {
+        let config_path = project_dir.join(CONFIG_DIR_NAME).join(file_name);
+        if config_path.exists() {
+            return config_path;
+        }
+    }
+
+    project_dir.join(CONFIG_DIR_NAME).join(CONFIG_FILE_NAME)
+}
+
+pub fn locate_user_config(dot_dir: &Path) -> PathBuf {
+    for file_name in VALID_CONFIG_FILES.iter() {
+        let config_path = dot_dir.join(file_name);
+        if config_path.exists() {
+            return config_path;
+        }
+    }
+
+    dot_dir.join(CONFIG_FILE_NAME)
+}
+
+fn load_config_file(file_path: &Path) -> Result<Figment> {
+    let mut figment = Figment::new();
+
+    match file_path.extension().and_then(|s| s.to_str()) {
+        Some("yaml") | Some("yml") => {
+            figment = figment.merge(Yaml::file_exact(file_path));
+        }
+        Some("json") => {
+            figment = figment.merge(Json::file_exact(file_path));
+        }
+        Some("toml") => {
+            figment = figment.merge(Toml::file_exact(file_path));
+        }
+        Some(ext) => {
+            bail!("Unsupported global config file extension: {}", ext);
+        }
+        None => {
+            bail!(
+                "Global config file has no extension: {}",
+                file_path.display()
+            );
+        }
+    }
+
+    Ok(figment)
+}
+
 /// Save configuration to specified path
 pub async fn save_config(config: &Config, path: &Path) -> Result<()> {
     // Ensure directory exists
@@ -99,54 +280,24 @@ pub async fn save_config(config: &Config, path: &Path) -> Result<()> {
         })?;
     }
 
-    let json = serde_json::to_string_pretty(config).context("Failed to serialize configuration")?;
+    let yaml_config =
+        serde_yaml_ng::to_string(config).context("Failed to serialize configuration")?;
 
-    tokio::fs::write(path, json)
+    tokio::fs::write(path, yaml_config)
         .await
         .with_context(|| format!("failed to write config file: {}", path.display()))?;
 
     Ok(())
 }
 
-/// Generate project-specific configuration after successful build
-pub async fn generate_project_config<T>(project_dir: &Path, build_args: T) -> Result<()>
-where
-    T: Serialize,
-{
-    let config_dir = project_dir.join(".meshx");
-    let config_path = config_dir.join("config.json");
-
-    // Don't overwrite existing config
-    if config_path.exists() {
-        return Ok(());
-    }
-
-    let config = Config::default();
-
-    // Create a figment from the build args and extract relevant config
-    let _figment = Figment::new().merge(figment::providers::Serialized::defaults(build_args));
-
-    save_config(&config, &config_path).await?;
-
-    info!(
-        "Generated project configuration at {}",
-        config_path.display()
-    );
-    Ok(())
-}
-
 /// Get the local project configuration file path
 pub fn local_config_path(project_dir: &Path) -> PathBuf {
-    project_dir.join(".meshx").join(CONFIG_FILE_NAME)
+    project_dir.join(CONFIG_DIR_NAME).join(CONFIG_FILE_NAME)
 }
 
 /// Generate a default configuration file with all explicit defaults
 /// This is useful for `meshx config init` command
-pub async fn generate_default_config(
-    path: &Path,
-    force: bool,
-    include_templates: bool,
-) -> Result<()> {
+pub async fn generate_default_config(path: &Path, force: bool) -> Result<()> {
     // Don't overwrite existing config unless force is specified
     if path.exists() && !force {
         bail!(
@@ -155,12 +306,7 @@ pub async fn generate_default_config(
         );
     }
 
-    let default_config = if include_templates {
-        Config::default_with_templates()
-    } else {
-        Config::default()
-    };
-    save_config(&default_config, path).await?;
+    save_config(&Config::default(), path).await?;
 
     info!(config_path = %path.display(), "Generated default configuration");
     Ok(())

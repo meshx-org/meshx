@@ -1,5 +1,8 @@
 use crate::{
-    cli::{CliCommand, CliContext, CommandOutput},
+    cli::{
+        CliCommand, CliContext, CommandOutput,
+        doctor::{check_project_specific_tools, detect_project_context},
+    },
     config::{Config, load_config},
 };
 use anyhow::{Context as _, ensure};
@@ -9,11 +12,14 @@ use tokio::io::AsyncReadExt;
 use tokio::io::AsyncSeekExt;
 use tokio::io::SeekFrom;
 use tokio::{fs::File, select, sync::mpsc};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use wash_runtime::{
-    host::Host,
-    plugin::{wasi_config::WasiConfig, wasi_http::HttpServer, wasi_logging::WasiLogging},
+    host::{
+        Host,
+        http::{DevRouter, HttpServer},
+    },
+    plugin::{wasi_config::DynamicConfig, wasi_logging::TracingLogger},
 };
 
 async fn load_state_file(file: &mut File) -> anyhow::Result<crate::types::ConfigFile> {
@@ -54,15 +60,42 @@ pub struct DevCommand {
 
 impl CliCommand for DevCommand {
     async fn handle(&self, ctx: &CliContext) -> anyhow::Result<CommandOutput> {
-        info!(manifest = ?self.manifest_path, "starting development session for project");
+        let project_dir = ctx.project_dir();
+        info!(path = ?project_dir, "starting development session for project");
 
-        let _config = load_config(
-            &ctx.config_path(),
-            Some(self.manifest_path.as_path()),
-            // Override the component path with the one provided in the command line
-            Some(Config {}),
-        )
-        .context("failed to load config for development")?;
+        let config = load_config(&ctx.user_config_path(), Some(project_dir), None::<Config>)
+            .context("failed to load config for development")?;
+
+        // Check for required tools (e.g., yel, WIT)
+        let project_context = detect_project_context(project_dir)
+            .await
+            .context("failed to detect project context")?;
+        let (issues, recommendations) = check_project_specific_tools(&project_context)
+            .await
+            .context("failed to check project specific tools")?;
+        if !issues.is_empty() {
+            for issue in issues {
+                warn!(issue = issue, "project tool issue");
+            }
+        } else {
+            debug!("no issues found with project tools");
+        }
+        if !recommendations.is_empty() {
+            for recommendation in recommendations {
+                warn!(
+                    recommendation = recommendation,
+                    "project tool recommendation"
+                );
+            }
+        } else {
+            debug!("no recommendations found for project tools");
+        }
+
+        let dev_config = config.dev();
+        let http_addr = dev_config
+            .address
+            .clone()
+            .unwrap_or_else(|| "0.0.0.0:8000".to_string());
 
         let mut file = File::open(&self.manifest_path).await?;
 
@@ -73,7 +106,7 @@ impl CliCommand for DevCommand {
         let mut host_builder = Host::builder();
 
         // Enable wasi config
-        host_builder = host_builder.with_plugin(Arc::new(WasiConfig::default()))?;
+        host_builder = host_builder.with_plugin(Arc::new(DynamicConfig::default()))?;
 
         let volume_root = self
             .blobstore_root
@@ -88,9 +121,12 @@ impl CliCommand for DevCommand {
         }
         debug!(path = ?volume_root.display(), "using blobstore root directory");
 
+        let http_handler = DevRouter::default();
         // TODO(#19): Only spawn the server if the component exports wasi:http
         // Configure HTTP server with optional TLS, enable HTTP Server
-        let protocol = if let (Some(cert_path), Some(key_path)) = (&self.tls_cert, &self.tls_key) {
+        let protocol = if let (Some(cert_path), Some(key_path)) =
+            (&dev_config.tls_cert_path, &dev_config.tls_key_path)
+        {
             ensure!(
                 cert_path.exists(),
                 "TLS certificate file does not exist: {}",
@@ -102,7 +138,7 @@ impl CliCommand for DevCommand {
                 key_path.display()
             );
 
-            if let Some(ca_path) = &self.tls_ca {
+            if let Some(ca_path) = &dev_config.tls_ca_path {
                 ensure!(
                     ca_path.exists(),
                     "CA certificate file does not exist: {}",
@@ -110,27 +146,28 @@ impl CliCommand for DevCommand {
                 );
             }
 
-            host_builder = host_builder.with_plugin(Arc::new(
-                HttpServer::new_with_tls(
-                    self.address.parse()?,
-                    cert_path,
-                    key_path,
-                    self.tls_ca.as_deref(),
-                )
-                .await?,
-            ))?;
+            let http_server = HttpServer::new_with_tls(
+                http_handler,
+                http_addr.parse()?,
+                cert_path,
+                key_path,
+                dev_config.tls_ca_path.as_deref(),
+            )
+            .await?;
+
+            host_builder = host_builder.with_http_handler(Arc::new(http_server));
 
             debug!("TLS configured - server will use HTTPS");
             "https"
         } else {
             debug!("No TLS configuration provided - server will use HTTP");
-            host_builder =
-                host_builder.with_plugin(Arc::new(HttpServer::new(self.address.parse()?)))?;
+            let http_server = HttpServer::new(http_handler, http_addr.parse()?);
+            host_builder = host_builder.with_http_handler(Arc::new(http_server));
             "http"
         };
 
         // Add logging plugin
-        host_builder = host_builder.with_plugin(Arc::new(WasiLogging))?;
+        host_builder = host_builder.with_plugin(Arc::new(TracingLogger::default()))?;
         debug!("Logging plugin registered");
 
         // Build and start the host
@@ -141,7 +178,7 @@ impl CliCommand for DevCommand {
                 debug!("loaded file {:?}", cfg);
             }
             Err(e) => error!("failed to reload config: {e}"),
-        }
+        };
 
         let (stop_tx, mut stop_rx) = mpsc::channel::<()>(1);
 
