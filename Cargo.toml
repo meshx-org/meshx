@@ -96,7 +96,7 @@ wash-runtime = {git = "https://github.com/wasmCloud/wash.git", branch = "main"}
 wasm-pkg-client = {version = "0.10.0", default-features = false}
 wasm-pkg-core = {version = "0.10.0", default-features = false}
 which = {version = "8.0.0", default-features = false, features = ["real-sys"]}
-wasmtime = { version = "38", default-features = false }
+wasmtime = { version = "40", default-features = false }
 async-trait = { version = "0.1.89", default-features = false }
 
 [workspace.metadata.cargo-machete]
