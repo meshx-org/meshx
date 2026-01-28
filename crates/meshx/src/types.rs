@@ -9,7 +9,21 @@ pub(crate) type WorkloadKey = (String, String); // (namespace, name)
 pub struct ConfigFile {
     #[serde(rename = "apiVersion")]
     pub api_version: String,
+    pub metadata: Option<Metadata>,
     pub workloads: Vec<Workload>,
+    pub resources: Option<HashMap<String, Resource>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Metadata {
+    pub name: String,
+    pub annotations: Option<HashMap<String, String>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Resource {
+    #[serde(rename = "type")]
+    pub resource_type: String,
 }
 
 /// The type of volume - either host path or empty directory.
@@ -41,8 +55,9 @@ pub struct Workload {
     pub namespace: String,
     pub annotations: Option<HashMap<String, String>>,
     pub service: Option<Service>,
-    #[serde(rename = "world")]
-    pub wit_world: Option<WitWorld>,
+    pub components: Option<Vec<Component>>,
+    #[serde(rename = "hostInterfaces")]
+    pub host_interfaces: Option<Vec<HostInterface>>,
     pub volumes: Option<Vec<Volume>>,
 }
 
@@ -50,6 +65,7 @@ pub struct Workload {
 pub enum ImageRef {
     Oci(String),
     Blob(String),
+    File(String),
 }
 
 impl<'de> Deserialize<'de> for ImageRef {
@@ -63,6 +79,8 @@ impl<'de> Deserialize<'de> for ImageRef {
             Ok(ImageRef::Oci(rest.to_string()))
         } else if let Some(rest) = s.strip_prefix("blob://") {
             Ok(ImageRef::Blob(rest.to_string()))
+        } else if let Some(rest) = s.strip_prefix("file://") {
+            Ok(ImageRef::File(rest.to_string()))
         } else {
             // default to OCI if no prefix is given
             Ok(ImageRef::Oci(s))
@@ -76,13 +94,6 @@ pub struct Service {
     pub image: ImageRef,
     #[serde(rename = "maxRestarts")]
     pub max_restarts: u64,
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct WitWorld {
-    pub components: Vec<Component>,
-    #[serde(rename = "hostInterfaces")]
-    pub host_interfaces: Vec<HostInterface>,
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]

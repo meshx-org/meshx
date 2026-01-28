@@ -235,7 +235,7 @@ impl ComponentBuilder {
             config: None, // TODO(#1): config
             cache: Some(ctx.cache_dir().join("package_cache")),
         };
-        let wkg_config = wasm_pkg_core::config::Config::default();
+        let wkg_config = wasm_pkg_core::config::Config::load().await?;
         let mut fetcher = WkgFetcher::from_common(&args, wkg_config).await?;
 
         // Apply WIT source overrides if present in configuration

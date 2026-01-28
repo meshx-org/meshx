@@ -133,15 +133,15 @@ impl CommonPackageArgs {
                 // TODO(#1): support package_config.toml
             }
         };
-        let meshx_label = "meshx".parse().context("failed to parse meshx label")?;
-        // If they don't have a config set for the meshx namespace, set it to the default defined here
-        if conf.namespace_registry(&meshx_label).is_none() {
+        let wasi_label = "wasi".parse().context("failed to parse wasi label")?;
+        // If they don't have a config set for the wasi namespace, set it to the default defined here
+        if conf.namespace_registry(&wasi_label).is_none() {
             conf.set_namespace_registry(
-                meshx_label,
+                wasi_label,
                 RegistryMapping::Registry(
-                    "meshx.co"
+                    "wasi.dev"
                         .parse()
-                        .context("failed to parse meshx registry")?,
+                        .context("failed to parse wasi.dev registry")?,
                 ),
             );
         }

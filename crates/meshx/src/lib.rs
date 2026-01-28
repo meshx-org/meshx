@@ -13,3 +13,5 @@ pub mod new;
 pub(crate) mod types;
 /// Manage WebAssembly Interface Types (WIT) for meshx components
 pub(crate) mod wit;
+/// Development utilities for meshx
+pub(crate) mod dev_utils;

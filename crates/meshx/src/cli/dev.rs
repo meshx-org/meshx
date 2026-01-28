@@ -1,3 +1,5 @@
+use crate::dev_utils::{workload_key, workload_start, workloads_equal};
+use crate::types::WorkloadKey;
 use crate::{
     cli::{
         CliCommand, CliContext, CommandOutput,
@@ -6,18 +8,22 @@ use crate::{
     config::{Config, load_config},
 };
 use anyhow::{Context as _, ensure};
+use fiber_authz_cedar::AuthzEngine;
+use fiber_data::DatastorePlugin;
+use http_server::{HttpServer, DynamicRouter};
 use clap::Args;
+use notify::{Config as NotifyConfig, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncSeekExt;
 use tokio::io::SeekFrom;
 use tokio::{fs::File, select, sync::mpsc};
 use tracing::{debug, error, info, warn};
+use wash_runtime::{host::HostApi, types::WorkloadStopRequest};
 
 use wash_runtime::{
     host::{
         Host,
-        http::{DevRouter, HttpServer},
     },
     plugin::{wasi_config::DynamicConfig, wasi_logging::TracingLogger},
 };
@@ -37,7 +43,7 @@ pub struct DevCommand {
     pub manifest_path: PathBuf,
 
     /// The address on which the HTTP server will listen
-    #[clap(long = "address", default_value = "0.0.0.0:8000")]
+    #[clap(long = "address", default_value = "0.0.0.0:8080")]
     pub address: String,
 
     // TODO: filesystem root?
@@ -56,6 +62,71 @@ pub struct DevCommand {
     /// Path to CA certificate bundle (PEM format) for client certificate verification (optional)
     #[clap(long = "tls-ca")]
     pub tls_ca: Option<PathBuf>,
+}
+
+fn create_async_watcher() -> notify::Result<(
+    RecommendedWatcher,
+    mpsc::UnboundedReceiver<notify::Result<Event>>,
+)> {
+    let (tx, rx) = mpsc::unbounded_channel();
+
+    // Automatically select the best implementation for your platform.
+    // You can also access each implementation directly e.g. INotifyWatcher.
+    let watcher = RecommendedWatcher::new(
+        move |res| {
+            let _ = tx.send(res);
+        },
+        NotifyConfig::default(),
+    )?;
+
+    Ok((watcher, rx))
+}
+
+pub(crate) async fn reconcile(
+    host: &wash_runtime::host::Host,
+    running: &mut HashMap<WorkloadKey, crate::types::Workload>,
+    desired: Vec<crate::types::Workload>,
+) -> anyhow::Result<()> {
+    let mut desired_indexed = HashMap::new();
+    for req in desired {
+        desired_indexed.insert(workload_key(&req), req);
+    }
+
+    // Stop workloads that are no longer desired
+    for key in running.keys().cloned().collect::<Vec<_>>() {
+        if !desired_indexed.contains_key(&key) {
+            let workload_id = format!("{}:{}", key.0, key.1);
+            tracing::info!("Stopping workload {workload_id}");
+            host.workload_stop(WorkloadStopRequest { workload_id })
+                .await?;
+            running.remove(&key);
+        }
+    }
+
+    // Start or restart workloads
+    for (key, desired_req) in desired_indexed {
+        match running.get(&key) {
+            None => {
+                // New workload
+                tracing::info!("Starting new workload {:?}:{:?}", key.0, key.1);
+                workload_start(host, desired_req.clone()).await?;
+                running.insert(key, desired_req);
+            }
+            Some(existing_req) => {
+                if !workloads_equal(existing_req, &desired_req) {
+                    // Changed workload: stop & restart
+                    let workload_id = format!("{}:{}", key.0, key.1);
+                    tracing::info!("Restarting workload {workload_id}");
+                    host.workload_stop(WorkloadStopRequest { workload_id })
+                        .await?;
+                    workload_start(host, desired_req.clone()).await?;
+                    running.insert(key, desired_req);
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 impl CliCommand for DevCommand {
@@ -95,13 +166,13 @@ impl CliCommand for DevCommand {
         let http_addr = dev_config
             .address
             .clone()
-            .unwrap_or_else(|| "0.0.0.0:8000".to_string());
+            .unwrap_or_else(|| "0.0.0.0:8080".to_string());
 
-        let mut file = File::open(&self.manifest_path).await?;
+        let mut manifest_file = File::open(&self.manifest_path).await?;
 
         info!(manifest = ?self.manifest_path, "watching file for updates");
 
-        let _running: HashMap<crate::types::WorkloadKey, crate::types::Workload> = HashMap::new();
+        let mut running = HashMap::new();
 
         let mut host_builder = Host::builder();
 
@@ -121,7 +192,7 @@ impl CliCommand for DevCommand {
         }
         debug!(path = ?volume_root.display(), "using blobstore root directory");
 
-        let http_handler = DevRouter::default();
+        let http_handler = DynamicRouter::default();
         // TODO(#19): Only spawn the server if the component exports wasi:http
         // Configure HTTP server with optional TLS, enable HTTP Server
         let protocol = if let (Some(cert_path), Some(key_path)) =
@@ -168,17 +239,34 @@ impl CliCommand for DevCommand {
 
         // Add logging plugin
         host_builder = host_builder.with_plugin(Arc::new(TracingLogger::default()))?;
+        // Add authz plugin
+        host_builder = host_builder.with_plugin(Arc::new(AuthzEngine::default()))?;
+        // Add data plugin
+        host_builder = host_builder.with_plugin(Arc::new(DatastorePlugin::default()))?;
+
         debug!("Logging plugin registered");
 
-        // Build and start the host
-        let _host = host_builder.build()?.start().await?;
+        let host = host_builder.build()?;
+        let host = host.start().await?;
 
-        match load_state_file(&mut file).await {
+        match load_state_file(&mut manifest_file).await {
             Ok(cfg) => {
-                debug!("loaded file {:?}", cfg);
+                info!("loaded file {:?}", cfg);
+
+                reconcile(&host, &mut running, cfg.workloads).await?;
             }
             Err(e) => error!("failed to reload config: {e}"),
-        };
+        }
+
+        let host_id = host.id().to_string();
+        let host = host.clone();
+
+        //let (one_shot_tx, mut one_shot_rx) = oneshot::channel();
+        let (mut watcher, mut watcher_rx) = create_async_watcher()?;
+
+        // Add a path to be watched. All files and directories at that path and
+        // below will be monitored for changes.
+        watcher.watch(self.manifest_path.as_ref(), RecursiveMode::Recursive)?;
 
         let (stop_tx, mut stop_rx) = mpsc::channel::<()>(1);
 
@@ -198,11 +286,30 @@ impl CliCommand for DevCommand {
         info!(address = %format!("{}://{}", protocol, self.address), "listening for HTTP requests");
         info!("watching for file changes (press Ctrl+c to stop)...");
 
-        select! {
-            // Process a stop
-            _ = stop_rx.recv() => {
-                info!("Stopping development session ...");
-            },
+        loop {
+            select! {
+                // Process a stop
+                _ = stop_rx.recv() => {
+                    info!("Stopping development session ...");
+                    break;
+                },
+                Some(res) = watcher_rx.recv() => {
+                    match res {
+                        Ok(event) => {
+                            info!("config changed, reloading");
+                            match load_state_file(&mut manifest_file).await {
+                                Ok(cfg) => {
+                                    info!("loaded file {:?}", cfg);
+
+                                    reconcile(&host, &mut running, cfg.workloads).await?;
+                                }
+                                Err(e) => error!("failed to reload config: {e}"),
+                            }
+                        }
+                        Err(e) => error!("watch error: {:?}", e),
+                    }
+                }
+            }
         }
 
         Ok(CommandOutput::ok(

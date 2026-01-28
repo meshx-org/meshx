@@ -4,28 +4,41 @@ metadata:
   annotations:
     meshx.cloud/app: demo-app
 workloads:
-  hello-world: 
+  - name: tables
     namespace: default
     components:
-      - name: http-component
-        image: oci://ghcr.io/bytecodealliance/sample-wasi-http-rust/sample-wasi-http-rust:latest
+      - name: tables
+        image: file://./examples/tables/target/wasm32-wasip2/release/tables.wasm
         poolSize: 10
-        maxInvocations: 1000
+        maxInvocations: 10
     hostInterfaces:
+      - namespace: meshx
+        package: data
+        interfaces:
+          - schema
+        config:
+  - name: http-authz
+    namespace: default
+    components:
+      - name: http-authz
+        image: file://./examples/http-authz/target/wasm32-wasip2/release/hello_authz.wasm
+        poolSize: 10
+        maxInvocations: 10
+    hostInterfaces:
+      - namespace: meshx
+        package: data
+        interfaces:
+          - schema
+        config:
       - namespace: wasi
         package: http
         interfaces:
           - incoming-handler
         config:
-          address: "0.0.0.0:8080"
-      - namespace: wasi
-        package: keyvalue
+          host: 'localhost'
+      - namespace: meshx
+        package: authz
         interfaces:
-          - store@0.2.0-draft2
+          - engine
         config:
-          resource-id: "${resources.store.resource-id}"
 resources:
-  dns:
-    type: dns
-  store:
-    type: kv
